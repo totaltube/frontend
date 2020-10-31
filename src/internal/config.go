@@ -9,13 +9,19 @@ var Config *ConfigT
 
 type (
 	ConfigT struct {
-		General General
+		General  General
+		Frontend Frontend
 	}
 	General struct {
 		Port           uint
-		Secret         string
 		RealIpHeader   string `toml:"real_ip_header"`
 		UseIpV6Network bool   `toml:"use_ipv6_network"`
+		ApiUrl         string `toml:"api_url"`
+		ApiSecret      string `toml:"api_secret"`
+	}
+	Frontend struct {
+		SitesPath   string `toml:"sites_path"`
+		DefaultSite string `toml:"default_site"`
 	}
 )
 

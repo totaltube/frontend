@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"github.com/alecthomas/kong"
-	_ "github.com/gofiber/fiber/v2"
 	"github.com/jpillora/overseer"
 	"github.com/posener/complete"
 	"github.com/willabides/kongplete"
@@ -14,7 +13,7 @@ import (
 )
 
 var version = "dev"
-var serverPort = 8080
+
 var CLI struct {
 	Config string `name:"config" short:"c" type:"path" help:"location of totaltube frontend config.toml" env:"TTF_CONFIG_PATH" default:"/etc/totaltube-frontend/config.toml" predictor:"toml"`
 }
@@ -44,7 +43,7 @@ func main() {
 	} else {
 		overseer.Run(overseer.Config{
 			Program: server,
-			Address: fmt.Sprintf(":%d", serverPort),
+			Address: fmt.Sprintf(":%d", internal.Config.General.Port),
 			Debug:   false,
 		})
 	}
