@@ -8,12 +8,12 @@ import (
 	"os"
 	"path/filepath"
 	"sersh.com/totaltube/frontend/internal"
-	"sersh.com/totaltube/frontend/types"
+	"sersh.com/totaltube/frontend/site"
 )
 
 type host struct {
 	fiber  *fiber.App
-	config *types.SiteConfig
+	config *site.Config
 	path   string
 }
 
@@ -22,14 +22,14 @@ func InitFiber() *fiber.App {
 		CaseSensitive:         true,
 		DisableStartupMessage: true,
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
-			if c.Accepts("json") != "" {
-				err = c.JSON(map[string]interface{}{
+			if c.Accepts("text/html") != "" {
+				return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
+			}
+			if c.Accepts("application/json") != "" {
+				return c.JSON(map[string]interface{}{
 					"success": false,
 					"value":   err.Error(),
 				})
-				if err == nil {
-					return err
-				}
 			}
 			return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
 		},
@@ -46,7 +46,7 @@ func InitFiber() *fiber.App {
 			continue
 		}
 		h := host{
-			config: types.NewSiteConfig(),
+			config: site.NewConfig(),
 			path:   m,
 		}
 		if _, err := toml.DecodeFile(configPath, &h.config); err != nil {

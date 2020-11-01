@@ -1,7 +1,9 @@
 package main
 
 import (
+	"github.com/flosch/pongo2/v4"
 	"github.com/gofiber/fiber/v2"
+	"sersh.com/totaltube/frontend/site"
 )
 
 func newHandler(c *fiber.Ctx) error {
@@ -17,7 +19,17 @@ func categoryHandler(c *fiber.Ctx) error {
 	return c.SendString("category")
 }
 func topCategoriesHandler(c *fiber.Ctx) error {
-	return c.SendString("top_categories")
+	path := c.Locals("path").(string)
+	config := c.Locals("config").(*site.Config)
+	template, err := site.GetTemplate("top-categories", path, config)
+	if err != nil {
+		return err
+	}
+	bt, err := template.ExecuteBytes(pongo2.Context{})
+	if err != nil {
+		return err
+	}
+	return c.Send(bt)
 }
 func topContentHandler(c *fiber.Ctx) error {
 	return c.SendString("top_content")

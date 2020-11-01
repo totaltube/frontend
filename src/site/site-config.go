@@ -1,12 +1,12 @@
-package types
+package site
 
 type (
-	SiteConfig struct {
-		Routes  SiteConfigRoutes
-		General SiteConfigGeneral
-		Params  SiteConfigParams
+	Config struct {
+		Routes  ConfigRoutes
+		General ConfigGeneral
+		Params  ConfigParams
 	}
-	SiteConfigRoutes struct {
+	ConfigRoutes struct {
 		TopCategories string `toml:"top_categories"`
 		TopContent    string `toml:"top_content"`
 		Autocomplete  string
@@ -22,7 +22,7 @@ type (
 		Out           string
 		Custom        map[string]string `toml:"custom"`
 	}
-	SiteConfigParams struct {
+	ConfigParams struct {
 		CategorySlug         string `toml:"category_slug"`
 		CategoryId           string `toml:"category_id"`
 		ModelSlug            string `toml:"model_slug"`
@@ -38,17 +38,19 @@ type (
 		SortByDuration       string `toml:"sort_by_duration"`
 		SortByDate           string `toml:"sort_by_date"`
 	}
-	SiteConfigGeneral struct {
+	ConfigGeneral struct {
 		TradeUrlTemplate string `toml:"trade_url_template"`
 		MultiLanguage    bool   `toml:"multi_language"`
+		MinifyHtml       bool   `toml:"minify_html"`
+		Debug            bool   `toml:"debug"`
 	}
 )
 
-func NewSiteConfig() *SiteConfig {
-	var n = SiteConfig{
-		Routes:  SiteConfigRoutes{},
-		General: SiteConfigGeneral{},
-		Params: SiteConfigParams{
+func NewConfig() *Config {
+	var n = Config{
+		Routes:  ConfigRoutes{},
+		General: ConfigGeneral{MinifyHtml: true},
+		Params: ConfigParams{
 			CategorySlug:         "category",
 			CategoryId:           "category_id",
 			ModelSlug:            "model",
