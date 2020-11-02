@@ -1,0 +1,27 @@
+package api
+
+import (
+	"github.com/segmentio/encoding/json"
+	"net/url"
+	"sersh.com/totaltube/frontend/types"
+	"strconv"
+)
+
+func ModelsList(
+	lang string, page int64, sort SortBy, amount int64, searchQuery string,
+) (results *types.ModelResults, err error) {
+	var response json.RawMessage
+	response, err = apiRequest(methodGet, uriModelsList, url.Values{
+		"lang":   []string{lang},
+		"sort":   []string{string(sort)},
+		"amount": []string{strconv.FormatInt(amount, 10)},
+		"page":   []string{strconv.FormatInt(page, 10)},
+		"query":  []string{searchQuery},
+	})
+	if err != nil {
+		return
+	}
+	results = new(types.ModelResults)
+	err = json.Unmarshal(response, &results)
+	return
+}

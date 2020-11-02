@@ -7,16 +7,16 @@ import (
 	"strconv"
 )
 
-func TopCategories(lang string, page int64) (results *types.CategoryResults, err error) {
+func TopContent(lang string, page int64) (results *types.ContentResults, err error) {
 	var response json.RawMessage
-	response, err = apiRequest(methodGet, uriTopCategories, url.Values{
+	response, err = apiRequest(methodGet, uriTopContent, url.Values{
 		"lang": []string{lang},
 		"page": []string{strconv.FormatInt(page, 10)},
 	})
 	if err != nil {
 		return
 	}
-	results = new(types.CategoryResults)
+	results = new(types.ContentResults)
 	err = json.Unmarshal(response, results)
 	return
 }
