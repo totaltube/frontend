@@ -11,5 +11,7 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/posener/complete v1.2.3
 	github.com/rjeczalik/notify v0.9.2
+	github.com/segmentio/encoding v0.2.2
+	github.com/valyala/fasthttp v1.16.0
 	github.com/willabides/kongplete v0.1.0
 )

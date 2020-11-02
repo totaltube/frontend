@@ -3,6 +3,7 @@ package internal
 import (
 	"github.com/BurntSushi/toml"
 	"log"
+	"sersh.com/totaltube/frontend/types"
 )
 
 var Config *ConfigT
@@ -14,10 +15,11 @@ type (
 	}
 	General struct {
 		Port           uint
-		RealIpHeader   string `toml:"real_ip_header"`
-		UseIpV6Network bool   `toml:"use_ipv6_network"`
-		ApiUrl         string `toml:"api_url"`
-		ApiSecret      string `toml:"api_secret"`
+		RealIpHeader   string         `toml:"real_ip_header"`
+		UseIpV6Network bool           `toml:"use_ipv6_network"`
+		ApiUrl         string         `toml:"api_url"`
+		ApiSecret      string         `toml:"api_secret"`
+		ApiTimeout     types.Duration `toml:"api_timeout"`
 	}
 	Frontend struct {
 		SitesPath   string `toml:"sites_path"`
