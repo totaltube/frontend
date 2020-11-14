@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"sersh.com/totaltube/frontend/internal"
 	"sersh.com/totaltube/frontend/site"
+	"strings"
 )
 
 type host struct {
@@ -49,6 +50,7 @@ func InitFiber() *fiber.App {
 			config: site.NewConfig(),
 			path:   m,
 		}
+		hostName := filepath.Base(m)
 		if _, err := toml.DecodeFile(configPath, &h.config); err != nil {
 			log.Fatalln("error reading site config at", configPath, err)
 		}
@@ -57,6 +59,7 @@ func InitFiber() *fiber.App {
 		h.fiber.Use(func(c *fiber.Ctx) error {
 			c.Locals("config", h.config)
 			c.Locals("path", h.path)
+			c.Locals("hostName", hostName)
 			return c.Next()
 		})
 		if h.config.Routes.New != "" {
@@ -106,8 +109,8 @@ func InitFiber() *fiber.App {
 				}, customHandler)
 			}
 		}
-		hosts[filepath.Base(m)] = &h
-		if filepath.Base(m) == internal.Config.Frontend.DefaultSite {
+		hosts[hostName] = &h
+		if hostName == internal.Config.Frontend.DefaultSite {
 			defaultSiteOk = true
 		}
 	}
@@ -119,7 +122,8 @@ func InitFiber() *fiber.App {
 	app := fiber.New(fiberConfig)
 	app.Use(recover.New())
 	app.Use(func(c *fiber.Ctx) error {
-		host := hosts[c.Hostname()]
+		hostName := strings.TrimPrefix(c.Hostname(), "www.")
+		host := hosts[hostName]
 		if host == nil {
 			host = hosts[internal.Config.Frontend.DefaultSite]
 		}

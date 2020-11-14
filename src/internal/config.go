@@ -12,6 +12,7 @@ type (
 	ConfigT struct {
 		General  General
 		Frontend Frontend
+		Database Database
 	}
 	General struct {
 		Port           uint
@@ -20,10 +21,14 @@ type (
 		ApiUrl         string         `toml:"api_url"`
 		ApiSecret      string         `toml:"api_secret"`
 		ApiTimeout     types.Duration `toml:"api_timeout"`
+		LangCookie     string         `toml:"lang_cookie"`
 	}
 	Frontend struct {
 		SitesPath   string `toml:"sites_path"`
 		DefaultSite string `toml:"default_site"`
+	}
+	Database struct {
+		Path string `toml:"path"`
 	}
 )
 

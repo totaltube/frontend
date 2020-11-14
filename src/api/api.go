@@ -51,6 +51,7 @@ const (
 	uriCategoryClick      apiUri = "count-click/category"
 	uriTopContentClick    apiUri = "count-click/top-content"
 	uriTranslate          apiUri = "translate"
+	uriLanguages          apiUri = "languages"
 )
 
 func apiRequest(method method, uri apiUri, data interface{}) (response json.RawMessage, err error) {
@@ -80,7 +81,8 @@ func apiRequest(method method, uri apiUri, data interface{}) (response json.RawM
 		}
 		freq.URI().SetQueryString(queryParams.Encode())
 	} else if data != nil {
-		d, err := json.Marshal(data)
+		var d []byte
+		d, err = json.Marshal(data)
 		if err != nil {
 			err = errors.Wrap(err, "can't marshal body data")
 			log.Println(err)

@@ -50,9 +50,6 @@ func NewTemplates(path string, config *Config) *templates {
 	n.templateSet = pongo2.NewSet(filepath.Base(path), pongo2.DefaultLoader)
 	n.templateSet.Options.LStripBlocks = true
 	n.templateSet.Options.TrimBlocks = true
-	if config.General.Debug {
-		n.templateSet.Debug = true
-	}
 	go func() {
 		for {
 			func() {
@@ -107,4 +104,15 @@ var siteTemplates = siteTemplatesT{siteTemplates: map[string]*templates{}}
 
 func GetTemplate(name, path string, config *Config) (*pongo2.Template, error) {
 	return siteTemplates.get(name, path, config)
+}
+
+func ParseTemplate(name, path string, config *Config, customContext pongo2.Context) (parsed []byte, err error) {
+	var template *pongo2.Template
+	template, err = GetTemplate(name, path, config)
+	if err != nil {
+		return
+	}
+	c := generateContext(name, config, customContext)
+	parsed, err = template.ExecuteBytes(c)
+	return
 }
