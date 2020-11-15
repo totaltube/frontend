@@ -21,9 +21,8 @@ func TopCategories(c *fiber.Ctx) error {
 		page = 1
 	}
 	nocache, _ := strconv.ParseBool(c.Query(config.Params.Nocache, "false"))
-
 	customContext := pongo2.Context{
-		"lang":   lang.Name,
+		"lang":   lang.Id,
 		"page":   page,
 		"config": config,
 	}

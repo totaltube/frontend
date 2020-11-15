@@ -89,4 +89,11 @@ func InitPongo2() {
 	}
 
 	err = pongo2.RegisterTag("dynamic", pongo2Dynamic)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	err = pongo2.RegisterTag("fetch", pongo2Fetch)
+	if err != nil {
+		log.Fatalln(err)
+	}
 }

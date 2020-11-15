@@ -4,6 +4,7 @@ import (
 	"github.com/dgraph-io/badger/v2"
 	"log"
 	"math/rand"
+	"runtime"
 	"sersh.com/totaltube/frontend/internal"
 	"time"
 )
@@ -16,7 +17,8 @@ func InitDB() {
 	bdb, err = badger.Open(
 		badger.DefaultOptions(internal.Config.Database.Path).
 			WithDetectConflicts(false).
-			WithSyncWrites(false),
+			WithSyncWrites(false).
+			WithTruncate(runtime.GOOS == "windows"),
 	)
 	if err != nil {
 		log.Fatalln(err)
@@ -36,6 +38,9 @@ func InitDB() {
 
 func BeforeClose() {
 	if bdb != nil {
-		_ = bdb.Close()
+		err := bdb.Close()
+		if err != nil {
+			log.Println(err)
+		}
 	}
 }

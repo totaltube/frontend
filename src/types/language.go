@@ -10,6 +10,7 @@ const (
 )
 
 type Language struct {
+	Id        string
 	Name      string
 	Locale    string
 	Native    string

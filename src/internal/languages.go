@@ -14,13 +14,14 @@ var matcher language.Matcher
 
 func InitLanguages(Languages []types.Language) {
 	languages = Languages
-	enOk := false
+	languageTags = make([]language.Tag, 0, len(languages))
 	for k := range languages {
-		if languages[k].Name == "en" {
-			enOk = true
+		if languages[k].Id == "en" {
+			languages[k].Tag = language.MustParse(strings.Replace(languages[k].Locale, "_", "-", -1))
+			languageTags = append(languageTags, languages[k].Tag)
 		}
 	}
-	if !enOk {
+	if len(languageTags) == 0 {
 		languages = append(languages, types.Language{
 			Name:      "en",
 			Locale:    "en_US",
@@ -31,12 +32,13 @@ func InitLanguages(Languages []types.Language) {
 	}
 	languagesMap = make(map[string]*types.Language)
 	tagsMap = make(map[string]*types.Language)
-	languageTags = make([]language.Tag, 0, len(languages))
 	for k := range languages {
 		languages[k].Tag = language.MustParse(strings.Replace(languages[k].Locale, "_", "-", -1))
-		languagesMap[languages[k].Name] = &languages[k]
+		languagesMap[languages[k].Id] = &languages[k]
 		tagsMap[languages[k].Tag.String()] = &languages[k]
-		languageTags = append(languageTags, languages[k].Tag)
+		if languages[k].Id != "en" {
+			languageTags = append(languageTags, languages[k].Tag)
+		}
 	}
 	matcher = language.NewMatcher(languageTags)
 }
