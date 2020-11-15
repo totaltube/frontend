@@ -6,6 +6,8 @@ import (
 	"github.com/rjeczalik/notify"
 	"log"
 	"path/filepath"
+	"sersh.com/totaltube/frontend/db"
+	"sersh.com/totaltube/frontend/helpers"
 	"strings"
 	"sync"
 	"time"
@@ -106,13 +108,36 @@ func GetTemplate(name, path string, config *Config) (*pongo2.Template, error) {
 	return siteTemplates.get(name, path, config)
 }
 
-func ParseTemplate(name, path string, config *Config, customContext pongo2.Context) (parsed []byte, err error) {
+// uncachedPrepare - функция, которая подготавливает контекст для незакэшированного шаблона
+func ParseTemplate(name, path string, config *Config, customContext pongo2.Context,
+	nocache bool, cacheKey string, cacheTtl time.Duration,
+	uncachedPrepare func(ctx pongo2.Context) (pongo2.Context, error)) (parsed []byte, err error) {
+	if !nocache {
+		cached := db.GetCached(cacheKey)
+		if cached != nil {
+			c := generateContext(name, config, customContext)
+			parsed, err = InsertDynamic(cached, c)
+			return
+		}
+	}
+	customContext, err = uncachedPrepare(customContext)
+	if err != nil {
+		return
+	}
+	c := generateContext(name, config, customContext)
 	var template *pongo2.Template
 	template, err = GetTemplate(name, path, config)
 	if err != nil {
 		return
 	}
-	c := generateContext(name, config, customContext)
 	parsed, err = template.ExecuteBytes(c)
+	if config.General.MinifyHtml {
+		parsed = helpers.MinifyBytes(parsed)
+	}
+	err = db.PutCached(cacheKey, parsed, cacheTtl)
+	if err != nil {
+		log.Println("can't put item in cache: ", err)
+	}
+	parsed, err = InsertDynamic(parsed, c)
 	return
 }

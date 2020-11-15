@@ -13,7 +13,6 @@ var bdb *badger.DB
 func InitDB() {
 	rand.Seed(time.Now().UnixNano())
 	var err error
-	log.Println("Init DB")
 	bdb, err = badger.Open(
 		badger.DefaultOptions(internal.Config.Database.Path).
 			WithDetectConflicts(false).
@@ -30,7 +29,6 @@ func InitDB() {
 			err = bdb.RunValueLogGC(0.7)
 			if err != nil && err != badger.ErrNoRewrite {
 				log.Println(err)
-				break
 			}
 		}
 	}()

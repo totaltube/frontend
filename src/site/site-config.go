@@ -37,6 +37,8 @@ type (
 		SortByViewsTimeframe string `toml:"sort_by_views_timeframe"`
 		SortByDuration       string `toml:"sort_by_duration"`
 		SortByDate           string `toml:"sort_by_date"`
+		Page                 string `toml:"page"`
+		Nocache              string `toml:"nocache"`
 	}
 	ConfigGeneral struct {
 		TradeUrlTemplate string `toml:"trade_url_template"`
@@ -65,6 +67,8 @@ func NewConfig() *Config {
 			SortByViewsTimeframe: "timeframe",
 			SortByDate:           "date",
 			SortByDuration:       "duration",
+			Page:                 "page",
+			Nocache:              "nocache",
 		},
 	}
 	return &n

@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"sersh.com/totaltube/frontend/db"
+	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/internal"
 	"sersh.com/totaltube/frontend/site"
 	"syscall"
@@ -17,7 +18,8 @@ import (
 func server(state overseer.State) {
 	db.InitDB()
 	initLanguages()
-	site.InitFilters()
+	site.InitPongo2()
+	helpers.InitMinifier()
 	app := InitFiber()
 	go func() {
 		log.Println("Running totaltube-frontend on port", internal.Config.General.Port)

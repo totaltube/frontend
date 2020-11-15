@@ -2,8 +2,11 @@ package types
 
 import (
 	"database/sql/driver"
+	"fmt"
 	"github.com/pkg/errors"
 	"github.com/segmentio/encoding/json"
+	"math/rand"
+	"strings"
 	"time"
 )
 
@@ -52,9 +55,10 @@ type ContentItemResult struct {
 	ThumbsAmount    int32             `json:"thumbs_amount"`
 	ThumbsWidth     int32             `json:"thumb_width"`
 	ThumbsHeight    int32             `json:"thumb_height"`
-	ThumbsServer    string            `json:"thumbs_server"`        // урл сервера, на котором тумбы
-	ThumbsPath      string            `json:"thumbs_path"`          // шаблон пути к тумбам
-	ThumbsRetina    bool              `json:"thumb_retina"`         // индикатор, что есть версия @2x
+	ThumbsServer    string            `json:"thumbs_server"` // урл сервера, на котором тумбы
+	ThumbsPath      string            `json:"thumbs_path"`   // шаблон пути к тумбам
+	ThumbRetina     bool              `json:"thumb_retina"`  // индикатор, что есть версия @2x
+	ThumbFormat     string            `json:"thumb_format"`
 	BestThumb       *int16            `json:"best_thumb,omitempty"` // номер лучшей тумбы, нумерация с 0
 	Type            ContentType       `json:"type"`
 	Priority        int16             `json:"priority,omitempty"`
@@ -63,6 +67,7 @@ type ContentItemResult struct {
 	Models          TaxonomyResults   `json:"models,omitempty"`
 	Views           int32             `json:"views"`
 	Related         []ContentResult   `json:"related,omitempty"` // похожие на этот контент
+	selectedThumb   *int
 }
 
 type ContentResult struct {
@@ -82,9 +87,10 @@ type ContentResult struct {
 	ThumbsAmount    int32             `json:"thumbs_amount"`
 	ThumbsWidth     int32             `json:"thumb_width"`
 	ThumbsHeight    int32             `json:"thumb_height"`
-	ThumbsServer    string            `json:"thumbs_server"`        // урл сервера, на котором тумбы
-	ThumbsPath      string            `json:"thumbs_path"`          // шаблон пути к тумбам
-	ThumbsRetina    bool              `json:"thumb_retina"`         // индикатор, что есть версия @2x
+	ThumbsServer    string            `json:"thumbs_server"` // урл сервера, на котором тумбы
+	ThumbsPath      string            `json:"thumbs_path"`   // шаблон пути к тумбам
+	ThumbRetina     bool              `json:"thumb_retina"`  // индикатор, что есть версия @2x
+	ThumbFormat     string            `json:"thumb_format"`
 	BestThumb       *int16            `json:"best_thumb,omitempty"` // Лучшая тумба
 	Type            ContentType       `json:"type"`
 	Priority        int16             `json:"priority,omitempty"`
@@ -94,15 +100,16 @@ type ContentResult struct {
 	RotationStatus  *CtrsStatus       `json:"rotation_status,omitempty"`
 	Ctr             *float32          `json:"ctr,omitempty"`
 	Views           int32             `json:"views"`
+	selectedThumb   *int
 }
 
 type ContentResults struct {
-	Total   int64           `json:"total"`             // Всего контента
-	From    int             `json:"from"`              // с какого элемента показываются результаты
-	To      int             `json:"to"`                // до какого элемента показываются результаты
-	Items   []ContentResult `json:"items"`             // выбранные результаты
-	Title   string          `json:"title,omitempty"`   // заголовок результата
-	Related []RelatedItem   `json:"related,omitempty"` // Похожие на текущий запрос запросы, категории, модели и тд.
+	Total   int64            `json:"total"`             // Всего контента
+	From    int              `json:"from"`              // с какого элемента показываются результаты
+	To      int              `json:"to"`                // до какого элемента показываются результаты
+	Items   []*ContentResult `json:"items"`             // выбранные результаты
+	Title   string           `json:"title,omitempty"`   // заголовок результата
+	Related []RelatedItem    `json:"related,omitempty"` // Похожие на текущий запрос запросы, категории, модели и тд.
 }
 
 func (tr *TaxonomyResults) Scan(src interface{}) error {
@@ -129,4 +136,64 @@ func (c *ContentResultUser) Scan(src interface{}) error {
 
 func (c ContentResultUser) Value() (driver.Value, error) {
 	return json.Marshal(c)
+}
+
+func (c ContentItemResult) ThumbTemplate() string {
+	return c.ThumbsServer + c.ThumbsPath + "/thumb-" + c.ThumbFormat + ".%d.jpg"
+}
+
+func (c *ContentItemResult) Thumb() string {
+	return fmt.Sprintf(c.ThumbTemplate(), c.SelectedThumb())
+}
+
+func (c *ContentItemResult) HiresThumb() string {
+	if c.ThumbRetina {
+		return fmt.Sprintf(strings.TrimSuffix(c.ThumbTemplate(), ".jpg")+"@2x.jpg", c.SelectedThumb())
+	} else {
+		return c.Thumb()
+	}
+}
+
+func (c *ContentItemResult) SelectedThumb() int {
+	if c.selectedThumb != nil {
+		return *c.selectedThumb
+	}
+	if c.BestThumb != nil {
+		idx := int(*c.BestThumb)
+		c.selectedThumb = &idx
+	} else {
+		idx := rand.Intn(int(c.ThumbsAmount))
+		c.selectedThumb = &idx
+	}
+	return *c.selectedThumb
+}
+
+func (c ContentResult) ThumbTemplate() string {
+	return c.ThumbsServer + c.ThumbsPath + "/thumb-" + c.ThumbFormat + ".%d.jpg"
+}
+
+func (c *ContentResult) Thumb() string {
+	return fmt.Sprintf(c.ThumbTemplate(), c.SelectedThumb())
+}
+
+func (c *ContentResult) HiresThumb() string {
+	if c.ThumbRetina {
+		return fmt.Sprintf(strings.TrimSuffix(c.ThumbTemplate(), ".jpg")+"@2x.jpg", c.SelectedThumb())
+	} else {
+		return c.Thumb()
+	}
+}
+
+func (c *ContentResult) SelectedThumb() int {
+	if c.selectedThumb != nil {
+		return *c.selectedThumb
+	}
+	if c.BestThumb != nil {
+		idx := int(*c.BestThumb)
+		c.selectedThumb = &idx
+	} else {
+		idx := rand.Intn(int(c.ThumbsAmount))
+		c.selectedThumb = &idx
+	}
+	return *c.selectedThumb
 }

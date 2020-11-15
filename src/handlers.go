@@ -1,10 +1,7 @@
 package main
 
 import (
-	"github.com/flosch/pongo2/v4"
 	"github.com/gofiber/fiber/v2"
-	"sersh.com/totaltube/frontend/internal"
-	"sersh.com/totaltube/frontend/site"
 )
 
 func newHandler(c *fiber.Ctx) error {
@@ -18,21 +15,6 @@ func searchHandler(c *fiber.Ctx) error {
 }
 func categoryHandler(c *fiber.Ctx) error {
 	return c.SendString("category")
-}
-
-func topCategoriesHandler(c *fiber.Ctx) error {
-	path := c.Locals("path").(string)
-	config := c.Locals("config").(*site.Config)
-	langCookie := c.Cookies(internal.Config.General.LangCookie)
-	lang := internal.DetectLanguage(langCookie, c.Get("Accept-Language"))
-	customContext := pongo2.Context{
-		"lang": lang.Name,
-	}
-	parsed, err := site.ParseTemplate("top-categories", path, config, customContext)
-	if err != nil {
-		return err
-	}
-	return c.Send(parsed)
 }
 
 func topContentHandler(c *fiber.Ctx) error {

@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sersh.com/totaltube/frontend/handlers"
 	"sersh.com/totaltube/frontend/internal"
 	"sersh.com/totaltube/frontend/site"
 	"strings"
@@ -63,43 +64,43 @@ func InitFiber() *fiber.App {
 			return c.Next()
 		})
 		if h.config.Routes.New != "" {
-			h.fiber.Get(h.config.Routes.New, newHandler)
+			h.fiber.All(h.config.Routes.New, newHandler)
 		}
 		if h.config.Routes.Autocomplete != "" {
-			h.fiber.Get(h.config.Routes.Autocomplete, autocompleteHandler)
+			h.fiber.All(h.config.Routes.Autocomplete, autocompleteHandler)
 		}
 		if h.config.Routes.Search != "" {
-			h.fiber.Get(h.config.Routes.Search, searchHandler)
+			h.fiber.All(h.config.Routes.Search, searchHandler)
 		}
 		if h.config.Routes.Category != "" {
-			h.fiber.Get(h.config.Routes.Category, categoryHandler)
+			h.fiber.All(h.config.Routes.Category, categoryHandler)
 		}
 		if h.config.Routes.TopCategories != "" {
-			h.fiber.Get(h.config.Routes.TopCategories, topCategoriesHandler)
+			h.fiber.All(h.config.Routes.TopCategories, handlers.TopCategories)
 		}
 		if h.config.Routes.TopContent != "" {
-			h.fiber.Get(h.config.Routes.TopContent, topContentHandler)
+			h.fiber.All(h.config.Routes.TopContent, topContentHandler)
 		}
 		if h.config.Routes.Model != "" {
-			h.fiber.Get(h.config.Routes.Model, modelHandler)
+			h.fiber.All(h.config.Routes.Model, modelHandler)
 		}
 		if h.config.Routes.Channel != "" {
-			h.fiber.Get(h.config.Routes.Channel, channelHandler)
+			h.fiber.All(h.config.Routes.Channel, channelHandler)
 		}
 		if h.config.Routes.Content != "" {
-			h.fiber.Get(h.config.Routes.Content, contentHandler)
+			h.fiber.All(h.config.Routes.Content, contentHandler)
 		}
 		if h.config.Routes.Long != "" {
-			h.fiber.Get(h.config.Routes.Long, longHandler)
+			h.fiber.All(h.config.Routes.Long, longHandler)
 		}
 		if h.config.Routes.Models != "" {
-			h.fiber.Get(h.config.Routes.Models, modelsHandler)
+			h.fiber.All(h.config.Routes.Models, modelsHandler)
 		}
 		if h.config.Routes.Popular != "" {
-			h.fiber.Get(h.config.Routes.Popular, popularHandler)
+			h.fiber.All(h.config.Routes.Popular, popularHandler)
 		}
 		if h.config.Routes.Out != "" {
-			h.fiber.Get(h.config.Routes.Out, outHandler)
+			h.fiber.All(h.config.Routes.Out, outHandler)
 		}
 		if h.config.Routes.Custom != nil {
 			for templateName, routePath := range h.config.Routes.Custom {

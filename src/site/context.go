@@ -7,7 +7,7 @@ import (
 func generateContext(name string, config *Config, customContext pongo2.Context) pongo2.Context {
 	var ctx = pongo2.Context{
 		"translate": func(text string) string {
-			return defferedTranslate("en", customContext["lang"].(string), text)
+			return deferredTranslate("en", customContext["lang"].(string), text)
 		},
 	}
 	return ctx.Update(customContext)

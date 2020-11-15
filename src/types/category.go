@@ -1,6 +1,11 @@
 package types
 
-import "time"
+import (
+	"fmt"
+	"math/rand"
+	"strings"
+	"time"
+)
 
 type CtrsStatus string
 
@@ -25,15 +30,47 @@ type CategoryResult struct {
 	ThumbsAmount    int32       `json:"thumbs_amount"`
 	ThumbsServer    string      `json:"thumbs_server"`
 	ThumbsPath      string      `json:"thumbs_path"`
+	ThumbFormat     string      `json:"thumb_format"`
 	BestThumb       *int16      `json:"best_thumb,omitempty"`
 	RotationStatus  *CtrsStatus `json:"rotation_status,omitempty"`
 	Total           int32       `json:"total"`
 	Ctr             *float32    `json:"ctr,omitempty"`
 	Views           int32       `json:"views"`
+	selectedThumb   *int
 }
 type CategoryResults struct {
-	Total int              `json:"total"` // Всего категорий
-	From  int              `json:"from"`  // с какого элемента показываются результаты
-	To    int              `json:"to"`    // до какого элемента показываются результаты
-	Items []CategoryResult `json:"items"` // выбранные результаты
+	Total int               `json:"total"` // Всего категорий
+	From  int               `json:"from"`  // с какого элемента показываются результаты
+	To    int               `json:"to"`    // до какого элемента показываются результаты
+	Items []*CategoryResult `json:"items"` // выбранные результаты
+}
+
+func (c CategoryResult) ThumbTemplate() string {
+	return c.ThumbsServer + c.ThumbsPath + "/thumb-" + c.ThumbFormat + ".%d.jpg"
+}
+
+func (c *CategoryResult) Thumb() string {
+	return fmt.Sprintf(c.ThumbTemplate(), c.SelectedThumb())
+}
+
+func (c *CategoryResult) HiresThumb() string {
+	if c.ThumbRetina {
+		return fmt.Sprintf(strings.TrimSuffix(c.ThumbTemplate(), ".jpg")+"@2x.jpg", c.SelectedThumb())
+	} else {
+		return c.Thumb()
+	}
+}
+
+func (c *CategoryResult) SelectedThumb() int {
+	if c.selectedThumb != nil {
+		return *c.selectedThumb
+	}
+	if c.BestThumb != nil {
+		idx := int(*c.BestThumb)
+		c.selectedThumb = &idx
+	} else {
+		idx := rand.Intn(int(c.ThumbsAmount))
+		c.selectedThumb = &idx
+	}
+	return *c.selectedThumb
 }
