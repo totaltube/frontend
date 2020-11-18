@@ -52,8 +52,16 @@ func InitFiber() *fiber.App {
 			path:   m,
 		}
 		hostName := filepath.Base(m)
-		if _, err := toml.DecodeFile(configPath, &h.config); err != nil {
+		if _, err := toml.DecodeFile(configPath, h.config); err != nil {
 			log.Fatalln("error reading site config at", configPath, err)
+		}
+		jsPath := filepath.Join(m, "js")
+		if _, err := os.Stat(jsPath); err == nil {
+			site.WatchJS(jsPath, h.config) // Следить за директорией и пересоздавать js
+		}
+		scssPath := filepath.Join(m, "scss")
+		if _, err := os.Stat(scssPath); err == nil {
+			site.WatchScss(scssPath, h.config) // Следить за scss и пересоздавать css
 		}
 		h.fiber = fiber.New(fiberConfig)
 		h.fiber.Use(recover.New())

@@ -5,6 +5,7 @@ import (
 	"github.com/flosch/pongo2/v4"
 	"github.com/gofiber/fiber/v2"
 	"sersh.com/totaltube/frontend/api"
+	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/internal"
 	"sersh.com/totaltube/frontend/site"
 	"strconv"
@@ -21,9 +22,12 @@ func TopCategories(c *fiber.Ctx) error {
 		page = 1
 	}
 	nocache, _ := strconv.ParseBool(c.Query(config.Params.Nocache, "false"))
+
 	customContext := pongo2.Context{
 		"lang":   lang.Id,
 		"page":   page,
+		"params": helpers.FiberAllParams(c),
+		"query":  helpers.FiberAllQuery(c),
 		"config": config,
 	}
 	cacheKey := fmt.Sprintf("top-categories:%s:%d", lang.Name, page)

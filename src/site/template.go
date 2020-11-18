@@ -59,26 +59,27 @@ func NewTemplates(path string, config *Config) *templates {
 					if r := recover(); r != nil {
 						log.Println("error in templates file watching routine", r)
 					}
-					c := make(chan notify.EventInfo, 1)
-					if err := notify.Watch(filepath.Join(path, "templates")+"/...", c, notify.Create, notify.Write, notify.Remove, notify.Rename); err != nil {
-						log.Panicln(err)
-					}
-					defer notify.Stop(c)
-					// ждем сигнала при изменении файлов шаблонов
-					<-c
+				}()
+				c := make(chan notify.EventInfo, 1)
+				if err := notify.Watch(filepath.Join(path, "templates")+"/...", c, notify.Create,
+					notify.Write, notify.Remove, notify.Rename); err != nil {
+					log.Panicln(err)
+				}
+				defer notify.Stop(c)
+				// ждем сигнала при изменении файлов шаблонов
+				<-c
+				n.Lock()
+				n.lastChange = time.Now()
+				n.Unlock()
+				// Через 1.5 секунды после последнего изменения инвалидируем весь кэш шаблонов
+				go func() {
+					time.Sleep(time.Millisecond * 1500)
 					n.Lock()
-					n.lastChange = time.Now()
-					n.Unlock()
-					// Через 1.5 секунды после последнего изменения инвалидируем весь кэш шаблонов
-					go func() {
-						time.Sleep(time.Millisecond * 1500)
-						n.Lock()
-						defer n.Unlock()
-						if !n.lastChange.After(time.Now().Add(-time.Millisecond * 1500)) {
-							n.lastChange = time.Now()
-							n.templates = make(map[string]*pongo2.Template)
-						}
-					}()
+					defer n.Unlock()
+					if !n.lastChange.After(time.Now().Add(-time.Millisecond * 1500)) {
+						n.lastChange = time.Now()
+						n.templates = make(map[string]*pongo2.Template)
+					}
 				}()
 			}()
 		}

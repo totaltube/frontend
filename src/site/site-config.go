@@ -2,9 +2,11 @@ package site
 
 type (
 	Config struct {
-		Routes  ConfigRoutes
-		General ConfigGeneral
-		Params  ConfigParams
+		Routes     ConfigRoutes
+		General    ConfigGeneral
+		Params     ConfigParams
+		Javascript ConfigJs
+		Scss       ConfigScss
 	}
 	ConfigRoutes struct {
 		TopCategories string `toml:"top_categories"`
@@ -40,6 +42,12 @@ type (
 		Page                 string `toml:"page"`
 		Nocache              string `toml:"nocache"`
 	}
+	ConfigJs struct {
+		Entries []string `toml:"entries"`
+	}
+	ConfigScss struct {
+		Entries []string `toml:"entries"`
+	}
 	ConfigGeneral struct {
 		TradeUrlTemplate string `toml:"trade_url_template"`
 		MultiLanguage    bool   `toml:"multi_language"`
@@ -52,6 +60,12 @@ func NewConfig() *Config {
 	var n = Config{
 		Routes:  ConfigRoutes{},
 		General: ConfigGeneral{MinifyHtml: true},
+		Javascript: ConfigJs{
+			Entries: []string{"main.ts"},
+		},
+		Scss: ConfigScss{
+			Entries: []string{"main.scss"},
+		},
 		Params: ConfigParams{
 			CategorySlug:         "category",
 			CategoryId:           "category_id",
