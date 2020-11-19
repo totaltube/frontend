@@ -1,9 +1,7 @@
 package main
 
 import (
-	"fmt"
 	"github.com/alecthomas/kong"
-	"github.com/jpillora/overseer"
 	"github.com/posener/complete"
 	"github.com/willabides/kongplete"
 	"log"
@@ -16,6 +14,7 @@ var version = "dev"
 
 var CLI struct {
 	Config string `name:"config" short:"c" type:"path" help:"location of totaltube frontend config.toml" env:"TTF_CONFIG_PATH" default:"/etc/totaltube-frontend/config.toml" predictor:"toml"`
+	RebuildSass bool ``
 }
 
 func main() {
@@ -36,15 +35,5 @@ func main() {
 	_, err := parser.Parse(os.Args[1:])
 	parser.FatalIfErrorf(err)
 	internal.InitConfig(CLI.Config)
-	if runtime.GOOS == "windows" { // под виндой не работает overseer
-		server(overseer.State{
-			GracefulShutdown: make(chan bool),
-		})
-	} else {
-		overseer.Run(overseer.Config{
-			Program: server,
-			Address: fmt.Sprintf(":%d", internal.Config.General.Port),
-			Debug:   false,
-		})
-	}
+	startServer()
 }

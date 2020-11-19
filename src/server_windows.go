@@ -15,6 +15,11 @@ import (
 	"syscall"
 )
 
+func startServer() {
+	server(overseer.State{
+		GracefulShutdown: make(chan bool),
+	})
+}
 func server(_ overseer.State) {
 	db.InitDB()
 	initLanguages()

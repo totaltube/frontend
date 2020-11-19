@@ -15,6 +15,13 @@ import (
 	"syscall"
 )
 
+func startServer() {
+	overseer.Run(overseer.Config{
+		Program: server,
+		Address: fmt.Sprintf(":%d", internal.Config.General.Port),
+		Debug:   false,
+	})
+}
 func server(state overseer.State) {
 	db.InitDB()
 	initLanguages()

@@ -22,6 +22,7 @@ type (
 		Channel       string
 		Content       string
 		Out           string
+		Maintenance   string
 		Custom        map[string]string `toml:"custom"`
 	}
 	ConfigParams struct {
@@ -58,7 +59,22 @@ type (
 
 func NewConfig() *Config {
 	var n = Config{
-		Routes:  ConfigRoutes{},
+		Routes:  ConfigRoutes{
+			TopCategories: "/",
+			TopContent: "",
+			Autocomplete: "/autocomplete",
+			Search: "/search/:query",
+			Popular: "/best",
+			New:"/new",
+			Long: "/long",
+			Model:"/model/:slug",
+			Models:"/models-list",
+			Category: "/category/:slug",
+			Channel: "/channel/:slug",
+			Content: "/content/:category/:slug",
+			Out: "/c",
+			Maintenance: "/maintenance",
+		},
 		General: ConfigGeneral{MinifyHtml: true},
 		Javascript: ConfigJs{
 			Entries: []string{"main.ts"},
