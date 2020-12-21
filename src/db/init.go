@@ -34,6 +34,14 @@ func InitDB() {
 			}
 		}
 	}()
+	// Translations
+	go func() {
+		for {
+			time.Sleep(time.Millisecond*1000)
+			doTranslations()
+			time.Sleep(time.Millisecond*2000 + time.Millisecond*time.Duration(rand.Intn(3000)))
+		}
+	}()
 }
 
 func BeforeClose() {

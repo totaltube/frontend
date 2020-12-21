@@ -5,11 +5,16 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"time"
 )
 
 func WatchJS(path string, config *Config) {
+	var rebuildTimeout = time.Millisecond * 1500
+	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
+		rebuildTimeout = time.Millisecond*100
+	}
 	go func() {
 		mu := sync.Mutex{}
 		lastChange := time.Now()
@@ -47,13 +52,17 @@ func WatchJS(path string, config *Config) {
 				lastChange = time.Now()
 				mu.Unlock()
 				go func() {
-					time.Sleep(time.Millisecond*1500)
+					time.Sleep(rebuildTimeout)
 					mu.Lock()
-					if !lastChange.After(time.Now().Add(-time.Millisecond * 1500)) {
+					if !lastChange.After(time.Now().Add(-rebuildTimeout)) {
 						lastChange = time.Now()
 						mu.Unlock()
 						log.Println(ei.Path(),  "changed. Rebuilding js...")
-						RebuildJS(path, config)
+						err := RebuildJS(path, config)
+						if err != nil {
+							log.Println(err)
+						}
+						log.Println("done rebuilding js.")
 					} else {
 						mu.Unlock()
 					}

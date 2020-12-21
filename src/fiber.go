@@ -19,6 +19,7 @@ type host struct {
 	path   string
 }
 
+
 func InitFiber() *fiber.App {
 	fiberConfig := fiber.Config{
 		CaseSensitive:         true,
@@ -69,10 +70,21 @@ func InitFiber() *fiber.App {
 			c.Locals("config", h.config)
 			c.Locals("path", h.path)
 			c.Locals("hostName", hostName)
+			c.Locals("lang", "en")
 			return c.Next()
 		})
+		h.fiber.Static("/", filepath.Join(m, "public"), fiber.Static{
+			Compress:  false,
+			ByteRange: true,
+			Browse:    false,
+			MaxAge:    3600,
+		})
 		if h.config.Routes.New != "" {
-			h.fiber.All(h.config.Routes.New, newHandler)
+			if h.config.General.MultiLanguage {
+				handlers.LangHandlers(h.fiber, h.config.Routes.New, h.config.Routes.LanguageTemplate, newHandler)
+			} else {
+				h.fiber.All(h.config.Routes.New, newHandler)
+			}
 		}
 		if h.config.Routes.Autocomplete != "" {
 			h.fiber.All(h.config.Routes.Autocomplete, autocompleteHandler)
@@ -84,7 +96,11 @@ func InitFiber() *fiber.App {
 			h.fiber.All(h.config.Routes.Category, categoryHandler)
 		}
 		if h.config.Routes.TopCategories != "" {
-			h.fiber.All(h.config.Routes.TopCategories, handlers.TopCategories)
+			if h.config.General.MultiLanguage {
+				handlers.LangHandlers(h.fiber, h.config.Routes.TopCategories, h.config.Routes.LanguageTemplate, handlers.TopCategories)
+			} else {
+				h.fiber.All(h.config.Routes.TopCategories, handlers.TopCategories)
+			}
 		}
 		if h.config.Routes.TopContent != "" {
 			h.fiber.All(h.config.Routes.TopContent, topContentHandler)

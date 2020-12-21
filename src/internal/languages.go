@@ -44,7 +44,6 @@ func InitLanguages(Languages []types.Language) {
 }
 
 func GetLanguages() []types.Language {
-
 	return languages
 }
 

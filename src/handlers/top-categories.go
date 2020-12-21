@@ -6,7 +6,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/helpers"
-	"sersh.com/totaltube/frontend/internal"
 	"sersh.com/totaltube/frontend/site"
 	"strconv"
 	"time"
@@ -15,29 +14,27 @@ import (
 func TopCategories(c *fiber.Ctx) error {
 	path := c.Locals("path").(string)
 	config := c.Locals("config").(*site.Config)
-	langCookie := c.Cookies(internal.Config.General.LangCookie)
-	lang := internal.DetectLanguage(langCookie, c.Get("Accept-Language"))
+	langId := c.Locals("lang").(string)
 	page, _ := strconv.ParseInt(c.Params("page", c.Query(config.Params.Page), "1"), 10, 16)
 	if page <= 0 {
 		page = 1
 	}
 	nocache, _ := strconv.ParseBool(c.Query(config.Params.Nocache, "false"))
-
 	customContext := pongo2.Context{
-		"lang":   lang.Id,
+		"lang":   langId,
 		"page":   page,
 		"params": helpers.FiberAllParams(c),
 		"query":  helpers.FiberAllQuery(c),
 		"config": config,
 	}
-	cacheKey := fmt.Sprintf("top-categories:%s:%d", lang.Name, page)
+	cacheKey := fmt.Sprintf("top-categories:%s:%d", langId, page)
 	cacheTtl := time.Second * 5
 	if page > 1 {
 		cacheTtl = time.Minute * 5
 	}
 	parsed, err := site.ParseTemplate("top-categories", path, config, customContext, nocache, cacheKey, cacheTtl,
 		func(ctx pongo2.Context) (pongo2.Context, error) {
-			results, err := api.TopCategories(lang.Name, page)
+			results, err := api.TopCategories(langId, page)
 			if err != nil {
 				return ctx, err
 			}

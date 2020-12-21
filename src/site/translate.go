@@ -7,9 +7,9 @@ func deferredTranslate(from string, to string, text string) (translation string)
 		return text
 	}
 	translation = db.GetTranslation(from, to, text)
-	if translation != "" {
+	if translation == "" {
+		db.SaveDeferredTranslation(from, to, text) // will translate later
 		return text
 	}
-	db.SaveDeferredTranslation(from, to, text) // переведем попозже, как будет время
 	return
 }

@@ -9,21 +9,22 @@ type (
 		Scss       ConfigScss
 	}
 	ConfigRoutes struct {
-		TopCategories string `toml:"top_categories"`
-		TopContent    string `toml:"top_content"`
-		Autocomplete  string
-		Search        string
-		Popular       string
-		New           string
-		Long          string
-		Model         string
-		Models        string
-		Category      string
-		Channel       string
-		Content       string
-		Out           string
-		Maintenance   string
-		Custom        map[string]string `toml:"custom"`
+		TopCategories    string `toml:"top_categories"`
+		TopContent       string `toml:"top_content"`
+		Autocomplete     string
+		Search           string
+		Popular          string
+		New              string
+		Long             string
+		Model            string
+		Models           string
+		Category         string
+		Channel          string
+		Content          string
+		Out              string
+		Maintenance      string
+		LanguageTemplate string            `toml:"language_template"`
+		Custom           map[string]string `toml:"custom"`
 	}
 	ConfigParams struct {
 		CategorySlug         string `toml:"category_slug"`
@@ -44,10 +45,16 @@ type (
 		Nocache              string `toml:"nocache"`
 	}
 	ConfigJs struct {
-		Entries []string `toml:"entries"`
+		Entries     []string `toml:"entries"`
+		Destination string   `toml:"destination"`
+		Minify      bool     `toml:"minify"`
 	}
 	ConfigScss struct {
-		Entries []string `toml:"entries"`
+		Entries     []string `toml:"entries"`
+		Destination string   `toml:"destination"`
+		ImagesPath  string   `toml:"images_path"`
+		FontsPath   string   `toml:"fonts_path"`
+		Minify      bool     `toml:"minify"`
 	}
 	ConfigGeneral struct {
 		TradeUrlTemplate string `toml:"trade_url_template"`
@@ -59,28 +66,33 @@ type (
 
 func NewConfig() *Config {
 	var n = Config{
-		Routes:  ConfigRoutes{
+		Routes: ConfigRoutes{
 			TopCategories: "/",
-			TopContent: "",
-			Autocomplete: "/autocomplete",
-			Search: "/search/:query",
-			Popular: "/best",
-			New:"/new",
-			Long: "/long",
-			Model:"/model/:slug",
-			Models:"/models-list",
-			Category: "/category/:slug",
-			Channel: "/channel/:slug",
-			Content: "/content/:category/:slug",
-			Out: "/c",
-			Maintenance: "/maintenance",
+			TopContent:    "",
+			Autocomplete:  "/autocomplete",
+			Search:        "/search/:query",
+			Popular:       "/best",
+			New:           "/new",
+			Long:          "/long",
+			Model:         "/model/:slug",
+			Models:        "/models-list",
+			Category:      "/category/:slug",
+			Channel:       "/channel/:slug",
+			Content:       "/content/:category/:slug",
+			Out:           "/c",
+			Maintenance:   "/maintenance",
+			LanguageTemplate: "/:lang:route",
 		},
 		General: ConfigGeneral{MinifyHtml: true},
 		Javascript: ConfigJs{
 			Entries: []string{"main.ts"},
+			Minify:  true,
 		},
 		Scss: ConfigScss{
-			Entries: []string{"main.scss"},
+			Entries:    []string{"main.scss"},
+			ImagesPath: "images",
+			FontsPath:  "fonts",
+			Minify:     true,
 		},
 		Params: ConfigParams{
 			CategorySlug:         "category",

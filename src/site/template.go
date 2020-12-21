@@ -116,7 +116,7 @@ func ParseTemplate(name, path string, config *Config, customContext pongo2.Conte
 	if !nocache {
 		cached := db.GetCached(cacheKey)
 		if cached != nil {
-			c := generateContext(name, config, customContext)
+			c := generateContext(name, path, config, customContext)
 			parsed, err = InsertDynamic(cached, c)
 			return
 		}
@@ -125,7 +125,7 @@ func ParseTemplate(name, path string, config *Config, customContext pongo2.Conte
 	if err != nil {
 		return
 	}
-	c := generateContext(name, config, customContext)
+	c := generateContext(name, path, config, customContext)
 	var template *pongo2.Template
 	template, err = GetTemplate(name, path, config)
 	if err != nil {

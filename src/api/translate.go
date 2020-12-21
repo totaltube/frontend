@@ -14,10 +14,13 @@ type translateResponse struct {
 func Translate(params types.TranslateParams) (translation string, err error) {
 	var response json.RawMessage
 	response, err = apiRequest(methodPost, uriTranslate, params)
+	if err != nil {
+		return
+	}
 	var tr translateResponse
 	err = json.Unmarshal(response, &tr)
 	if err != nil {
-		log.Println(err)
+		log.Println(err, string(response))
 		return
 	}
 	translation = tr.Translation

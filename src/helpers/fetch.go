@@ -116,12 +116,11 @@ func (f *fetchRequest) Do() (response []byte, err error) {
 	defer fasthttp.ReleaseResponse(resp)
 	err = c.DoTimeout(freq, resp, f.timeout)
 	if err != nil {
-		log.Println(err)
 		return
 	}
 	if resp.StatusCode() != 200 {
 		err = errors.New(fmt.Sprintf("wrong status code: %d", resp.StatusCode()))
-		log.Println(err)
+		log.Println(f.url, err)
 		return
 	}
 	if freq.Header.HasAcceptEncoding("application/json") {
