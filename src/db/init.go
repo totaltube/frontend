@@ -18,6 +18,7 @@ func InitDB() {
 		badger.DefaultOptions(internal.Config.Database.Path).
 			WithDetectConflicts(false).
 			WithSyncWrites(false).
+			WithLoggingLevel(badger.ERROR).
 			WithTruncate(runtime.GOOS == "windows"),
 	)
 	if err != nil {

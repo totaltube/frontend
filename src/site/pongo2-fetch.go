@@ -120,7 +120,7 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 	}
 	lang := "en"
 	if l, ok := fetchContext.Public["lang"]; ok {
-		lang = l.(string)
+		lang = l.(*types.Language).Id
 	}
 	if l, ok := node.args["lang"]; ok {
 		lv, err := l.Evaluate(fetchContext)

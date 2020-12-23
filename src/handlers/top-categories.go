@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"github.com/flosch/pongo2/v4"
 	"github.com/gofiber/fiber/v2"
+	"net/url"
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/helpers"
+	"sersh.com/totaltube/frontend/internal"
 	"sersh.com/totaltube/frontend/site"
 	"strconv"
 	"time"
@@ -19,13 +21,18 @@ func TopCategories(c *fiber.Ctx) error {
 	if page <= 0 {
 		page = 1
 	}
+	route := config.Routes.TopCategories
 	nocache, _ := strconv.ParseBool(c.Query(config.Params.Nocache, "false"))
 	customContext := pongo2.Context{
-		"lang":   langId,
-		"page":   page,
-		"params": helpers.FiberAllParams(c),
-		"query":  helpers.FiberAllQuery(c),
-		"config": config,
+		"page_template":   "top-categories",
+		"lang":            internal.GetLanguage(langId),
+		"languages":       internal.GetLanguages(),
+		"page":            page,
+		"params":          helpers.FiberAllParams(c),
+		"query":           helpers.FiberAllQuery(c),
+		"canonical_query": url.Values{},
+		"config":          config,
+		"route":           route,
 	}
 	cacheKey := fmt.Sprintf("top-categories:%s:%d", langId, page)
 	cacheTtl := time.Second * 5
@@ -39,6 +46,11 @@ func TopCategories(c *fiber.Ctx) error {
 				return ctx, err
 			}
 			ctx["top_categories"] = results
+			ctx["total"] = int64(results.Total)
+			ctx["from"] = int64(results.From)
+			ctx["to"] = int64(results.To)
+			ctx["page"] = int64(results.Page)
+			ctx["pages"] = int64(results.Pages)
 			return ctx, nil
 		})
 	if err != nil {

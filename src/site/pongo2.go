@@ -11,6 +11,14 @@ import (
 
 func InitPongo2() {
 	err := pongo2.RegisterFilter("splitUp", func(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err *pongo2.Error) {
+		defer func() {
+			if r := recover(); r != nil {
+				err = &pongo2.Error{
+					Sender:    "filter:splitUp",
+					OrigError: errors.New(fmt.Sprintf("%s", r)),
+				}
+			}
+		}()
 		if !in.CanSlice() {
 			return nil, &pongo2.Error{
 				Sender:    "filter:splitUp",
@@ -33,10 +41,12 @@ func InitPongo2() {
 		totalSize := in.Len()
 		colSize := int(math.Floor(float64(totalSize) / float64(cols)))
 		var inSlice = make([]interface{}, 0, totalSize)
-		in.Iterate(func(idx, count int, key, value *pongo2.Value) bool {
+		in.Iterate(func(idx, count int, value, _ *pongo2.Value) bool {
 			inSlice = append(inSlice, value.Interface())
 			return true
-		}, nil)
+		}, func() {
+			log.Println("empty")
+		})
 		out = pongo2.AsValue(ChunkSlice(inSlice, colSize))
 		return
 	})
@@ -93,6 +103,22 @@ func InitPongo2() {
 		log.Fatalln(err)
 	}
 	err = pongo2.RegisterTag("fetch", pongo2Fetch)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	err = pongo2.RegisterTag("link", pongo2Link)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	err = pongo2.RegisterTag("canonical", pongo2Canonical)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	err = pongo2.RegisterTag("alternates", pongo2Alternates)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	err = pongo2.RegisterTag("prevnext", pongo2Prevnext)
 	if err != nil {
 		log.Fatalln(err)
 	}

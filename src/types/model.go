@@ -31,6 +31,8 @@ type ModelResults struct {
 	Total int            `json:"total"` // Всего категорий
 	From  int            `json:"from"`  // с какого элемента показываются результаты
 	To    int            `json:"to"`    // до какого элемента показываются результаты
+	Page  int            `json:"page"`
+	Pages int            `json:"pages"`
 	Items []*ModelResult `json:"items"` // выбранные результаты
 }
 

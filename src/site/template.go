@@ -116,7 +116,7 @@ func ParseTemplate(name, path string, config *Config, customContext pongo2.Conte
 	if !nocache {
 		cached := db.GetCached(cacheKey)
 		if cached != nil {
-			c := generateContext(name, path, config, customContext)
+			c := generateContext(name, path, customContext)
 			parsed, err = InsertDynamic(cached, c)
 			return
 		}
@@ -125,13 +125,16 @@ func ParseTemplate(name, path string, config *Config, customContext pongo2.Conte
 	if err != nil {
 		return
 	}
-	c := generateContext(name, path, config, customContext)
+	c := generateContext(name, path, customContext)
 	var template *pongo2.Template
 	template, err = GetTemplate(name, path, config)
 	if err != nil {
 		return
 	}
 	parsed, err = template.ExecuteBytes(c)
+	if err != nil {
+		return
+	}
 	if config.General.MinifyHtml {
 		parsed = helpers.MinifyBytes(parsed)
 	}

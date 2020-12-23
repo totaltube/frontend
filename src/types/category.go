@@ -42,6 +42,8 @@ type CategoryResults struct {
 	Total int               `json:"total"` // Всего категорий
 	From  int               `json:"from"`  // с какого элемента показываются результаты
 	To    int               `json:"to"`    // до какого элемента показываются результаты
+	Page  int               `json:"page"`  // номер страницы
+	Pages int               `json:"pages"` // всего страниц
 	Items []*CategoryResult `json:"items"` // выбранные результаты
 }
 

@@ -4,21 +4,29 @@ import (
 	"github.com/flosch/pongo2/v4"
 	"os"
 	"path/filepath"
-	"sersh.com/totaltube/frontend/helpers"
+	"sersh.com/totaltube/frontend/types"
 	"strconv"
 	"strings"
 )
 
-func generateContext(name string, sitePath string, config *Config, customContext pongo2.Context) pongo2.Context {
+type alternateT struct {
+	Lang string
+	Url  string
+}
+
+
+func generateContext(name string, sitePath string, customContext pongo2.Context) pongo2.Context {
 	var ctx = pongo2.Context{
 		"translate": func(text string) string {
-			return deferredTranslate("en", customContext["lang"].(string), text)
+			return deferredTranslate("en", customContext["lang"].(*types.Language).Id, text)
 		},
-		"static": func(filePath string) string {
+		"static": func(filePaths ...string) string {
+			filePath := strings.Join(filePaths, "")
 			p := filepath.Join(sitePath, "public", filePath)
 			if fileInfo, err := os.Stat(p); err == nil {
-				v := helpers.Md5Hash(strconv.FormatInt(int64(fileInfo.ModTime().Nanosecond()), 10))[0:4]
-				return "/" + strings.TrimPrefix(filePath, "/") + "?v="+v
+				v := strconv.FormatInt(fileInfo.ModTime().Unix(), 10)
+				v = v[len(v)-5:]
+				return "/" + strings.TrimPrefix(filePath, "/") + "?v=" + v
 			}
 			return "/" + strings.TrimPrefix(filePath, "/")
 		},

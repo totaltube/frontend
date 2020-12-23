@@ -104,9 +104,11 @@ type ContentResult struct {
 }
 
 type ContentResults struct {
-	Total   int64            `json:"total"`             // Всего контента
-	From    int              `json:"from"`              // с какого элемента показываются результаты
-	To      int              `json:"to"`                // до какого элемента показываются результаты
+	Total   int64            `json:"total"` // Всего контента
+	From    int              `json:"from"`  // с какого элемента показываются результаты
+	To      int              `json:"to"`    // до какого элемента показываются результаты
+	Page    int              `json:"page"`
+	Pages   int              `json:"pages"`
 	Items   []*ContentResult `json:"items"`             // выбранные результаты
 	Title   string           `json:"title,omitempty"`   // заголовок результата
 	Related []RelatedItem    `json:"related,omitempty"` // Похожие на текущий запрос запросы, категории, модели и тд.
