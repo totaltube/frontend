@@ -7,6 +7,7 @@ import (
 	"sersh.com/totaltube/frontend/types"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type alternateT struct {
@@ -30,6 +31,7 @@ func generateContext(name string, sitePath string, customContext pongo2.Context)
 			}
 			return "/" + strings.TrimPrefix(filePath, "/")
 		},
+		"now": time.Now(),
 	}
 	return ctx.Update(customContext)
 }

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/evanw/esbuild/pkg/api"
+	"github.com/segmentio/encoding/json"
 	"log"
 	"os"
 	"path/filepath"
@@ -32,18 +33,31 @@ func RebuildJS(path string, config *Config) error {
 		err := errors.New(fmt.Sprintf("can't create out directory for javascript bundle: %s", err.Error()))
 		return err
 	}
+	configJson, err := json.MarshalIndent(config, "", "   ")
+	if err != nil {
+		log.Println(err)
+	}
+	configJson, err = json.Marshal(string(configJson))
+	if err != nil {
+		log.Println(err)
+	}
 	result := api.Build(api.BuildOptions{
 		EntryPoints:       entryFiles,
 		Outdir:            outDir,
+		Define:            map[string]string{"CONFIG": string(configJson)},
 		Bundle:            true,
 		Write:             true,
 		LogLevel:          api.LogLevelInfo,
-		MinifyWhitespace:  true,
-		MinifyIdentifiers: true,
-		MinifySyntax:      true,
+		MinifyWhitespace:  config.Javascript.Minify,
+		MinifyIdentifiers: config.Javascript.Minify,
+		MinifySyntax:      config.Javascript.Minify,
 	})
 	for _, m := range result.Errors {
-		log.Println("Error in", m.Location.File, m.Location.Line, ":", m.Text)
+		if m.Location != nil {
+			log.Println("Error in", m.Location.File, m.Location.Line, ":", m.Text)
+		} else {
+			log.Println("Error:", m.Text)
+		}
 	}
 	for _, m := range result.Warnings {
 		log.Println("Warning in", m.Location.File, m.Location.Line, ":", m.Text)

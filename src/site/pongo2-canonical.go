@@ -3,6 +3,7 @@ package site
 import (
 	"fmt"
 	"github.com/flosch/pongo2/v4"
+	"net/http"
 	"net/url"
 	"sersh.com/totaltube/frontend/types"
 	"strconv"
@@ -18,7 +19,7 @@ func getCanonical(ctx pongo2.Context, langId string, page int64) string {
 	} else {
 		route = r.(string)
 	}
-	canonicalQuery := ctx["canonical_query"].(url.Values)
+	canonicalQuery := url.Values(http.Header(ctx["canonical_query"].(url.Values)).Clone())
 	if strings.Contains(route, ":page") {
 		route = strings.ReplaceAll(route, ":page", strconv.FormatInt(page, 10))
 	} else if page > 1 {

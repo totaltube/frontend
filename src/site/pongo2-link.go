@@ -27,6 +27,10 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 	if l, ok := linkContext.Public["lang"]; ok {
 		lang = l.(*types.Language).Id
 	}
+	var copyArgs = make(map[string]pongo2.IEvaluator)
+	for k, v := range node.args {
+		copyArgs[k] = v
+	}
 	var config *Config
 	if configI, ok := linkContext.Public["config"]; !ok {
 		return &pongo2.Error{
@@ -75,7 +79,7 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 			if !ql.IsNil() {
 				searchQuery = ql.String()
 			}
-			delete(node.args, "query")
+			delete(copyArgs, "query")
 		}
 		link = strings.ReplaceAll(config.Routes.Search, ":query", url.PathEscape(searchQuery))
 	case "model", "category", "channel", "content":
@@ -97,7 +101,7 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 			}
 			if !se.IsNil() {
 				slug = se.String()
-				delete(node.args, "slug")
+				delete(copyArgs, "slug")
 			}
 		}
 		if i, ok := node.args["id"]; ok {
@@ -112,7 +116,7 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 			} else if !ie.IsNil() {
 				id = fmt.Sprintf("%v", ie.Interface())
 			}
-			delete(node.args, "id")
+			delete(copyArgs, "id")
 		}
 		if node.what == "content" {
 			if s, ok := node.args["category"]; ok {
@@ -121,7 +125,7 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 					return err
 				}
 				category := se.String()
-				delete(node.args, "category")
+				delete(copyArgs, "category")
 				link = strings.ReplaceAll(link, ":category", category)
 			}
 		}
@@ -143,12 +147,12 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 				page = "1"
 			}
 			link = strings.ReplaceAll(link, ":page", page)
-			delete(node.args, "page")
+			delete(copyArgs, "page")
 		}
 	}
 	hasParams := false
 	params := url.Values{}
-	for key, v := range node.args {
+	for key, v := range copyArgs {
 		vv, err := v.Evaluate(linkContext)
 		if err != nil {
 			return err

@@ -5,8 +5,8 @@ type (
 		Routes     ConfigRoutes
 		General    ConfigGeneral
 		Params     ConfigParams
-		Javascript ConfigJs
-		Scss       ConfigScss
+		Javascript ConfigJs `json:"-"`
+		Scss       ConfigScss `json:"-"`
 	}
 	ConfigRoutes struct {
 		TopCategories    string `toml:"top_categories"`
@@ -42,7 +42,7 @@ type (
 		SortByDuration       string `toml:"sort_by_duration"`
 		SortByDate           string `toml:"sort_by_date"`
 		Page                 string `toml:"page"`
-		Nocache              string `toml:"nocache"`
+		Nocache              string `toml:"nocache" json:"-"`
 	}
 	ConfigJs struct {
 		Entries     []string `toml:"entries"`
@@ -59,7 +59,7 @@ type (
 	ConfigGeneral struct {
 		TradeUrlTemplate string `toml:"trade_url_template"`
 		MultiLanguage    bool   `toml:"multi_language"`
-		MinifyHtml       bool   `toml:"minify_html"`
+		MinifyHtml       bool   `toml:"minify_html" json:"-"`
 		Debug            bool   `toml:"debug"`
 	}
 )

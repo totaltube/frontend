@@ -87,7 +87,11 @@ func InitFiber() *fiber.App {
 			}
 		}
 		if h.config.Routes.Autocomplete != "" {
-			h.fiber.All(h.config.Routes.Autocomplete, autocompleteHandler)
+			if h.config.General.MultiLanguage {
+				handlers.LangHandlers(h.fiber, h.config.Routes.Autocomplete, h.config.Routes.LanguageTemplate, handlers.AutocompleteHandler)
+			} else {
+				h.fiber.All(h.config.Routes.Autocomplete, handlers.AutocompleteHandler)
+			}
 		}
 		if h.config.Routes.Search != "" {
 			h.fiber.All(h.config.Routes.Search, searchHandler)

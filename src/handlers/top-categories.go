@@ -16,6 +16,7 @@ import (
 func TopCategories(c *fiber.Ctx) error {
 	path := c.Locals("path").(string)
 	config := c.Locals("config").(*site.Config)
+	hostName := c.Locals("hostName").(string)
 	langId := c.Locals("lang").(string)
 	page, _ := strconv.ParseInt(c.Params("page", c.Query(config.Params.Page), "1"), 10, 16)
 	if page <= 0 {
@@ -26,8 +27,10 @@ func TopCategories(c *fiber.Ctx) error {
 	customContext := pongo2.Context{
 		"page_template":   "top-categories",
 		"lang":            internal.GetLanguage(langId),
+		"nocache":         nocache,
 		"languages":       internal.GetLanguages(),
 		"page":            page,
+		"host":            hostName,
 		"params":          helpers.FiberAllParams(c),
 		"query":           helpers.FiberAllQuery(c),
 		"canonical_query": url.Values{},

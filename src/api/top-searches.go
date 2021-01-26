@@ -8,8 +8,7 @@ import (
 	"strconv"
 )
 
-func TopSearches(lang string, amount int64) (results []types.TopSearch, err error) {
-	var response json.RawMessage
+func TopSearches(lang string, amount int64) (results []types.TopSearch, response json.RawMessage, err error) {
 	response, err = apiRequest(methodGet, uriTopSearches, url.Values{
 		"lang":   []string{lang},
 		"amount": []string{strconv.FormatInt(amount, 10)},
@@ -18,6 +17,13 @@ func TopSearches(lang string, amount int64) (results []types.TopSearch, err erro
 		log.Println(err)
 		return
 	}
-	err = json.Unmarshal(response, &results)
+	result := struct {
+		Items []types.TopSearch `json:"items"`
+	}{}
+	err = json.Unmarshal(response, &result)
+	if err != nil {
+		return
+	}
+	results = result.Items
 	return
 }

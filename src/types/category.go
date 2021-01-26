@@ -76,3 +76,4 @@ func (c *CategoryResult) SelectedThumb() int {
 	}
 	return *c.selectedThumb
 }
+

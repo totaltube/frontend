@@ -9,8 +9,7 @@ import (
 
 func ChannelsList(
 	lang string, page int64, sort SortBy, amount int64,
-) (results *types.ChannelResults, err error) {
-	var response json.RawMessage
+) (results *types.ChannelResults, response json.RawMessage, err error) {
 	response, err = apiRequest(methodGet, uriChannelsList, url.Values{
 		"lang":   []string{lang},
 		"sort":   []string{string(sort)},

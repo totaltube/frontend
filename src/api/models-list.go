@@ -9,8 +9,7 @@ import (
 
 func ModelsList(
 	lang string, page int64, sort SortBy, amount int64, searchQuery string,
-) (results *types.ModelResults, err error) {
-	var response json.RawMessage
+) (results *types.ModelResults, response json.RawMessage, err error) {
 	response, err = apiRequest(methodGet, uriModelsList, url.Values{
 		"lang":   []string{lang},
 		"sort":   []string{string(sort)},

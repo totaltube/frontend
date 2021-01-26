@@ -39,7 +39,7 @@ func InitPongo2() {
 			}
 		}
 		totalSize := in.Len()
-		colSize := int(math.Floor(float64(totalSize) / float64(cols)))
+		colSize := int(math.Ceil(float64(totalSize) / float64(cols)))
 		var inSlice = make([]interface{}, 0, totalSize)
 		in.Iterate(func(idx, count int, value, _ *pongo2.Value) bool {
 			inSlice = append(inSlice, value.Interface())
@@ -48,6 +48,86 @@ func InitPongo2() {
 			log.Println("empty")
 		})
 		out = pongo2.AsValue(ChunkSlice(inSlice, colSize))
+		return
+	})
+	if err != nil {
+		log.Fatalln(err)
+	}
+	err = pongo2.RegisterFilter("from", func(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err *pongo2.Error) {
+		defer func() {
+			if r := recover(); r != nil {
+				err = &pongo2.Error{
+					Sender:    "filter:from",
+					OrigError: errors.New(fmt.Sprintf("%s", r)),
+				}
+			}
+		}()
+		if !in.CanSlice() {
+			return nil, &pongo2.Error{
+				Sender:    "filter:from",
+				OrigError: errors.New("from filter must be applied to array/slice"),
+			}
+		}
+		if !param.IsInteger() {
+			return nil, &pongo2.Error{
+				Sender:    "filter:from",
+				OrigError: errors.New("form filter require integer parameter"),
+			}
+		}
+		from := param.Integer()
+		totalSize := in.Len()
+		if from >= totalSize -1 {
+			out =  pongo2.AsValue([]interface{}{})
+			return
+		}
+		var outSlice = make([]interface{}, 0, totalSize - from)
+		in.Iterate(func(idx, count int, value, _ *pongo2.Value) bool {
+			if idx >= from {
+				outSlice = append(outSlice, value.Interface())
+			}
+			return true
+		}, func() {
+		})
+		out = pongo2.AsValue(outSlice)
+		return
+	})
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	err = pongo2.RegisterFilter("max", func(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err *pongo2.Error) {
+		defer func() {
+			if r := recover(); r != nil {
+				err = &pongo2.Error{
+					Sender:    "filter:max",
+					OrigError: errors.New(fmt.Sprintf("%s", r)),
+				}
+			}
+		}()
+		if !in.CanSlice() {
+			return nil, &pongo2.Error{
+				Sender:    "filter:max",
+				OrigError: errors.New("max filter must be applied to array/slice"),
+			}
+		}
+		if !param.IsInteger() {
+			return nil, &pongo2.Error{
+				Sender:    "filter:max",
+				OrigError: errors.New("max filter require integer parameter"),
+			}
+		}
+		max := param.Integer()
+		totalSize := in.Len()
+		var outSlice = make([]interface{}, 0, int(math.Min(float64(totalSize), float64(max))))
+
+		in.Iterate(func(idx, count int, value, _ *pongo2.Value) bool {
+			if idx < max {
+				outSlice = append(outSlice, value.Interface())
+			}
+			return true
+		}, func() {
+		})
+		out = pongo2.AsValue(outSlice)
 		return
 	})
 	if err != nil {
@@ -118,7 +198,15 @@ func InitPongo2() {
 	if err != nil {
 		log.Fatalln(err)
 	}
+	err = pongo2.RegisterTag("alternate", pongo2Alternate)
+	if err != nil {
+		log.Fatalln(err)
+	}
 	err = pongo2.RegisterTag("prevnext", pongo2Prevnext)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	err = pongo2.RegisterTag("sort", pongo2Sort)
 	if err != nil {
 		log.Fatalln(err)
 	}
