@@ -1,10 +1,9 @@
 package db
 
 import (
-	"github.com/dgraph-io/badger/v2"
+	"github.com/dgraph-io/badger/v3"
 	"log"
 	"math/rand"
-	"runtime"
 	"sersh.com/totaltube/frontend/internal"
 	"time"
 )
@@ -18,8 +17,7 @@ func InitDB() {
 		badger.DefaultOptions(internal.Config.Database.Path).
 			WithDetectConflicts(false).
 			WithSyncWrites(false).
-			WithLoggingLevel(badger.ERROR).
-			WithTruncate(runtime.GOOS == "windows"),
+			WithLoggingLevel(badger.ERROR),
 	)
 	if err != nil {
 		log.Fatalln(err)

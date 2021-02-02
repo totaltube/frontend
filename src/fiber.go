@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/BurntSushi/toml"
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/recover"
+	recoverMiddleware "github.com/gofiber/fiber/v2/middleware/recover"
 	"log"
 	"os"
 	"path/filepath"
@@ -19,14 +19,28 @@ type host struct {
 	path   string
 }
 
-
 func InitFiber() *fiber.App {
 	fiberConfig := fiber.Config{
+		ProxyHeader:           internal.Config.General.RealIpHeader,
 		CaseSensitive:         true,
 		DisableStartupMessage: true,
-		ErrorHandler: func(c *fiber.Ctx, err error) error {
+		ErrorHandler: func(c *fiber.Ctx, err error) (result error) {
+			defer func() {
+				if r, ok := recover().(error); r != nil && ok {
+					log.Println(r)
+					if c.Accepts("application/json") != "" {
+						result = c.JSON(map[string]interface{}{
+							"success": false,
+							"value":   err.Error(),
+						})
+						return
+					}
+					result = c.Status(fiber.StatusInternalServerError).SendString(err.Error())
+				}
+			}()
 			if c.Accepts("text/html") != "" {
-				return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
+				return handlers.Generate500(c, err)
+				//return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
 			}
 			if c.Accepts("application/json") != "" {
 				return c.JSON(map[string]interface{}{
@@ -65,7 +79,7 @@ func InitFiber() *fiber.App {
 			site.WatchScss(scssPath, h.config) // Следить за scss и пересоздавать css
 		}
 		h.fiber = fiber.New(fiberConfig)
-		h.fiber.Use(recover.New())
+		h.fiber.Use(recoverMiddleware.New())
 		h.fiber.Use(func(c *fiber.Ctx) error {
 			c.Locals("config", h.config)
 			c.Locals("path", h.path)
@@ -79,13 +93,6 @@ func InitFiber() *fiber.App {
 			Browse:    false,
 			MaxAge:    3600,
 		})
-		if h.config.Routes.New != "" {
-			if h.config.General.MultiLanguage {
-				handlers.LangHandlers(h.fiber, h.config.Routes.New, h.config.Routes.LanguageTemplate, newHandler)
-			} else {
-				h.fiber.All(h.config.Routes.New, newHandler)
-			}
-		}
 		if h.config.Routes.Autocomplete != "" {
 			if h.config.General.MultiLanguage {
 				handlers.LangHandlers(h.fiber, h.config.Routes.Autocomplete, h.config.Routes.LanguageTemplate, handlers.AutocompleteHandler)
@@ -94,10 +101,18 @@ func InitFiber() *fiber.App {
 			}
 		}
 		if h.config.Routes.Search != "" {
-			h.fiber.All(h.config.Routes.Search, searchHandler)
+			if h.config.General.MultiLanguage {
+				handlers.LangHandlers(h.fiber, h.config.Routes.Search, h.config.Routes.LanguageTemplate, handlers.Search)
+			} else {
+				h.fiber.All(h.config.Routes.Search, handlers.Search)
+			}
 		}
 		if h.config.Routes.Category != "" {
-			h.fiber.All(h.config.Routes.Category, categoryHandler)
+			if h.config.General.MultiLanguage {
+				handlers.LangHandlers(h.fiber, h.config.Routes.Category, h.config.Routes.LanguageTemplate, handlers.Category)
+			} else {
+				h.fiber.All(h.config.Routes.Category, handlers.Category)
+			}
 		}
 		if h.config.Routes.TopCategories != "" {
 			if h.config.General.MultiLanguage {
@@ -107,35 +122,69 @@ func InitFiber() *fiber.App {
 			}
 		}
 		if h.config.Routes.TopContent != "" {
-			h.fiber.All(h.config.Routes.TopContent, topContentHandler)
+			if h.config.General.MultiLanguage {
+				handlers.LangHandlers(h.fiber, h.config.Routes.TopContent, h.config.Routes.LanguageTemplate, handlers.TopContent)
+			} else {
+				h.fiber.All(h.config.Routes.TopContent, handlers.TopContent)
+			}
 		}
 		if h.config.Routes.Model != "" {
-			h.fiber.All(h.config.Routes.Model, modelHandler)
+			if h.config.General.MultiLanguage {
+				handlers.LangHandlers(h.fiber, h.config.Routes.Model, h.config.Routes.LanguageTemplate, handlers.Model)
+			} else {
+				h.fiber.All(h.config.Routes.Model, handlers.Model)
+			}
 		}
 		if h.config.Routes.Channel != "" {
-			h.fiber.All(h.config.Routes.Channel, channelHandler)
+			if h.config.General.MultiLanguage {
+				handlers.LangHandlers(h.fiber, h.config.Routes.Channel, h.config.Routes.LanguageTemplate, handlers.Channel)
+			} else {
+				h.fiber.All(h.config.Routes.Channel, handlers.Channel)
+			}
 		}
-		if h.config.Routes.Content != "" {
-			h.fiber.All(h.config.Routes.Content, contentHandler)
+		if h.config.Routes.ContentItem != "" {
+			h.fiber.All(h.config.Routes.ContentItem, contentHandler)
+		}
+		if h.config.Routes.New != "" {
+			if h.config.General.MultiLanguage {
+				handlers.LangHandlers(h.fiber, h.config.Routes.New, h.config.Routes.LanguageTemplate, handlers.New)
+			} else {
+				h.fiber.All(h.config.Routes.New, handlers.New)
+			}
 		}
 		if h.config.Routes.Long != "" {
-			h.fiber.All(h.config.Routes.Long, longHandler)
+			if h.config.General.MultiLanguage {
+				handlers.LangHandlers(h.fiber, h.config.Routes.Long, h.config.Routes.LanguageTemplate, handlers.Long)
+			} else {
+				h.fiber.All(h.config.Routes.Long, handlers.Long)
+			}
+		}
+		if h.config.Routes.Popular != "" {
+			if h.config.General.MultiLanguage {
+				handlers.LangHandlers(h.fiber, h.config.Routes.Popular, h.config.Routes.LanguageTemplate, handlers.Popular)
+			} else {
+				h.fiber.All(h.config.Routes.Popular, handlers.Popular)
+			}
 		}
 		if h.config.Routes.Models != "" {
 			h.fiber.All(h.config.Routes.Models, modelsHandler)
-		}
-		if h.config.Routes.Popular != "" {
-			h.fiber.All(h.config.Routes.Popular, popularHandler)
 		}
 		if h.config.Routes.Out != "" {
 			h.fiber.All(h.config.Routes.Out, outHandler)
 		}
 		if h.config.Routes.Custom != nil {
 			for templateName, routePath := range h.config.Routes.Custom {
-				h.fiber.All(routePath, func(c *fiber.Ctx) error {
-					c.Locals("custom_template_name", templateName)
-					return c.Next()
-				}, customHandler)
+				if h.config.General.MultiLanguage {
+					handlers.LangHandlers(h.fiber, routePath, h.config.Routes.LanguageTemplate, func(c *fiber.Ctx) error {
+						c.Locals("custom_template_name", templateName)
+						return handlers.Custom(c)
+					})
+				} else {
+					h.fiber.All(routePath, func(c *fiber.Ctx) error {
+						c.Locals("custom_template_name", templateName)
+						return c.Next()
+					}, handlers.Custom)
+				}
 			}
 		}
 		hosts[hostName] = &h
@@ -149,7 +198,7 @@ func InitFiber() *fiber.App {
 	}
 
 	app := fiber.New(fiberConfig)
-	app.Use(recover.New())
+	app.Use(recoverMiddleware.New())
 	app.Use(func(c *fiber.Ctx) error {
 		hostName := strings.TrimPrefix(c.Hostname(), "www.")
 		host := hosts[hostName]

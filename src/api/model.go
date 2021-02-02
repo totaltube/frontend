@@ -7,8 +7,8 @@ import (
 	"strconv"
 )
 
-func ModelItem(
-	lang, slug string, id int64,
+func ModelInfo(
+	lang string, id int64, slug string,
 ) (results *types.ModelResult, err error) {
 	var response json.RawMessage
 	response, err = apiRequest(methodGet, uriModel, url.Values{

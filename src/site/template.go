@@ -1,9 +1,11 @@
 package site
 
 import (
+	"github.com/dop251/goja"
 	"github.com/flosch/pongo2/v4"
 	"github.com/pkg/errors"
 	"github.com/rjeczalik/notify"
+	"io/ioutil"
 	"log"
 	"path/filepath"
 	"sersh.com/totaltube/frontend/db"
@@ -36,7 +38,7 @@ func (ts *templates) get(name string) (*pongo2.Template, error) {
 	}
 	for _, m := range matches {
 		if strings.Split(filepath.Base(m), ".")[0] == name {
-			// Нашли наш шаблон
+			// Found the template
 			template, err := ts.templateSet.FromFile(m)
 			if err != nil {
 				return nil, err
@@ -67,7 +69,26 @@ func NewTemplates(path string, config *Config) *templates {
 				}
 				defer notify.Stop(c)
 				// ждем сигнала при изменении файлов шаблонов
-				<-c
+				info := <-c
+				var changedTemplatePath = info.Path()
+				abs, _ := filepath.Abs(filepath.Join(path, "templates"))
+				if filepath.Dir(changedTemplatePath) == abs && filepath.Ext(changedTemplatePath) == ".twig" {
+					templateName := strings.TrimSuffix(filepath.Base(changedTemplatePath), filepath.Ext(changedTemplatePath))
+					switch templateName {
+					case "top-categories", "category", "top-content", "404", "500",
+						"model", "models", "content", "search":
+						err := db.ClearCacheByPrefix(templateName + ":")
+						if err != nil {
+							log.Println(err)
+						}
+					}
+					if strings.HasPrefix(templateName, "custom-") {
+						err := db.ClearCacheByPrefix("custom:"+strings.TrimPrefix(templateName, "custom-")+":")
+						if err != nil {
+							log.Println(err)
+						}
+					}
+				}
 				n.Lock()
 				n.lastChange = time.Now()
 				n.Unlock()
@@ -128,6 +149,90 @@ func ParseTemplate(name, path string, config *Config, customContext pongo2.Conte
 	c := generateContext(name, path, customContext)
 	var template *pongo2.Template
 	template, err = GetTemplate(name, path, config)
+	if err != nil {
+		return
+	}
+	parsed, err = template.ExecuteBytes(c)
+	if err != nil {
+		return
+	}
+	if config.General.MinifyHtml {
+		parsed = helpers.MinifyBytes(parsed)
+	}
+	err = db.PutCached(cacheKey, parsed, cacheTtl)
+	if err != nil {
+		log.Println("can't put item in cache: ", err)
+	}
+	parsed, err = InsertDynamic(parsed, c)
+	return
+}
+
+func ParseCustomTemplate(name, path string, config *Config,
+	customContext pongo2.Context, nocache bool) (parsed []byte, err error) {
+	var source []byte
+	extensionFile := filepath.Join(path, "extensions/template-"+name+".js")
+	source, err = ioutil.ReadFile(extensionFile)
+	if err != nil {
+		err = errors.Wrap(err, "can't open extensionFile "+extensionFile)
+	}
+	VM := getJsVM(name)
+	VM.Set("config", config)
+	VM.Set("nocache", nocache)
+	for k, v := range customContext {
+		VM.Set(k, v)
+	}
+	var program *goja.Program
+	program, err = getJsProgram(name+":cacheKey", string(source)+" cacheKey()")
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	var v goja.Value
+	v, err = VM.RunProgram(program)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	cacheKey := "custom:"+name+":"+v.String()
+	program, err = getJsProgram(name+":cacheTtl", string(source)+" cacheTtl()")
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	v, err = VM.RunProgram(program)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	cacheTtl := time.Duration(v.ToInteger())*time.Second
+	if cacheTtl <= 0 {
+		err = errors.New("wrong cacheTtl for custom template "+name)
+		return
+	}
+	if !nocache {
+		cached := db.GetCached(cacheKey)
+		if cached != nil {
+			c := generateContext(name, path, customContext)
+			parsed, err = InsertDynamic(cached, c)
+			return
+		}
+	}
+	program, err = getJsProgram(name+":prepare", string(source)+" prepare()")
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	v, err = VM.RunProgram(program)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	if ctx, ok := v.Export().(map[string]interface{}); ok {
+		customContext.Update(ctx)
+	}
+	c := generateContext(name, path, customContext)
+	var template *pongo2.Template
+	template, err = GetTemplate("custom-"+name, path, config)
 	if err != nil {
 		return
 	}

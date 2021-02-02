@@ -202,6 +202,7 @@ func InitPongo2() {
 	if err != nil {
 		log.Fatalln(err)
 	}
+	err = pongo2.RegisterTag("page_link", pongo2PageLink)
 	err = pongo2.RegisterTag("prevnext", pongo2Prevnext)
 	if err != nil {
 		log.Fatalln(err)

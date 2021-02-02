@@ -3,7 +3,7 @@ package db
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/dgraph-io/badger/v2"
+	"github.com/dgraph-io/badger/v3"
 	"github.com/pkg/errors"
 	"log"
 	"sersh.com/totaltube/frontend/api"

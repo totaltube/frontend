@@ -4,13 +4,15 @@ import (
 	"fmt"
 	"github.com/flosch/pongo2/v4"
 	"github.com/gofiber/fiber/v2"
+	"log"
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/site"
+	"sersh.com/totaltube/frontend/types"
 	"strconv"
 	"time"
 )
 
-func TopCategories(c *fiber.Ctx) error {
+func TopContent(c *fiber.Ctx) error {
 	path := c.Locals("path").(string)
 	config := c.Locals("config").(*site.Config)
 	nocache, _ := strconv.ParseBool(c.Query(config.Params.Nocache, "false"))
@@ -19,20 +21,23 @@ func TopCategories(c *fiber.Ctx) error {
 	if page <= 0 {
 		page = 1
 	}
-	customContext := generateCustomContext(c, "top-categories")
-	cacheKey := fmt.Sprintf("top-categories:%s:%d", langId, page)
+	customContext := generateCustomContext(c, "top-content")
+	cacheKey := fmt.Sprintf("top-content:%s:%d", langId, page)
 	cacheTtl := time.Second * 5
 	if page > 1 {
 		cacheTtl = time.Minute * 5
 	}
-	parsed, err := site.ParseTemplate("top-categories", path, config, customContext, nocache, cacheKey, cacheTtl,
+	parsed, err := site.ParseTemplate("top-content", path, config, customContext, nocache, cacheKey, cacheTtl,
 		func(ctx pongo2.Context) (pongo2.Context, error) {
-			results, err := api.TopCategories(langId, page)
+			var results *types.ContentResults
+			var err error
+			results, err = api.TopContent(langId, page)
 			if err != nil {
-				return ctx, err
+				log.Println(err)
+				return ctx, nil
 			}
-			ctx["top_categories"] = results
-			ctx["total"] = int64(results.Total)
+			ctx["content"] = results
+			ctx["total"] = results.Total
 			ctx["from"] = int64(results.From)
 			ctx["to"] = int64(results.To)
 			ctx["page"] = int64(results.Page)

@@ -100,7 +100,7 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 			}
 		}
 		if cacheTimeout > 0 {
-			cacheKey = "fetch_"+helpers.Md5Hash(fmt.Sprintf("%s|%s|%s", node.what, method, params.Encode()))
+			cacheKey = "fetch:"+helpers.Md5Hash(fmt.Sprintf("%s|%s|%s", node.what, method, params.Encode()))
 		}
 		if cacheTimeout >0 && !nocache {
 			v := db.GetCached(cacheKey)
@@ -127,10 +127,14 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 			}
 			fetchContext.Private["fetch_response"] = data
 			if cacheTimeout > 0 {
-				data.MustJSON()
-				err := db.PutCached(cacheKey, []byte(data.MustJSON()), cacheTimeout)
+				bt, err := json.Marshal(data)
 				if err != nil {
 					log.Println(err)
+				} else {
+					err = db.PutCached(cacheKey, bt, cacheTimeout)
+					if err != nil {
+						log.Println(err)
+					}
 				}
 			}
 		}
@@ -212,7 +216,7 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 	}
 	cacheKey := ""
 	if cacheTimeout > 0 {
-		cacheKey = "fetch_" + helpers.Md5Hash(fmt.Sprintf("%s|%d|%d|%v|%s|%s|%v|%d", node.what, amount, page, sort,
+		cacheKey = "fetch:" + helpers.Md5Hash(fmt.Sprintf("%s|%d|%d|%v|%s|%s|%v|%d", node.what, amount, page, sort,
 			searchQuery, lang, cacheTimeout, minSearches))
 	}
 	var fromCache = false

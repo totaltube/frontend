@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/pkg/errors"
 	"github.com/segmentio/encoding/json"
-	"github.com/stretchr/objx"
 	"github.com/valyala/fasthttp"
 	"log"
 	"net"
@@ -135,15 +134,14 @@ func (f *fetchRequest) Do() (response []byte, err error) {
 	return
 }
 
-func (f *fetchRequest) Json() (response *objx.Map) {
+func (f *fetchRequest) Json() (response map[string]interface{}) {
 	f.headers[fasthttp.HeaderAccept] = "application/json"
 	bt, err := f.Do()
 	if err != nil {
 		log.Println(err)
 		return nil
 	}
-	response = new(objx.Map)
-	err = json.Unmarshal(bt, response)
+	err = json.Unmarshal(bt, &response)
 	if err != nil {
 		log.Println(err)
 		return nil

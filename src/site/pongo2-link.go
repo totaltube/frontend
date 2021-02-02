@@ -90,7 +90,7 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 		} else if node.what == "channel" {
 			link = config.Routes.Channel
 		} else if node.what == "content" {
-			link = config.Routes.Content
+			link = config.Routes.ContentItem
 		}
 		slug := ""
 		id := ""

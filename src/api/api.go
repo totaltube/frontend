@@ -33,6 +33,8 @@ const (
 	uriContentItem        apiUri = "content-item"
 	uriTopContent         apiUri = "top-content"
 	uriCategory           apiUri = "category"
+	uriCategoryInfo       apiUri = "category-info"
+	uriChannelInfo        apiUri = "channel-info"
 	uriTopCategories      apiUri = "top-categories"
 	uriContent            apiUri = "content"
 	uriCategoriesList     apiUri = "categories-list"

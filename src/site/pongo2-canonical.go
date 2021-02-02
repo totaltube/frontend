@@ -25,6 +25,11 @@ func getCanonical(ctx pongo2.Context, langId string, page int64) string {
 	} else if page > 1 {
 		canonicalQuery.Set(config.Params.Page, strconv.FormatInt(page, 10))
 	}
+	if params, ok := ctx["params"].(map[string]string); ok {
+		for paramKey, paramValue := range params {
+			route = strings.ReplaceAll(route, ":"+paramKey, paramValue)
+		}
+	}
 	if config.General.MultiLanguage {
 		route = strings.ReplaceAll(config.Routes.LanguageTemplate, ":route", route)
 		route = strings.ReplaceAll(route, ":lang", langId)

@@ -26,6 +26,7 @@ const (
 	ContentTypeUniversal ContentType = "universal"
 )
 
+type ContentDuration int32
 type TaxonomyResult struct {
 	Id    int32  `json:"id"`
 	Slug  string `json:"slug"`
@@ -49,7 +50,7 @@ type ContentItemResult struct {
 	Link            *string           `json:"link,omitempty"`
 	CreatedAt       time.Time         `json:"created_at"`
 	Dated           time.Time         `json:"dated"`
-	Duration        int32             `json:"duration"`
+	Duration        ContentDuration   `json:"duration"`
 	Tags            []string          `json:"tags"`
 	Keywords        []string          `json:"keywords,omitempty"`
 	ThumbsAmount    int32             `json:"thumbs_amount"`
@@ -81,7 +82,7 @@ type ContentResult struct {
 	Link            *string           `json:"link,omitempty"`
 	CreatedAt       time.Time         `json:"created_at"`
 	Dated           time.Time         `json:"dated"`
-	Duration        int32             `json:"duration"`
+	Duration        ContentDuration   `json:"duration"`
 	Tags            []string          `json:"tags"`
 	Keywords        []string          `json:"keywords,omitempty"`
 	ThumbsAmount    int32             `json:"thumbs_amount"`
@@ -112,6 +113,15 @@ type ContentResults struct {
 	Items   []*ContentResult `json:"items"`             // выбранные результаты
 	Title   string           `json:"title,omitempty"`   // заголовок результата
 	Related []RelatedItem    `json:"related,omitempty"` // Похожие на текущий запрос запросы, категории, модели и тд.
+}
+
+func (cd ContentDuration) Format() string {
+	var d = time.Duration(cd)*time.Second
+	d = d.Round(time.Second)
+	m := d / time.Minute
+	d -= m * time.Minute
+	s := d / time.Second
+	return fmt.Sprintf("%02d:%02d", m, s)
 }
 
 func (tr *TaxonomyResults) Scan(src interface{}) error {
