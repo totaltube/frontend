@@ -14,6 +14,8 @@ require (
 	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
 	github.com/gofiber/fiber/v2 v2.1.2
 	github.com/jpillora/overseer v1.1.6
+	github.com/logocomune/botdetector v1.0.7
+	github.com/neverlee/keymutex v0.0.0-20171121013845-f593aa834bf9
 	github.com/pkg/errors v0.9.1
 	github.com/posener/complete v1.2.3
 	github.com/rjeczalik/notify v0.9.2

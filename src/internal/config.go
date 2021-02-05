@@ -15,6 +15,7 @@ type (
 		Database Database
 	}
 	General struct {
+		Nginx          bool `toml:"nginx"`
 		Port           uint
 		RealIpHeader   string         `toml:"real_ip_header"`
 		UseIpV6Network bool           `toml:"use_ipv6_network"`
@@ -26,6 +27,7 @@ type (
 	Frontend struct {
 		SitesPath   string `toml:"sites_path"`
 		DefaultSite string `toml:"default_site"`
+		SecretKey   string `toml:"secret_key"`
 	}
 	Database struct {
 		Path string `toml:"path"`
@@ -33,7 +35,7 @@ type (
 )
 
 func InitConfig(configPath string) {
-	Config = &ConfigT{}
+	Config = &ConfigT{General: General{Nginx: true}}
 	if _, err := toml.DecodeFile(configPath, Config); err != nil {
 		log.Fatalln(configPath, ":", err)
 	}

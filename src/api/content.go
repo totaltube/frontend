@@ -17,6 +17,7 @@ const (
 	SortDuration SortBy = "duration"
 	SortRand     SortBy = "rand"
 	SortTitle    SortBy = "title"
+	SortTotal    SortBy = "total"
 	SortNone     SortBy = ""
 )
 

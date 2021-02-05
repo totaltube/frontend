@@ -46,7 +46,7 @@ func generateCustomContext(c *fiber.Ctx, templateName string) pongo2.Context {
 		route = config.Routes.Search
 	case "models":
 		route = config.Routes.Models
-	case "content":
+	case "content-item":
 		route = config.Routes.ContentItem
 	default:
 		if r, ok := config.Custom[strings.TrimPrefix(templateName, "custom/")]; ok {
@@ -162,12 +162,13 @@ func generateCustomContext(c *fiber.Ctx, templateName string) pongo2.Context {
 	return customContext
 }
 
-func Generate404(c *fiber.Ctx) error {
+func Generate404(c *fiber.Ctx, errMessage string) error {
 	path := c.Locals("path").(string)
 	config := c.Locals("config").(*site.Config)
 	nocache, _ := strconv.ParseBool(c.Query(config.Params.Nocache, "false"))
 	langId := c.Locals("lang").(string)
 	customContext := generateCustomContext(c, "404")
+	customContext["error"] = errMessage
 	cacheKey := fmt.Sprintf("404:%s", langId)
 	cacheTtl := time.Minute * 5
 	parsed, err := site.ParseTemplate("404", path, config, customContext, nocache, cacheKey, cacheTtl,
@@ -178,16 +179,16 @@ func Generate404(c *fiber.Ctx) error {
 		return err
 	}
 	c.Set("Content-Type", "text/html")
-	return c.Send(parsed)
+	return c.Status(fiber.StatusNotFound).Send(parsed)
 }
 
-func Generate500(c *fiber.Ctx, e error) error {
+func Generate500(c *fiber.Ctx, errMessage string) error {
 	path := c.Locals("path").(string)
 	config := c.Locals("config").(*site.Config)
 	nocache, _ := strconv.ParseBool(c.Query(config.Params.Nocache, "false"))
 	langId := c.Locals("lang").(string)
 	customContext := generateCustomContext(c, "500")
-	customContext["error"] = e.Error()
+	customContext["error"] = errMessage
 	cacheKey := fmt.Sprintf("500:%s", langId)
 	cacheTtl := time.Minute * 5
 	parsed, err := site.ParseTemplate("500", path, config, customContext, nocache, cacheKey, cacheTtl,

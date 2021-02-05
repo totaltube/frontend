@@ -13,6 +13,7 @@ import (
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -34,7 +35,7 @@ func Channel(c *fiber.Ctx) error {
 	channelId, _ := strconv.ParseInt(c.Params("id", c.Query(config.Params.ChannelId, "0")), 10, 64)
 	channelSlug := c.Params("slug", c.Query(config.Params.ChannelSlug))
 	if channelId == 0 && channelSlug == "" {
-		return Generate404(c)
+		return Generate404(c, "channel not found")
 	}
 	durationFrom, _ := strconv.ParseInt(c.Query(config.Params.DurationFrom, "0"), 10, 64)
 	durationTo, _ := strconv.ParseInt(c.Query(config.Params.DurationTo, "0"), 10, 64)
@@ -63,6 +64,10 @@ func Channel(c *fiber.Ctx) error {
 				var err error
 				channelInfo, err = api.ChannelInfo(langId, channelId, channelSlug)
 				if err != nil {
+					if strings.Contains(err.Error(), "not found") {
+						_ = Generate404(c, "channel not found")
+						return ctx, types.ErrResponseSent
+					}
 					log.Println(err)
 					return ctx, err
 				}
@@ -90,6 +95,10 @@ func Channel(c *fiber.Ctx) error {
 				DurationLt:   durationTo,
 			})
 			if err != nil {
+				if strings.Contains(err.Error(), "not found") {
+					_ = Generate404(c, err.Error())
+					return ctx, types.ErrResponseSent
+				}
 				return ctx, err
 			}
 			ctx["channel"] = channelInfo

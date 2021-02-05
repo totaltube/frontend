@@ -7,7 +7,7 @@ import (
 	"sersh.com/totaltube/frontend/site"
 )
 
-func AutocompleteHandler(c *fiber.Ctx) error {
+func Autocomplete(c *fiber.Ctx) error {
 	config := c.Locals("config").(*site.Config)
 	langId := c.Locals("lang").(string)
 	searchQuery := c.Query(config.Params.SearchQuery)

@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"github.com/flosch/pongo2/v4"
 	"html/template"
+	"log"
 	"net/url"
+	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/types"
 	"strconv"
 	"strings"
@@ -52,6 +54,8 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 		}
 	}
 	link := ""
+	slug := ""
+	id := ""
 	switch node.what {
 	case "top_categories":
 		link = config.Routes.TopCategories
@@ -92,8 +96,6 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 		} else if node.what == "content" {
 			link = config.Routes.ContentItem
 		}
-		slug := ""
-		id := ""
 		if s, ok := node.args["slug"]; ok {
 			se, err := s.Evaluate(linkContext)
 			if err != nil {
@@ -136,6 +138,7 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 		link = strings.ReplaceAll(config.Routes.LanguageTemplate, ":route", link)
 		link = strings.ReplaceAll(link, ":lang", lang)
 	}
+	var pageNum int64 = 1
 	if strings.Contains(link, ":page") {
 		if s, ok := node.args["page"]; ok {
 			se, err := s.Evaluate(linkContext)
@@ -146,9 +149,66 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 			if page == "" || se.IsNil() {
 				page = "1"
 			}
+			pageNum, _ = strconv.ParseInt(page, 10, 64)
 			link = strings.ReplaceAll(link, ":page", page)
 			delete(copyArgs, "page")
 		}
+	}
+	isOut := false
+	if s, ok := node.args["out"]; ok {
+		out, err := s.Evaluate(linkContext)
+		if err != nil {
+			return err
+		}
+		if out.IsBool() && out.Bool() {
+			var pageTemplate = ""
+			if pageTemplate, ok = ctx.Public["page_template"].(string); !ok {
+				log.Println("no page_template var found")
+			}
+			if node.what == "category" && pageTemplate == "top-categories" && pageNum == 1 {
+				isOut = true
+			}
+			if node.what == "content" {
+				if pageTemplate == "top-content" && pageNum == 1 {
+					isOut = true
+				} else if pageTemplate == "category" && pageNum == 1 {
+					isOut = true
+				}
+			}
+		}
+		if out.IsBool() && out.Bool() && (node.what == "content" || node.what == "category") {
+			isOut = true
+		}
+		delete(copyArgs, "out")
+	}
+	if isOut {
+		// Link to out
+		outLink := config.Routes.Out
+		if config.General.MultiLanguage {
+			outLink = strings.ReplaceAll(config.Routes.LanguageTemplate, ":route", outLink)
+			outLink = strings.ReplaceAll(outLink, ":lang", lang)
+		}
+		outlinkParams := url.Values{}
+		outlinkParams.Set(config.Params.CountRedirect, helpers.EncryptBase64(link))
+		templateName := linkContext.Public["page_template"].(string)
+		if node.what == "category" {
+			outlinkParams.Set(config.Params.CountType, config.Params.CountTypeTopCategories)
+			outlinkParams.Set(config.Params.CategoryId, id)
+		} else if templateName == "top-content" {
+			outlinkParams.Set(config.Params.CountType, config.Params.CountTypeTopContent)
+			outlinkParams.Set(config.Params.ContentId, id)
+		} else if templateName == "category" {
+			category := linkContext.Public["category"].(*types.CategoryResult)
+			outlinkParams.Set(config.Params.CategoryId, strconv.FormatInt(int64(category.Id), 10))
+			outlinkParams.Set(config.Params.ContentId, id)
+			outlinkParams.Set(config.Params.CountType, config.Params.CountTypeCategory)
+		}
+		outLink = outLink + "?" + outlinkParams.Encode()
+		_, err := writer.WriteString(template.HTMLEscapeString(outLink))
+		if err != nil {
+			return &pongo2.Error{Sender: "tag:link", OrigError: err}
+		}
+		return nil
 	}
 	hasParams := false
 	params := url.Values{}
@@ -158,6 +218,10 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 			return err
 		}
 		switch key {
+		case "content_id":
+			key = config.Params.ContentId
+		case "content_slug":
+			key = config.Params.ContentSlug
 		case "category_slug":
 			key = config.Params.CategorySlug
 		case "category_id":
@@ -186,6 +250,12 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 			key = config.Params.SortByDuration
 		case "sort_by_date":
 			key = config.Params.SortByDate
+		case "count_redirect":
+			key = config.Params.CountRedirect
+		case "count_type":
+			key = config.Params.CountType
+		case "count_thumb_id":
+			key = config.Params.CountThumbId
 		case "page":
 			key = config.Params.Page
 		case "nocache":
@@ -193,10 +263,25 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 		}
 		if s, ok := vv.Interface().(string); ok {
 			// Parameter is string and key is sort_by, so we can replace some param values with user defined
-			if key == "sort_by" {
-				s = strings.ReplaceAll(s, "sort_by_views", config.Params.SortByViews)
-				s = strings.ReplaceAll(s, "sort_by_duration", config.Params.SortByDuration)
-				s = strings.ReplaceAll(s, "sort_by_date", config.Params.SortByDate)
+			if key == config.Params.SortBy {
+				switch s {
+				case "sort_by_views":
+					s = config.Params.SortByViews
+				case "sort_by_duration":
+					s = config.Params.SortByDuration
+				case "sort_by_date":
+					s = config.Params.SortByDate
+				}
+			}
+			if key == config.Params.CountType && link == config.Routes.Out {
+				switch s {
+				case "category":
+					s = config.Params.CountTypeCategory
+				case "top-categories":
+					s = config.Params.CountTypeTopCategories
+				case "top-content":
+					s = config.Params.CountTypeTopContent
+				}
 			}
 			if s != "" {
 				params.Add(key, s)

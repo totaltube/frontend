@@ -13,6 +13,7 @@ import (
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -28,7 +29,7 @@ func Model(c *fiber.Ctx) error {
 	modelId, _ := strconv.ParseInt(c.Params("id", c.Query(config.Params.ModelId)), 10, 64)
 	modelSlug := c.Params("slug", c.Query(config.Params.ModelSlug))
 	if modelId == 0 && modelSlug == "" {
-		return Generate404(c)
+		return Generate404(c, "model not found")
 	}
 	categorySlug := c.Query(config.Params.CategorySlug)
 	categoryId, _ := strconv.ParseInt(c.Query(config.Params.CategoryId), 10, 64)
@@ -63,6 +64,10 @@ func Model(c *fiber.Ctx) error {
 				var err error
 				modelInfo, err = api.ModelInfo(langId, modelId, modelSlug)
 				if err != nil {
+					if strings.Contains(err.Error(), "not found") {
+						_ = Generate404(c, "model not found")
+						return ctx, types.ErrResponseSent
+					}
 					log.Println(err)
 					return ctx, err
 				}

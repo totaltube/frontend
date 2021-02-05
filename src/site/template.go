@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"sersh.com/totaltube/frontend/db"
 	"sersh.com/totaltube/frontend/helpers"
+	"sersh.com/totaltube/frontend/types"
 	"strings"
 	"sync"
 	"time"
@@ -76,7 +77,7 @@ func NewTemplates(path string, config *Config) *templates {
 					templateName := strings.TrimSuffix(filepath.Base(changedTemplatePath), filepath.Ext(changedTemplatePath))
 					switch templateName {
 					case "top-categories", "category", "top-content", "404", "500",
-						"model", "models", "content", "search":
+						"model", "models", "content-item", "search":
 						err := db.ClearCacheByPrefix(templateName + ":")
 						if err != nil {
 							log.Println(err)
@@ -219,6 +220,9 @@ func ParseCustomTemplate(name, path string, config *Config,
 	}
 	program, err = getJsProgram(name+":prepare", string(source)+" prepare()")
 	if err != nil {
+		if err == types.ErrResponseSent  {
+			return
+		}
 		log.Println(err)
 		return
 	}

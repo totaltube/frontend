@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"sersh.com/totaltube/frontend/db"
+	"sersh.com/totaltube/frontend/handlers"
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/internal"
 	"sersh.com/totaltube/frontend/site"
@@ -24,6 +25,7 @@ func server(_ overseer.State) {
 	db.InitDB()
 	initLanguages()
 	site.InitPongo2()
+	handlers.InitBackgrounds()
 	helpers.InitMinifier()
 	app := InitFiber()
 	go func() {

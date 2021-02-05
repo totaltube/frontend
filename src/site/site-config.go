@@ -28,24 +28,32 @@ type (
 		Custom           map[string]string `toml:"custom"`
 	}
 	ConfigParams struct {
-		CategorySlug         string `toml:"category_slug"`
-		CategoryId           string `toml:"category_id"`
-		ModelSlug            string `toml:"model_slug"`
-		ModelId              string `toml:"model_id"`
-		ChannelSlug          string `toml:"channel_slug"`
-		ChannelId            string `toml:"channel_id"`
-		DurationFrom         string `toml:"duration_from"`
-		DurationTo           string `toml:"duration_to"`
-		SearchQuery          string `toml:"search_query"`
-		SearchNatural        string `toml:"search_natural"`
-		SortBy               string `toml:"sort_by"`
-		SortByViews          string `toml:"sort_by_views"`
-		SortByViewsTimeframe string `toml:"sort_by_views_timeframe"`
-		SortByDuration       string `toml:"sort_by_duration"`
-		SortByDate           string `toml:"sort_by_date"`
-		SortByRand           string `toml:"sort_by_rand"`
-		Page                 string `toml:"page"`
-		Nocache              string `toml:"nocache" json:"-"`
+		ContentSlug            string `toml:"content_slug"`
+		ContentId              string `toml:"content_id"`
+		CategorySlug           string `toml:"category_slug"`
+		CategoryId             string `toml:"category_id"`
+		ModelSlug              string `toml:"model_slug"`
+		ModelId                string `toml:"model_id"`
+		ChannelSlug            string `toml:"channel_slug"`
+		ChannelId              string `toml:"channel_id"`
+		DurationFrom           string `toml:"duration_from"`
+		DurationTo             string `toml:"duration_to"`
+		SearchQuery            string `toml:"search_query"`
+		SearchNatural          string `toml:"search_natural"`
+		SortBy                 string `toml:"sort_by"`
+		SortByViews            string `toml:"sort_by_views"`
+		SortByViewsTimeframe   string `toml:"sort_by_views_timeframe"`
+		SortByDuration         string `toml:"sort_by_duration"`
+		SortByDate             string `toml:"sort_by_date"`
+		SortByRand             string `toml:"sort_by_rand"`
+		Page                   string `toml:"page"`
+		CountType              string `toml:"count_type"`
+		CountRedirect          string `toml:"count_redirect"`
+		CountTypeCategory      string `toml:"count_type_category"`
+		CountTypeTopCategories string `toml:"count_type_top_categories"`
+		CountTypeTopContent    string `toml:"count_type_top_content"`
+		CountThumbId           string `toml:"count_thumb_id"`
+		Nocache                string `toml:"nocache" json:"-"`
 	}
 	ConfigJs struct {
 		Entries     []string `toml:"entries"`
@@ -61,6 +69,9 @@ type (
 	}
 	ConfigGeneral struct {
 		TradeUrlTemplate           string `toml:"trade_url_template"`
+		ModelsPerPage              int    `toml:"models_per_page"`
+		ContentRelatedAmount       int    `toml:"content_related_amount"`
+		FakeVideoPage              bool   `toml:"fake_video_page"`
 		MultiLanguage              bool   `toml:"multi_language"`
 		MinifyHtml                 bool   `toml:"minify_html" json:"-"`
 		PaginationMaxRenderedLinks int    `toml:"pagination_max_rendered_links"`
@@ -87,7 +98,12 @@ func NewConfig() *Config {
 			Maintenance:      "/maintenance",
 			LanguageTemplate: "/:lang:route",
 		},
-		General: ConfigGeneral{MinifyHtml: true, PaginationMaxRenderedLinks: 10},
+		General: ConfigGeneral{
+			MinifyHtml:                 true,
+			PaginationMaxRenderedLinks: 10,
+			ModelsPerPage:              200,
+			ContentRelatedAmount:       16,
+		},
 		Javascript: ConfigJs{
 			Entries: []string{"main.ts"},
 			Minify:  true,
@@ -99,24 +115,32 @@ func NewConfig() *Config {
 			Minify:     true,
 		},
 		Params: ConfigParams{
-			CategorySlug:         "category",
-			CategoryId:           "category_id",
-			ModelSlug:            "model",
-			ModelId:              "model_id",
-			ChannelSlug:          "channel",
-			ChannelId:            "channel_id",
-			DurationFrom:         "duration_from",
-			DurationTo:           "duration_to",
-			SearchQuery:          "q",
-			SearchNatural:        "natural",
-			SortBy:               "sort",
-			SortByViews:          "views",
-			SortByViewsTimeframe: "timeframe",
-			SortByDate:           "date",
-			SortByDuration:       "duration",
-			SortByRand:           "rand",
-			Page:                 "page",
-			Nocache:              "nocache",
+			ContentId:              "id",
+			ContentSlug:            "slug",
+			CategorySlug:           "category",
+			CategoryId:             "category_id",
+			ModelSlug:              "model",
+			ModelId:                "model_id",
+			ChannelSlug:            "channel",
+			ChannelId:              "channel_id",
+			DurationFrom:           "duration_from",
+			DurationTo:             "duration_to",
+			SearchQuery:            "q",
+			SearchNatural:          "natural",
+			SortBy:                 "sort",
+			SortByViews:            "views",
+			SortByViewsTimeframe:   "timeframe",
+			SortByDate:             "date",
+			SortByDuration:         "duration",
+			SortByRand:             "rand",
+			Page:                   "page",
+			CountRedirect:          "r",
+			CountType:              "t",
+			CountTypeCategory:      "c",
+			CountTypeTopContent:    "tc",
+			CountTypeTopCategories: "tca",
+			CountThumbId:           "tid",
+			Nocache:                "nocache",
 		},
 	}
 	return &n

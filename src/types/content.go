@@ -67,7 +67,7 @@ type ContentItemResult struct {
 	Categories      TaxonomyResults   `json:"categories,omitempty"`
 	Models          TaxonomyResults   `json:"models,omitempty"`
 	Views           int32             `json:"views"`
-	Related         []ContentResult   `json:"related,omitempty"` // похожие на этот контент
+	Related         []*ContentResult   `json:"related,omitempty"` // похожие на этот контент
 	selectedThumb   *int
 }
 

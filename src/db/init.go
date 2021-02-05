@@ -20,7 +20,8 @@ func InitDB() {
 			WithLoggingLevel(badger.ERROR),
 	)
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatalln("Badger DB initialization error:", err, "Try to remove files from db directory",
+			internal.Config.Database.Path, "if nothing helps")
 	}
 	// Garbage collector
 	go func() {
@@ -36,7 +37,7 @@ func InitDB() {
 	// Translations
 	go func() {
 		for {
-			time.Sleep(time.Millisecond*1000)
+			time.Sleep(time.Millisecond * 1000)
 			doTranslations()
 			time.Sleep(time.Millisecond*2000 + time.Millisecond*time.Duration(rand.Intn(3000)))
 		}

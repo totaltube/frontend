@@ -13,6 +13,7 @@ import (
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -28,7 +29,7 @@ func Category(c *fiber.Ctx) error {
 	categorySlug := c.Params("slug", c.Query(config.Params.CategorySlug))
 	categoryId, _ := strconv.ParseInt(c.Params("id", c.Query(config.Params.CategoryId)), 10, 64)
 	if categoryId == 0 && categorySlug == "" {
-		return Generate404(c)
+		return Generate404(c, "category not found")
 	}
 	sortBy := c.Query(config.Params.SortBy)
 	sortByViewsTimeframe := c.Query(config.Params.SortByViewsTimeframe)
@@ -68,6 +69,10 @@ func Category(c *fiber.Ctx) error {
 				var err error
 				categoryInfo, err = api.CategoryInfo(langId, categoryId, categorySlug)
 				if err != nil {
+					if strings.Contains(err.Error(), "not found") {
+						_ = Generate404(c, "category not found")
+						return ctx, types.ErrResponseSent
+					}
 					log.Println(err)
 					return ctx, err
 				}
@@ -99,6 +104,10 @@ func Category(c *fiber.Ctx) error {
 				results, err = api.Category(langId, categoryId, categorySlug, page)
 			}
 			if err != nil {
+				if strings.Contains(err.Error(), "not found") {
+					_ = Generate404(c, err.Error())
+					return nil, types.ErrResponseSent
+				}
 				return ctx, err
 			}
 			ctx["category"] = categoryInfo
