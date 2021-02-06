@@ -12,6 +12,7 @@ import (
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
 	"strings"
+	"text/template"
 )
 
 type host struct {
@@ -39,7 +40,7 @@ func InitFiber() *fiber.App {
 					result = c.Status(fiber.StatusInternalServerError).SendString(err.Error())
 				}
 			}()
-			if err == types.ErrResponseSent  {
+			if err == types.ErrResponseSent {
 				// response already sent
 				return nil
 			}
@@ -74,6 +75,10 @@ func InitFiber() *fiber.App {
 		hostName := filepath.Base(m)
 		if _, err := toml.DecodeFile(configPath, h.config); err != nil {
 			log.Fatalln("error reading site config at", configPath, err)
+		}
+		if h.config.General.TradeUrlTemplate != "" {
+			h.config.General.TradeUrlTemplateReady = template.Must(template.New("trade").
+				Parse(h.config.General.TradeUrlTemplate))
 		}
 		jsPath := filepath.Join(m, "js")
 		if _, err := os.Stat(jsPath); err == nil {
@@ -191,7 +196,7 @@ func InitFiber() *fiber.App {
 		}
 		if h.config.Routes.Custom != nil {
 			for templateName, routePath := range h.config.Routes.Custom {
-				if h.config.General.MultiLanguage {
+				if h.config.General.MultiLanguage && strings.Contains(routePath, ":lang") {
 					handlers.LangHandlers(h.fiber, routePath, h.config.Routes.LanguageTemplate, func(c *fiber.Ctx) error {
 						c.Locals("custom_template_name", templateName)
 						return handlers.Custom(c)

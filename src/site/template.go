@@ -3,8 +3,10 @@ package site
 import (
 	"github.com/dop251/goja"
 	"github.com/flosch/pongo2/v4"
+	"github.com/gofiber/fiber/v2"
 	"github.com/pkg/errors"
 	"github.com/rjeczalik/notify"
+	"github.com/segmentio/encoding/json"
 	"io/ioutil"
 	"log"
 	"path/filepath"
@@ -84,7 +86,7 @@ func NewTemplates(path string, config *Config) *templates {
 						}
 					}
 					if strings.HasPrefix(templateName, "custom-") {
-						err := db.ClearCacheByPrefix("custom:"+strings.TrimPrefix(templateName, "custom-")+":")
+						err := db.ClearCacheByPrefix("custom:" + strings.TrimPrefix(templateName, "custom-") + ":")
 						if err != nil {
 							log.Println(err)
 						}
@@ -168,8 +170,20 @@ func ParseTemplate(name, path string, config *Config, customContext pongo2.Conte
 	return
 }
 
+type redirectRet struct {
+	url string
+	code int
+}
+func doRedirect(url string, code ...int) (r redirectRet) {
+	r.url = url
+	r.code = 302
+	if len(code) > 0 && code[0] == 301 {
+		r.code = code[0]
+	}
+	return
+}
 func ParseCustomTemplate(name, path string, config *Config,
-	customContext pongo2.Context, nocache bool) (parsed []byte, err error) {
+	customContext pongo2.Context, nocache bool, c *fiber.Ctx) (parsed []byte, err error) {
 	var source []byte
 	extensionFile := filepath.Join(path, "extensions/template-"+name+".js")
 	source, err = ioutil.ReadFile(extensionFile)
@@ -179,6 +193,7 @@ func ParseCustomTemplate(name, path string, config *Config,
 	VM := getJsVM(name)
 	VM.Set("config", config)
 	VM.Set("nocache", nocache)
+	VM.Set("redirect", doRedirect)
 	for k, v := range customContext {
 		VM.Set(k, v)
 	}
@@ -194,7 +209,7 @@ func ParseCustomTemplate(name, path string, config *Config,
 		log.Println(err)
 		return
 	}
-	cacheKey := "custom:"+name+":"+v.String()
+	cacheKey := "custom:" + name + ":" + v.String()
 	program, err = getJsProgram(name+":cacheTtl", string(source)+" cacheTtl()")
 	if err != nil {
 		log.Println(err)
@@ -205,10 +220,9 @@ func ParseCustomTemplate(name, path string, config *Config,
 		log.Println(err)
 		return
 	}
-	cacheTtl := time.Duration(v.ToInteger())*time.Second
+	cacheTtl := time.Duration(v.ToInteger()) * time.Second
 	if cacheTtl <= 0 {
-		err = errors.New("wrong cacheTtl for custom template "+name)
-		return
+		nocache = true
 	}
 	if !nocache {
 		cached := db.GetCached(cacheKey)
@@ -220,9 +234,6 @@ func ParseCustomTemplate(name, path string, config *Config,
 	}
 	program, err = getJsProgram(name+":prepare", string(source)+" prepare()")
 	if err != nil {
-		if err == types.ErrResponseSent  {
-			return
-		}
 		log.Println(err)
 		return
 	}
@@ -234,13 +245,45 @@ func ParseCustomTemplate(name, path string, config *Config,
 	if ctx, ok := v.Export().(map[string]interface{}); ok {
 		customContext.Update(ctx)
 	}
-	c := generateContext(name, path, customContext)
+	ctx := generateContext(name, path, customContext)
+	program, err = getJsProgram(name+":render", string(source) +" render()")
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	v, err = VM.RunProgram(program)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	if ret, ok := v.Export().(map[string]interface{}); ok {
+		// if render() returns object - output it as json
+		parsed, err = json.Marshal(ret)
+		if err != nil {
+			log.Println(err)
+		}
+		return
+	}
+	if ret, ok := v.Export().(string); ok {
+		// if render() returns string - output it as is
+		parsed = []byte(ret)
+		return
+	}
+	if ret, ok := v.Export().(redirectRet); ok {
+		err = c.Redirect(ret.url, ret.code)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		err = types.ErrResponseSent
+		return
+	}
 	var template *pongo2.Template
 	template, err = GetTemplate("custom-"+name, path, config)
 	if err != nil {
 		return
 	}
-	parsed, err = template.ExecuteBytes(c)
+	parsed, err = template.ExecuteBytes(ctx)
 	if err != nil {
 		return
 	}
@@ -251,6 +294,6 @@ func ParseCustomTemplate(name, path string, config *Config,
 	if err != nil {
 		log.Println("can't put item in cache: ", err)
 	}
-	parsed, err = InsertDynamic(parsed, c)
+	parsed, err = InsertDynamic(parsed, ctx)
 	return
 }

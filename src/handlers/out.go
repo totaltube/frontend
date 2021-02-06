@@ -25,8 +25,7 @@ type countInfo struct {
 	countThumbId int64
 }
 
-var outCh = make(chan countInfo, 100)
-
+var countChannel = make(chan countInfo, 100)
 
 func Out(c *fiber.Ctx) error {
 	config := c.Locals("config").(*site.Config)
@@ -61,7 +60,7 @@ func Out(c *fiber.Ctx) error {
 		countThumbId: countThumbId,
 	}
 	// lets count in background in separate goroutine, by sending in buffered channel
-	outCh <- info
+	countChannel <- info
 	return returnFunc()
 }
 
@@ -74,7 +73,7 @@ func doCount() {
 					log.Println("recover in doCount:", r)
 				}
 			}()
-			info := <-outCh
+			info := <-countChannel
 			db.SessMutex.Lock(info.ip)
 			defer db.SessMutex.Unlock(info.ip)
 			sess := db.GetSession(info.ip)

@@ -1,5 +1,7 @@
 package site
 
+import "text/template"
+
 type (
 	Config struct {
 		Routes     ConfigRoutes
@@ -68,14 +70,15 @@ type (
 		Minify      bool     `toml:"minify"`
 	}
 	ConfigGeneral struct {
-		TradeUrlTemplate           string `toml:"trade_url_template"`
-		ModelsPerPage              int    `toml:"models_per_page"`
-		ContentRelatedAmount       int    `toml:"content_related_amount"`
-		FakeVideoPage              bool   `toml:"fake_video_page"`
-		MultiLanguage              bool   `toml:"multi_language"`
-		MinifyHtml                 bool   `toml:"minify_html" json:"-"`
-		PaginationMaxRenderedLinks int    `toml:"pagination_max_rendered_links"`
-		Debug                      bool   `toml:"debug"`
+		TradeUrlTemplate           string             `toml:"trade_url_template"`
+		TradeUrlTemplateReady      *template.Template `toml:"-" json:"-"`
+		ModelsPerPage              int                `toml:"models_per_page"`
+		ContentRelatedAmount       int                `toml:"content_related_amount"`
+		FakeVideoPage              bool               `toml:"fake_video_page"`
+		MultiLanguage              bool               `toml:"multi_language"`
+		MinifyHtml                 bool               `toml:"minify_html" json:"-"`
+		PaginationMaxRenderedLinks int                `toml:"pagination_max_rendered_links"`
+		Debug                      bool               `toml:"debug"`
 	}
 )
 

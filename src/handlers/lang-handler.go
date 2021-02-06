@@ -12,8 +12,13 @@ func LangHandlers(app *fiber.App, route string, langTemplate string, handler fib
 	languages := internal.GetLanguages()
 	for _, l := range languages {
 		langId := l.Id
-		r := strings.ReplaceAll(langTemplate, ":lang", langId)
-		r = strings.ReplaceAll(r, ":route", route)
+		var r string
+		if strings.Contains(route, ":lang") {
+			r = strings.ReplaceAll(route, ":lang", langId)
+		} else {
+			r = strings.ReplaceAll(langTemplate, ":lang", langId)
+			r = strings.ReplaceAll(r, ":route", route)
+		}
 		app.All(r, func(c *fiber.Ctx) error {
 			c.Locals("lang", langId)
 			c.Cookie(&fiber.Cookie{
@@ -25,12 +30,14 @@ func LangHandlers(app *fiber.App, route string, langTemplate string, handler fib
 			return c.Next()
 		}, handler)
 	}
-	// And route to detect lang
-	app.All(route, func(c *fiber.Ctx) error {
-		langCookie := c.Cookies(internal.Config.General.LangCookie)
-		lang := internal.DetectLanguage(langCookie, c.Get("Accept-Language"))
-		r := strings.ReplaceAll(langTemplate, ":lang", lang.Id)
-		r = strings.ReplaceAll(r, ":route", route)
-		return c.Redirect(r)
-	})
+	if !strings.Contains(route, ":lang") {
+		// And route to detect lang
+		app.All(route, func(c *fiber.Ctx) error {
+			langCookie := c.Cookies(internal.Config.General.LangCookie)
+			lang := internal.DetectLanguage(langCookie, c.Get("Accept-Language"))
+			r := strings.ReplaceAll(langTemplate, ":lang", lang.Id)
+			r = strings.ReplaceAll(r, ":route", route)
+			return c.Redirect(r)
+		})
+	}
 }

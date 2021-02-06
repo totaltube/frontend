@@ -1,6 +1,7 @@
 package site
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"github.com/flosch/pongo2/v4"
@@ -181,6 +182,15 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 		}
 		delete(copyArgs, "out")
 	}
+	isTrade := false
+	if s, ok := node.args["with_trade"]; ok {
+		trade, err := s.Evaluate(linkContext)
+		if err != nil {
+			return err
+		}
+		isTrade = trade.Bool()
+		delete(copyArgs, "with_trade")
+	}
 	if isOut {
 		// Link to out
 		outLink := config.Routes.Out
@@ -204,6 +214,18 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 			outlinkParams.Set(config.Params.CountType, config.Params.CountTypeCategory)
 		}
 		outLink = outLink + "?" + outlinkParams.Encode()
+		if isTrade {
+			var ready bytes.Buffer
+			err := config.General.TradeUrlTemplateReady.Execute(
+				&ready,
+				map[string]string{"url": outLink, "encoded_url": url.QueryEscape(outLink)},
+			)
+			if err != nil {
+				log.Println(err)
+				return &pongo2.Error{OrigError: err, Sender: "tag:link"}
+			}
+			outLink = ready.String()
+		}
 		_, err := writer.WriteString(template.HTMLEscapeString(outLink))
 		if err != nil {
 			return &pongo2.Error{Sender: "tag:link", OrigError: err}
@@ -297,6 +319,18 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 	}
 	if hasParams {
 		link = link + "?" + params.Encode()
+	}
+	if isTrade {
+		var ready bytes.Buffer
+		err := config.General.TradeUrlTemplateReady.Execute(
+			&ready,
+			map[string]string{"url": link, "encoded_url": url.QueryEscape(link)},
+		)
+		if err != nil {
+			log.Println(err)
+			return &pongo2.Error{OrigError: err, Sender: "tag:link"}
+		}
+		link = ready.String()
 	}
 	_, err := writer.WriteString(template.HTMLEscapeString(link))
 	if err != nil {
