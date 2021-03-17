@@ -9,7 +9,7 @@ import (
 )
 
 func Related(
-	lang string, id int64, slug string, message string, Type types.ContentType, amount int64,
+	lang string, id int64, slug string, message string, Type string, amount int64,
 ) (results []types.RelatedItem, err error) {
 	var response json.RawMessage
 	var data = url.Values{}

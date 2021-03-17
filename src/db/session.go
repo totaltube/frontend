@@ -19,6 +19,8 @@ type Session struct {
 	LastClickType string
 	LastClickId   int64
 	LastSave      time.Time
+	LastDmca      time.Time
+	DmcaAmount    int64
 }
 
 var SessMutex = keymutex.New(151)

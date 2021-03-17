@@ -11,7 +11,15 @@ import (
 )
 
 
-func getCanonical(ctx pongo2.Context, langId string, page int64) string {
+func getCanonical(ctx pongo2.Context, langId string, page int64, q ...url.Values) string {
+	if langId == "" {
+		langId = ctx["lang"].(*types.Language).Id
+	}
+	if page == 0 {
+		if p, ok := ctx["page"].(int64); ok {
+			page = p
+		}
+	}
 	config := ctx["config"].(*Config)
 	var route string
 	if r, ok := ctx["route"]; !ok {
@@ -33,6 +41,11 @@ func getCanonical(ctx pongo2.Context, langId string, page int64) string {
 	if config.General.MultiLanguage {
 		route = strings.ReplaceAll(config.Routes.LanguageTemplate, ":route", route)
 		route = strings.ReplaceAll(route, ":lang", langId)
+	}
+	for _, qq := range q {
+		for key, val := range qq {
+			canonicalQuery.Set(key, val[0])
+		}
 	}
 	query := canonicalQuery.Encode()
 	if query != "" {

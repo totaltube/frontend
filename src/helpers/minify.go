@@ -17,7 +17,7 @@ var minifier *minify.M
 func InitMinifier() {
 	m := minify.New()
 	m.AddFunc("text/css", css.Minify)
-	m.AddFunc("text/html", html.Minify)
+	// m.AddFunc("text/html", html.Minify)
 	m.AddFunc("image/svg+xml", svg.Minify)
 	m.AddFuncRegexp(regexp.MustCompile("^(application|text)/(x-)?(java|ecma)script$"), js.Minify)
 	m.AddFuncRegexp(regexp.MustCompile("[/+]json$"), json.Minify)

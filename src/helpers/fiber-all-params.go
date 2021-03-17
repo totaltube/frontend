@@ -15,7 +15,9 @@ func FiberAllParams(c *fiber.Ctx) map[string]string {
 func FiberAllQuery(c *fiber.Ctx) map[string]string {
 	var res = make(map[string]string)
 	c.Context().QueryArgs().VisitAll(func(key, value []byte) {
-		res[string(key)] = string(value)
+		k := string(key)
+		v := string(value)
+		res[k] = v
 	})
 	return res
 }

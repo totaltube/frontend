@@ -67,10 +67,30 @@ func (f *fetchRequest) WithQuery(query url.Values) *fetchRequest {
 	f.query = query
 	return f
 }
-func (f *fetchRequest) WithData(data interface{}) *fetchRequest {
+
+func (f *fetchRequest) WithRawData(data []byte) *fetchRequest {
 	f.data = data
 	return f
 }
+
+func (f *fetchRequest) WithJsonData(data interface{}) *fetchRequest {
+	f.data = data
+	f.headers[fasthttp.HeaderContentType] = "application/json"
+	if f.method == "GET" {
+		f.method = "POST"
+	}
+	return f
+}
+
+func (f *fetchRequest) WithFormData(data map[string]interface{}) *fetchRequest {
+	f.data = data
+	f.headers[fasthttp.HeaderContentType] = "application/x-www-form-urlencoded;charset=UTF-8"
+	if f.method == "GET" {
+		f.method = "POST"
+	}
+	return  f
+}
+
 func (f *fetchRequest) WithTimeout(timeout time.Duration) *fetchRequest {
 	f.timeout = timeout
 	return f
@@ -102,12 +122,26 @@ func (f *fetchRequest) Do() (response []byte, err error) {
 			freq.SetBody(d)
 		default:
 			var dd []byte
-			dd, err = json.Marshal(f.data)
-			if err != nil {
-				log.Println("can't marshal to json fetch function data")
-				return
-			} else {
+			if f.headers[fasthttp.HeaderContentType] == "application/x-www-form-urlencoded;charset=UTF-8" {
+				form := url.Values{}
+				if m, ok := d.(map[string]interface{}); !ok {
+					log.Printf("wrong data type - %T\n", f.data)
+					return
+				} else {
+					for k, v := range m {
+						form.Set(k, fmt.Sprintf("%v", v))
+					}
+				}
+				dd = []byte(form.Encode())
 				freq.SetBody(dd)
+			} else {
+				dd, err = json.Marshal(f.data)
+				if err != nil {
+					log.Println("can't marshal to json fetch function data")
+					return
+				} else {
+					freq.SetBody(dd)
+				}
 			}
 		}
 	}

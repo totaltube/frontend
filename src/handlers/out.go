@@ -17,11 +17,11 @@ import (
 var botDetector = botdetector.New()
 
 type countInfo struct {
-	config     *site.Config
-	categoryId string
-	contentId  string
-	ip string
-	countType string
+	config       *site.Config
+	categoryId   string
+	contentId    string
+	ip           string
+	countType    string
 	countThumbId int64
 }
 
@@ -30,7 +30,11 @@ var countChannel = make(chan countInfo, 100)
 func Out(c *fiber.Ctx) error {
 	config := c.Locals("config").(*site.Config)
 	ip := c.IP()
-	redirectUrl := helpers.DecryptBase64(c.Query(config.Params.CountRedirect))
+	redirectUrl := c.Query(config.Params.CountRedirect)
+	encryptedRedirectUrl := c.Query("e" + config.Params.CountRedirect)
+	if redirectUrl == "" && encryptedRedirectUrl != "" {
+		redirectUrl = helpers.DecryptBase64(encryptedRedirectUrl)
+	}
 	countType := c.Query(config.Params.CountType)
 	countThumbId, _ := strconv.ParseInt(c.Query(config.Params.CountThumbId, "-1"), 10, 16)
 	returnFunc := func() error {
@@ -131,7 +135,9 @@ func doCount() {
 					Ip: info.ip,
 					Id: countId,
 				})
-				log.Println("top content click api error:", err)
+				if err != nil {
+					log.Println("top content click api error:", err)
+				}
 				return
 			case info.config.Params.CountTypeCategory:
 				if sess.LastClickType == info.countType && sess.LastClickId == countId {
@@ -144,7 +150,9 @@ func doCount() {
 					Ip: info.ip,
 					Id: countId,
 				})
-				log.Println("category click api error: ", err)
+				if err != nil {
+					log.Println("category click api error: ", err)
+				}
 				return
 			}
 		}()

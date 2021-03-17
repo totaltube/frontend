@@ -36,6 +36,9 @@ func TopContent(c *fiber.Ctx) error {
 				log.Println(err)
 				return ctx, nil
 			}
+			if page == 1 {
+				ctx["count"] = true
+			}
 			ctx["content"] = results
 			ctx["total"] = results.Total
 			ctx["from"] = int64(results.From)

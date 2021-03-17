@@ -3,6 +3,7 @@ package handlers
 import (
 	"github.com/gofiber/fiber/v2"
 	"sersh.com/totaltube/frontend/site"
+	"sersh.com/totaltube/frontend/types"
 	"strconv"
 )
 
@@ -19,6 +20,9 @@ func Custom(c *fiber.Ctx) error {
 	customContext["page"] = page
 	parsed, err := site.ParseCustomTemplate(templateName, path, config, customContext, nocache, c)
 	if err != nil {
+		if err == types.ErrResponseSent {
+			return nil
+		}
 		return err
 	}
 	c.Set("Content-Type", "text/html")

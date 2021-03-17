@@ -3,19 +3,19 @@ package site
 import (
 	"fmt"
 	"github.com/flosch/pongo2/v4"
+	"github.com/sersh88/timeago"
+	"log"
 	"math"
 	"os"
 	"path/filepath"
+	"regexp"
+	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/types"
 	"strconv"
 	"strings"
 	"time"
 )
 
-type alternateT struct {
-	Lang string
-	Url  string
-}
 type PaginationItemType string
 
 const (
@@ -38,9 +38,28 @@ type PaginationItem struct {
 	State string
 	Page  int64
 }
+type IframeParsed struct {
+	Src    string
+	Width  int64
+	Height int64
+}
+
+var iframeSrcRegex = regexp.MustCompile(`(?i)<\s*iframe[^>]*\ssrc\s*=\s*['"]?([^'" >]+)`)
+var iframeWidthRegex = regexp.MustCompile(`(?i)<\s*iframe[^>]*\swidth\s*=\s*['"]?([^'" >]+)`)
+var iframeHeightRegex = regexp.MustCompile(`(?i)<\s*iframe[^>]*\sheight\s*=\s*['"]?([^'" >]+)`)
+var iframeHttpReplace = regexp.MustCompile(`(?i)^http://`)
 
 func generateContext(name string, sitePath string, customContext pongo2.Context) pongo2.Context {
 	var ctx = pongo2.Context{
+		"flate":   helpers.Flate,
+		"deflate": helpers.Deflate,
+		"gzip":    helpers.Gzip,
+		"ungzip":  helpers.Ungzip,
+		"zip":     helpers.Zip,
+		"unzip":   helpers.Unzip,
+		"base64":  helpers.Base64,
+		"sha1":    helpers.Sha1Hash,
+		"md5":     helpers.Md5Hash,
 		"translate": func(text string) string {
 			return deferredTranslate("en", customContext["lang"].(*types.Language).Id, text)
 		},
@@ -55,6 +74,10 @@ func generateContext(name string, sitePath string, customContext pongo2.Context)
 			return "/" + strings.TrimPrefix(filePath, "/")
 		},
 		"now": time.Now(),
+		"time_ago": func(t time.Time) string {
+			langId := strings.ReplaceAll(customContext["lang"].(*types.Language).Id, "-", "_")
+			return timeago.New(t).WithLocale(langId).Format()
+		},
 		"format_duration": func(duration int32) string {
 			var d = time.Duration(duration)
 			return fmt.Sprintf("%d:%d", int(d.Minutes()), int(d.Seconds()))
@@ -101,13 +124,13 @@ func generateContext(name string, sitePath string, customContext pongo2.Context)
 					if afterCurrentPageLinks > 0 && p > page+afterCurrentPageLinks {
 						if p == pages && afterEllipsis {
 							// show ellipsis and last page link
-							if p > page + afterCurrentPageLinks + 1 {
+							if p > page+afterCurrentPageLinks+1 {
 								pagination = append(pagination, PaginationItem{Type: paginationItemTypeEllipsis})
 							}
 							pagination = append(pagination, PaginationItem{
-								Type: PaginationItemTypePage,
+								Type:  PaginationItemTypePage,
 								State: PaginationItemStateDefault,
-								Page: p,
+								Page:  p,
 							})
 						}
 						continue // do not render some items after current page
@@ -127,6 +150,37 @@ func generateContext(name string, sitePath string, customContext pongo2.Context)
 			} else {
 				return []PaginationItem{}
 			}
+		},
+		"parse_iframe": func(iframeI interface{}) (parsed IframeParsed) {
+			var iframe string
+			if iframeP, ok := iframeI.(*string); ok {
+				if iframeP != nil {
+					iframe = *iframeP
+				}
+			} else if iframe, ok = iframeI.(string); !ok {
+				log.Printf("Wrong iframe param type - %T in parse_iframe function", iframeI)
+				return
+			}
+			matches := iframeSrcRegex.FindStringSubmatch(iframe)
+			if matches == nil {
+				log.Println("wrong iframe -", iframe, "in parse_iframe function")
+				return
+			}
+			matches[1] = strings.ReplaceAll(matches[1], "https://", "http://")
+			parsed.Src = iframeHttpReplace.ReplaceAllString(matches[1], "https://")
+			matches = iframeWidthRegex.FindStringSubmatch(iframe)
+			if matches == nil {
+				log.Println("wrong iframe -", iframe, "in parse_iframe function")
+				return
+			}
+			parsed.Width, _ = strconv.ParseInt(matches[1], 10, 64)
+			matches = iframeHeightRegex.FindStringSubmatch(iframe)
+			if matches == nil {
+				log.Println("wrong iframe -", iframe, "in parse_iframe function")
+				return
+			}
+			parsed.Height, _ = strconv.ParseInt(matches[1], 10, 64)
+			return
 		},
 	}
 	return ctx.Update(customContext)

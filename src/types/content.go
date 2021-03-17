@@ -10,20 +10,17 @@ import (
 	"time"
 )
 
-type ContentType string
-
 const (
-	ContentTypeVideoEmbed ContentType = "video-embed"
-	ContentTypeVideoLink  ContentType = "video-link"
-	ContentTypeVideo      ContentType = "video"
-	ContentTypeGallery    ContentType = "gallery"
-	ContentTypeLink       ContentType = "link"
-	ContentTypeContent    ContentType = "content" // Обобщенно все виды контента, а не таксономий
-
-	ContentTypeCategory  ContentType = "category"
-	ContentTypeChannel   ContentType = "channel"
-	ContentTypeModel     ContentType = "model"
-	ContentTypeUniversal ContentType = "universal"
+	ContentTypeVideoEmbed = "video-embed"
+	ContentTypeVideoLink  = "video-link"
+	ContentTypeVideo      = "video"
+	ContentTypeGallery    = "gallery"
+	ContentTypeLink       = "link"
+	ContentTypeContent    = "content" // Обобщенно все виды контента, а не таксономий
+	ContentTypeCategory   = "category"
+	ContentTypeChannel    = "channel"
+	ContentTypeModel      = "model"
+	ContentTypeUniversal  = "universal"
 )
 
 type ContentDuration int32
@@ -61,13 +58,13 @@ type ContentItemResult struct {
 	ThumbRetina     bool              `json:"thumb_retina"`  // индикатор, что есть версия @2x
 	ThumbFormat     string            `json:"thumb_format"`
 	BestThumb       *int16            `json:"best_thumb,omitempty"` // номер лучшей тумбы, нумерация с 0
-	Type            ContentType       `json:"type"`
+	Type            string            `json:"type"`
 	Priority        int16             `json:"priority,omitempty"`
 	User            ContentResultUser `json:"user"`
 	Categories      TaxonomyResults   `json:"categories,omitempty"`
 	Models          TaxonomyResults   `json:"models,omitempty"`
 	Views           int32             `json:"views"`
-	Related         []*ContentResult   `json:"related,omitempty"` // похожие на этот контент
+	Related         []*ContentResult  `json:"related,omitempty"` // похожие на этот контент
 	selectedThumb   *int
 }
 
@@ -93,7 +90,7 @@ type ContentResult struct {
 	ThumbRetina     bool              `json:"thumb_retina"`  // индикатор, что есть версия @2x
 	ThumbFormat     string            `json:"thumb_format"`
 	BestThumb       *int16            `json:"best_thumb,omitempty"` // Лучшая тумба
-	Type            ContentType       `json:"type"`
+	Type            string            `json:"type"`
 	Priority        int16             `json:"priority,omitempty"`
 	User            ContentResultUser `json:"user"`
 	Categories      TaxonomyResults   `json:"categories,omitempty"`
@@ -116,7 +113,7 @@ type ContentResults struct {
 }
 
 func (cd ContentDuration) Format() string {
-	var d = time.Duration(cd)*time.Second
+	var d = time.Duration(cd) * time.Second
 	d = d.Round(time.Second)
 	m := d / time.Minute
 	d -= m * time.Minute

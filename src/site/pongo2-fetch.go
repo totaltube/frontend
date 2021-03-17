@@ -63,6 +63,7 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 				f.WithTimeout(timeout)
 			}
 		}
+		var isForm = false
 		for _, h := range node.headers {
 			hh, err := h.Evaluate(fetchContext)
 			if err != nil {
@@ -72,6 +73,9 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 			if matches == nil {
 				log.Println("wrong header", hh.String(), ". Must be in format [HeaderKey]:[HeaderValue]")
 				continue
+			}
+			if matches[2] == "application/x-www-form-urlencoded;charset=UTF-8" {
+				isForm = true
 			}
 			f.WithHeader(matches[1], matches[2])
 		}
@@ -96,7 +100,11 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 				params.Add(k, fmt.Sprintf("%v", pv.Interface()))
 			}
 			if len(data) > 0 {
-				f.WithData(data)
+				if isForm {
+					f.WithFormData(data)
+				} else {
+					f.WithJsonData(data)
+				}
 			}
 		}
 		if cacheTimeout > 0 {

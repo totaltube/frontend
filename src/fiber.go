@@ -12,7 +12,6 @@ import (
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
 	"strings"
-	"text/template"
 )
 
 type host struct {
@@ -30,7 +29,7 @@ func InitFiber() *fiber.App {
 			defer func() {
 				if r, ok := recover().(error); r != nil && ok {
 					log.Println(r)
-					if c.Accepts("application/json") != "" {
+					if c.Accepts("application/json") != "" && c.Accepts("text/html") == "" {
 						result = c.JSON(map[string]interface{}{
 							"success": false,
 							"value":   err.Error(),
@@ -75,10 +74,6 @@ func InitFiber() *fiber.App {
 		hostName := filepath.Base(m)
 		if _, err := toml.DecodeFile(configPath, h.config); err != nil {
 			log.Fatalln("error reading site config at", configPath, err)
-		}
-		if h.config.General.TradeUrlTemplate != "" {
-			h.config.General.TradeUrlTemplateReady = template.Must(template.New("trade").
-				Parse(h.config.General.TradeUrlTemplate))
 		}
 		jsPath := filepath.Join(m, "js")
 		if _, err := os.Stat(jsPath); err == nil {
@@ -188,22 +183,33 @@ func InitFiber() *fiber.App {
 			}
 		}
 		if h.config.Routes.Out != "" {
+			h.fiber.All(h.config.Routes.Out, handlers.Out)
+		}
+		if h.config.Routes.FakePlayer != "" {
 			if h.config.General.MultiLanguage {
-				handlers.LangHandlers(h.fiber, h.config.Routes.Out, h.config.Routes.LanguageTemplate, handlers.Out)
+				handlers.LangHandlers(h.fiber, h.config.Routes.FakePlayer, h.config.Routes.LanguageTemplate, handlers.FakePlayer)
 			} else {
-				h.fiber.All(h.config.Routes.Out, handlers.Out)
+				h.fiber.All(h.config.Routes.FakePlayer, handlers.FakePlayer)
+			}
+		}
+		if h.config.Routes.Dmca  != "" {
+			if h.config.General.MultiLanguage {
+				handlers.LangHandlers(h.fiber, h.config.Routes.Dmca, h.config.Routes.LanguageTemplate, handlers.Dmca)
+			} else {
+				h.fiber.All(h.config.Routes.Dmca, handlers.Dmca)
 			}
 		}
 		if h.config.Routes.Custom != nil {
 			for templateName, routePath := range h.config.Routes.Custom {
+				tName := templateName
 				if h.config.General.MultiLanguage && strings.Contains(routePath, ":lang") {
 					handlers.LangHandlers(h.fiber, routePath, h.config.Routes.LanguageTemplate, func(c *fiber.Ctx) error {
-						c.Locals("custom_template_name", templateName)
+						c.Locals("custom_template_name", tName)
 						return handlers.Custom(c)
 					})
 				} else {
 					h.fiber.All(routePath, func(c *fiber.Ctx) error {
-						c.Locals("custom_template_name", templateName)
+						c.Locals("custom_template_name", tName)
 						return c.Next()
 					}, handlers.Custom)
 				}
@@ -222,7 +228,7 @@ func InitFiber() *fiber.App {
 	app := fiber.New(fiberConfig)
 	app.Use(recoverMiddleware.New())
 	app.Use(func(c *fiber.Ctx) error {
-		hostName := strings.TrimPrefix(c.Hostname(), "www.")
+		hostName := strings.TrimPrefix(strings.ToLower(c.Hostname()), "www.")
 		host := hosts[hostName]
 		if host == nil {
 			host = hosts[internal.Config.Frontend.DefaultSite]

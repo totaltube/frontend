@@ -1,17 +1,19 @@
 package site
 
 import (
+	"fmt"
 	"github.com/dop251/goja"
 	"github.com/flosch/pongo2/v4"
 	"github.com/gofiber/fiber/v2"
+	"github.com/neverlee/keymutex"
 	"github.com/pkg/errors"
 	"github.com/rjeczalik/notify"
 	"github.com/segmentio/encoding/json"
-	"io/ioutil"
 	"log"
 	"path/filepath"
 	"sersh.com/totaltube/frontend/db"
 	"sersh.com/totaltube/frontend/helpers"
+	"sersh.com/totaltube/frontend/internal"
 	"sersh.com/totaltube/frontend/types"
 	"strings"
 	"sync"
@@ -19,6 +21,7 @@ import (
 )
 
 var ErrTemplateNotFound = errors.New("template not found")
+var GojaVMMutex = keymutex.New(151)
 
 type templates struct {
 	sync.Mutex
@@ -73,22 +76,30 @@ func NewTemplates(path string, config *Config) *templates {
 				defer notify.Stop(c)
 				// ждем сигнала при изменении файлов шаблонов
 				info := <-c
-				var changedTemplatePath = info.Path()
-				abs, _ := filepath.Abs(filepath.Join(path, "templates"))
-				if filepath.Dir(changedTemplatePath) == abs && filepath.Ext(changedTemplatePath) == ".twig" {
-					templateName := strings.TrimSuffix(filepath.Base(changedTemplatePath), filepath.Ext(changedTemplatePath))
-					switch templateName {
-					case "top-categories", "category", "top-content", "404", "500",
-						"model", "models", "content-item", "search":
-						err := db.ClearCacheByPrefix(templateName + ":")
-						if err != nil {
-							log.Println(err)
-						}
+				if internal.Config.General.Development {
+					// In dev mode we invalidate all cache
+					err := db.ClearCacheByPrefix("")
+					if err != nil {
+						log.Println(err)
 					}
-					if strings.HasPrefix(templateName, "custom-") {
-						err := db.ClearCacheByPrefix("custom:" + strings.TrimPrefix(templateName, "custom-") + ":")
-						if err != nil {
-							log.Println(err)
+				}  else {
+					var changedTemplatePath = info.Path()
+					abs, _ := filepath.Abs(filepath.Join(path, "templates"))
+					if filepath.Dir(changedTemplatePath) == abs && filepath.Ext(changedTemplatePath) == ".twig" {
+						templateName := strings.TrimSuffix(filepath.Base(changedTemplatePath), filepath.Ext(changedTemplatePath))
+						switch templateName {
+						case "top-categories", "category", "top-content", "404", "500",
+							"model", "models", "content-item", "search", "fake-player":
+							err := db.ClearCacheByPrefix(templateName + ":")
+							if err != nil {
+								log.Println(err)
+							}
+						}
+						if strings.HasPrefix(templateName, "custom-") {
+							err := db.ClearCacheByPrefix("custom:" + strings.TrimPrefix(templateName, "custom-") + ":")
+							if err != nil {
+								log.Println(err)
+							}
 						}
 					}
 				}
@@ -133,23 +144,69 @@ func GetTemplate(name, path string, config *Config) (*pongo2.Template, error) {
 	return siteTemplates.get(name, path, config)
 }
 
-// uncachedPrepare - функция, которая подготавливает контекст для незакэшированного шаблона
 func ParseTemplate(name, path string, config *Config, customContext pongo2.Context,
 	nocache bool, cacheKey string, cacheTtl time.Duration,
 	uncachedPrepare func(ctx pongo2.Context) (pongo2.Context, error)) (parsed []byte, err error) {
+	var c pongo2.Context
+	// Adding custom functions to context
+	var addCustomFunctions = func(c pongo2.Context) {
+		matches, _ := filepath.Glob(filepath.Join(path, "extensions/function-*.js"))
+		for _, m := range matches {
+			baseName := filepath.Base(m)
+			funcName := strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(baseName, "function-"), ".js"))
+			if funcName == "" {
+				continue
+			}
+			var source = getJsSource(m)
+			if len(source) == 0 {
+				continue
+			}
+			c[funcName] = func(args ...interface{}) interface{} {
+				GojaVMMutex.Lock(baseName)
+				defer GojaVMMutex.Unlock(baseName)
+				VM := getJsVM(baseName)
+				VM.Set("config", config)
+				VM.Set("nocache", nocache)
+				for k, v := range c {
+					VM.Set(k, v)
+				}
+				var argsString string
+				var argsNameArray = make([]string, 0, len(args))
+				for argIndex, arg := range args {
+					var argName = fmt.Sprintf("arg%d", argIndex)
+					VM.Set(argName, arg)
+					argsNameArray = append(argsNameArray, argName)
+				}
+				argsString = strings.Join(argsNameArray, ",")
+				program, err := getJsProgram("function:"+funcName, string(source)+" "+funcName+"("+argsString+")")
+				if err != nil {
+					log.Println(err)
+					return nil
+				}
+				v, err := VM.RunProgram(program)
+				if err != nil {
+					log.Println(err)
+					return nil
+				}
+				return v.Export()
+			}
+		}
+	}
 	if !nocache {
 		cached := db.GetCached(cacheKey)
 		if cached != nil {
-			c := generateContext(name, path, customContext)
+			c = generateContext(name, path, customContext)
+			addCustomFunctions(c)
 			parsed, err = InsertDynamic(cached, c)
 			return
 		}
 	}
-	customContext, err = uncachedPrepare(customContext)
+	c, err = uncachedPrepare(customContext)
 	if err != nil {
 		return
 	}
-	c := generateContext(name, path, customContext)
+	c = generateContext(name, path, c)
+	addCustomFunctions(c)
 	var template *pongo2.Template
 	template, err = GetTemplate(name, path, config)
 	if err != nil {
@@ -171,9 +228,10 @@ func ParseTemplate(name, path string, config *Config, customContext pongo2.Conte
 }
 
 type redirectRet struct {
-	url string
+	url  string
 	code int
 }
+
 func doRedirect(url string, code ...int) (r redirectRet) {
 	r.url = url
 	r.code = 302
@@ -184,12 +242,14 @@ func doRedirect(url string, code ...int) (r redirectRet) {
 }
 func ParseCustomTemplate(name, path string, config *Config,
 	customContext pongo2.Context, nocache bool, c *fiber.Ctx) (parsed []byte, err error) {
-	var source []byte
-	extensionFile := filepath.Join(path, "extensions/template-"+name+".js")
-	source, err = ioutil.ReadFile(extensionFile)
-	if err != nil {
-		err = errors.Wrap(err, "can't open extensionFile "+extensionFile)
+	extensionFile := filepath.Join(path, "extensions/route-"+name+".js")
+	var source = getJsSource(extensionFile)
+	if len(source) == 0 {
+		err = errors.New("source template " + extensionFile + " is empty or not exists")
+		return
 	}
+	GojaVMMutex.Lock(name)
+	defer GojaVMMutex.Unlock(name)
 	VM := getJsVM(name)
 	VM.Set("config", config)
 	VM.Set("nocache", nocache)
@@ -246,7 +306,7 @@ func ParseCustomTemplate(name, path string, config *Config,
 		customContext.Update(ctx)
 	}
 	ctx := generateContext(name, path, customContext)
-	program, err = getJsProgram(name+":render", string(source) +" render()")
+	program, err = getJsProgram(name+":render", string(source)+" render()")
 	if err != nil {
 		log.Println(err)
 		return
@@ -262,6 +322,12 @@ func ParseCustomTemplate(name, path string, config *Config,
 		if err != nil {
 			log.Println(err)
 		}
+		c.Set(fiber.HeaderContentType, "application/json")
+		err = c.Send(parsed)
+		if err != nil {
+			return
+		}
+		err = types.ErrResponseSent
 		return
 	}
 	if ret, ok := v.Export().(string); ok {

@@ -57,9 +57,6 @@ func apiRequest(method method, uri apiUri, data interface{}) (response json.RawM
 	f := helpers.Fetch(internal.Config.General.ApiUrl + string(uri))
 	f.WithHeader(fasthttp.HeaderAuthorization, internal.Config.General.ApiSecret)
 	f.WithHeader(fasthttp.HeaderAccept, "application/json")
-	if method != "GET" {
-		f.WithHeader(fasthttp.HeaderContentType, "application/json")
-	}
 	f.WithTimeout(time.Duration(internal.Config.General.ApiTimeout))
 	f.WithMethod(string(method))
 	if method == "GET" && data != nil {
@@ -70,7 +67,7 @@ func apiRequest(method method, uri apiUri, data interface{}) (response json.RawM
 		}
 		f.WithQuery(queryParams)
 	} else if data != nil {
-		f.WithData(data)
+		f.WithJsonData(data)
 	}
 	var resp []byte
 	resp, err = f.Do()

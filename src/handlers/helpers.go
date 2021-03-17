@@ -23,6 +23,73 @@ func generateCustomContext(c *fiber.Ctx, templateName string) pongo2.Context {
 	}
 	params := helpers.FiberAllParams(c)
 	query := helpers.FiberAllQuery(c)
+	var changedQuery = make(map[string]string)
+	for k, v := range query {
+		if k == config.Params.SortBy {
+			k = "sort_by"
+			if v == config.Params.SortByRand {
+				v = "rand"
+			} else if v == config.Params.SortByViews {
+				v = "views"
+			} else if v == config.Params.SortByDuration {
+				v = "duration"
+			} else if v == config.Params.SortByDate {
+				v = "dated"
+			}
+			changedQuery[k] = v
+		} else if k == config.Params.SortByViewsTimeframe {
+			k = "timeframe"
+			changedQuery[k] = v
+		} else if k == config.Params.ChannelSlug {
+			k = "channel_slug"
+			changedQuery[k] = v
+		} else if k == config.Params.ChannelId {
+			k = "channel_id"
+			changedQuery[k] = v
+		} else if k == config.Params.CategorySlug {
+			k = "category_slug"
+			changedQuery[k] = v
+		} else if k == config.Params.CategoryId {
+			k = "category_id"
+			changedQuery[k] = v
+		} else if k == config.Params.ModelSlug {
+			k = "model_slug"
+			changedQuery[k] = v
+		} else if k == config.Params.ModelId {
+			k = "model_id"
+			changedQuery[k] = v
+		} else if k == config.Params.Page {
+			k = "page"
+			changedQuery[k] = v
+		} else if k == config.Params.ContentSlug {
+			k = "content_slug"
+			changedQuery[k] = v
+		} else if k == config.Params.ContentId {
+			k = "content_id"
+			changedQuery[k] = v
+		} else if k == config.Params.SearchQuery  {
+			k = "search_query"
+			changedQuery[k] = v
+		} else if k == config.Params.DurationGte {
+			k = "duration_gte"
+			changedQuery[k] = v
+		} else if k == config.Params.DurationLt {
+			k = "duration_lt"
+			changedQuery[k] = v
+		}
+	}
+	for k, v := range changedQuery {
+		query[k] = v
+	}
+	queryString := string(c.Context().QueryArgs().QueryString())
+	headers := map[string]string{}
+	c.Request().Header.VisitAll(func(key, value []byte) {
+		headers[string(key)] = string(value)
+	})
+	cookies := map[string]string{}
+	c.Request().Header.VisitAllCookie(func(key, value []byte) {
+		cookies[string(key)] = string(value)
+	})
 	canonicalQuery := url.Values{}
 	route := config.Routes.TopCategories
 	switch templateName {
@@ -48,6 +115,8 @@ func generateCustomContext(c *fiber.Ctx, templateName string) pongo2.Context {
 		route = config.Routes.Models
 	case "content-item":
 		route = config.Routes.ContentItem
+	case "fake-player":
+		route = config.Routes.FakePlayer
 	default:
 		if r, ok := config.Custom[strings.TrimPrefix(templateName, "custom/")]; ok {
 			route = r
@@ -121,11 +190,11 @@ func generateCustomContext(c *fiber.Ctx, templateName string) pongo2.Context {
 				}
 			}
 		}
-		if durationFrom, ok := query[config.Params.DurationFrom]; ok {
-			canonicalQuery.Set(config.Params.DurationFrom, durationFrom)
+		if durationFrom, ok := query[config.Params.DurationGte]; ok {
+			canonicalQuery.Set(config.Params.DurationGte, durationFrom)
 		}
-		if durationTo, ok := query[config.Params.DurationTo]; ok {
-			canonicalQuery.Set(config.Params.DurationTo, durationTo)
+		if durationTo, ok := query[config.Params.DurationLt]; ok {
+			canonicalQuery.Set(config.Params.DurationLt, durationTo)
 		}
 		if searchQuery, ok := query[config.Params.SearchQuery]; ok {
 			canonicalQuery.Set(config.Params.SearchQuery, searchQuery)
@@ -146,6 +215,7 @@ func generateCustomContext(c *fiber.Ctx, templateName string) pongo2.Context {
 		}
 	}
 	nocache, _ := strconv.ParseBool(c.Query(config.Params.Nocache, "false"))
+	var globals = make(map[string]interface{})
 	customContext := pongo2.Context{
 		"page_template":   templateName,
 		"lang":            internal.GetLanguage(langId),
@@ -155,9 +225,41 @@ func generateCustomContext(c *fiber.Ctx, templateName string) pongo2.Context {
 		"host":            hostName,
 		"params":          params,
 		"query":           query,
+		"querystring":     queryString,
+		"headers":         headers,
+		"cookies":         cookies,
 		"canonical_query": canonicalQuery,
 		"config":          config,
+		"global_config":   internal.Config,
 		"route":           route,
+	}
+	customContext["set_cookie"] = func(name string, value interface{}, expire interface{}) {
+		var expires = time.Now().Add(time.Minute * 60)
+		if e, ok := expire.(time.Time); ok {
+			expires = e
+		}
+		if e, ok := expire.(time.Duration); ok {
+			expires = time.Now().Add(e)
+		}
+		if e, ok := expire.(int64); ok {
+			expires = time.Now().Add(time.Hour * 24 * time.Duration(e))
+		}
+		if e, ok := expire.(int); ok {
+			expires = time.Now().Add(time.Hour * 24 * time.Duration(e))
+		}
+		var cookie = &fiber.Cookie{
+			Name:    name,
+			Value:   fmt.Sprintf("%v", value),
+			Expires: expires,
+		}
+		c.Cookie(cookie)
+	}
+	// Functions to set and get vars, which will be saved between calls.
+	customContext["set_var"] = func(name string, value interface{}) {
+		globals[name] = value
+	}
+	customContext["get_var"] = func(name string) interface{} {
+		return globals[name]
 	}
 	return customContext
 }

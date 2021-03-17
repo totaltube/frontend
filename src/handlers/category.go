@@ -32,13 +32,24 @@ func Category(c *fiber.Ctx) error {
 		return Generate404(c, "category not found")
 	}
 	sortBy := c.Query(config.Params.SortBy)
+	if sortBy == config.Params.SortByDate {
+		sortBy = "dated"
+	} else if sortBy == config.Params.SortByDuration {
+		sortBy = "duration"
+	} else if sortBy == config.Params.SortByViews {
+		sortBy = "views"
+	} else if sortBy == config.Params.SortByRand {
+		sortBy = "rand"
+	} else {
+		sortBy = ""
+	}
 	sortByViewsTimeframe := c.Query(config.Params.SortByViewsTimeframe)
 	channelId, _ := strconv.ParseInt(c.Query(config.Params.ChannelId, "0"), 10, 64)
 	channelSlug := c.Query(config.Params.ChannelSlug)
 	modelId, _ := strconv.ParseInt(c.Query(config.Params.ModelId, "0"), 10, 64)
 	modelSlug := c.Query(config.Params.ModelSlug)
-	durationFrom, _ := strconv.ParseInt(c.Query(config.Params.DurationFrom, "0"), 10, 64)
-	durationTo, _ := strconv.ParseInt(c.Query(config.Params.DurationTo, "0"), 10, 64)
+	durationFrom, _ := strconv.ParseInt(c.Query(config.Params.DurationGte, "0"), 10, 64)
+	durationTo, _ := strconv.ParseInt(c.Query(config.Params.DurationLt, "0"), 10, 64)
 	customContext := generateCustomContext(c, "category")
 	cacheKey := "category:" + helpers.Md5Hash(
 		fmt.Sprintf("%s:%d:%s:%d:%s:%s:%s:%d:%d:%s:%d:%d",
@@ -101,6 +112,7 @@ func Category(c *fiber.Ctx) error {
 					DurationLt:   durationTo,
 				})
 			} else {
+				ctx["count"] = true
 				results, err = api.Category(langId, categoryId, categorySlug, page)
 			}
 			if err != nil {

@@ -6,7 +6,7 @@ import (
 	"regexp"
 )
 
-var replaceDynamicRegex = regexp.MustCompile(`<meta name=["']?_dynamic["']? content=["']?([^"\\]*(?:\\.[^"\\]*)*)["']?>`)
+var replaceDynamicRegex = regexp.MustCompile(`<data class=["']?_dynamic["']? value=["']?([^"\\]*(?:\\.[^"\\]*)*)["']?></data>`)
 
 func InsertDynamic(src []byte, userCtx pongo2.Context) (result []byte, err error) {
 	result = replaceDynamicRegex.ReplaceAllFunc(src, func(bytes []byte) []byte {

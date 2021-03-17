@@ -32,18 +32,29 @@ func Channel(c *fiber.Ctx) error {
 	categoryId, _ := strconv.ParseInt(c.Query(config.Params.CategoryId), 10, 64)
 	sortBy := c.Query(config.Params.SortBy, "dated")
 	sortByViewsTimeframe := c.Query(config.Params.SortByViewsTimeframe)
+	if sortBy == config.Params.SortByDate {
+		sortBy = "dated"
+	} else if sortBy == config.Params.SortByDuration {
+		sortBy = "duration"
+	} else if sortBy == config.Params.SortByViews {
+		sortBy = "views"
+	} else if sortBy == config.Params.SortByRand {
+		sortBy = "rand"
+	} else {
+		sortBy = ""
+	}
 	channelId, _ := strconv.ParseInt(c.Params("id", c.Query(config.Params.ChannelId, "0")), 10, 64)
 	channelSlug := c.Params("slug", c.Query(config.Params.ChannelSlug))
 	if channelId == 0 && channelSlug == "" {
 		return Generate404(c, "channel not found")
 	}
-	durationFrom, _ := strconv.ParseInt(c.Query(config.Params.DurationFrom, "0"), 10, 64)
-	durationTo, _ := strconv.ParseInt(c.Query(config.Params.DurationTo, "0"), 10, 64)
+	durationGte, _ := strconv.ParseInt(c.Query(config.Params.DurationGte, "0"), 10, 64)
+	durationLt, _ := strconv.ParseInt(c.Query(config.Params.DurationLt, "0"), 10, 64)
 	customContext := generateCustomContext(c, "channel")
 	cacheKey := "channel:" + helpers.Md5Hash(
 		fmt.Sprintf("%s:%d:%s:%s:%s:%d:%d:%s:%d:%d:%d:%s",
 			langId, page, sortBy, sortByViewsTimeframe, channelSlug, channelId,
-			modelId, modelSlug, durationFrom, durationTo, categoryId, categorySlug),
+			modelId, modelSlug, durationGte, durationLt, categoryId, categorySlug),
 	)
 	cacheTtl := time.Minute * 15
 	parsed, err := site.ParseTemplate("channel", path, config, customContext, nocache, cacheKey, cacheTtl,
@@ -91,8 +102,8 @@ func Channel(c *fiber.Ctx) error {
 				ModelSlug:    modelSlug,
 				Sort:         api.SortBy(sortBy),
 				Timeframe:    sortByViewsTimeframe,
-				DurationGte:  durationFrom,
-				DurationLt:   durationTo,
+				DurationGte:  durationGte,
+				DurationLt:   durationLt,
 			})
 			if err != nil {
 				if strings.Contains(err.Error(), "not found") {

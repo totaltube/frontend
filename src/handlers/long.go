@@ -29,8 +29,8 @@ func Long(c *fiber.Ctx) error {
 	sortBy := "duration"
 	channelId, _ := strconv.ParseInt(c.Query(config.Params.ChannelId, "0"), 10, 64)
 	channelSlug := c.Query(config.Params.ChannelSlug)
-	durationFrom, _ := strconv.ParseInt(c.Query(config.Params.DurationFrom, "0"), 10, 64)
-	durationTo, _ := strconv.ParseInt(c.Query(config.Params.DurationTo, "0"), 10, 64)
+	durationFrom, _ := strconv.ParseInt(c.Query(config.Params.DurationGte, "0"), 10, 64)
+	durationTo, _ := strconv.ParseInt(c.Query(config.Params.DurationLt, "0"), 10, 64)
 	customContext := generateCustomContext(c, "long")
 	cacheKey := "long:" + helpers.Md5Hash(
 		fmt.Sprintf("%s:%d:%s:%d:%d:%s:%d:%d:%d:%s",

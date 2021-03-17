@@ -1,26 +1,24 @@
 package site
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"github.com/flosch/pongo2/v4"
 	"html/template"
 	"log"
+	"net/http"
 	"net/url"
+	"regexp"
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/types"
 	"strconv"
 	"strings"
 )
 
-var linksTokens = []string{
-	"top_categories", "top_content", "autocomplete", "search", "popular", "new",
-	"long", "model", "models", "category", "channel", "content", "out",
-}
+var httpRegex = regexp.MustCompile(`(?i)^(https?://|//)`)
 
 type tagLinkNode struct {
-	what string
+	what pongo2.IEvaluator
 	args map[string]pongo2.IEvaluator
 }
 
@@ -57,7 +55,13 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 	link := ""
 	slug := ""
 	id := ""
-	switch node.what {
+	w, err := node.what.Evaluate(linkContext)
+	if err != nil {
+		return err
+	}
+	isCustomRoute := false
+	what := w.String()
+	switch what {
 	case "top_categories":
 		link = config.Routes.TopCategories
 	case "top_content":
@@ -86,15 +90,39 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 			}
 			delete(copyArgs, "query")
 		}
-		link = strings.ReplaceAll(config.Routes.Search, ":query", url.PathEscape(searchQuery))
+		link = strings.ReplaceAll(config.Routes.Search, ":query",
+			strings.ReplaceAll(url.PathEscape(searchQuery), "%20", "+"))
+	case "fake_player":
+		link = config.Routes.FakePlayer
+		if s, ok := node.args["slug"]; ok {
+			ss, err := s.Evaluate(linkContext)
+			if err != nil {
+				return err
+			}
+			link = strings.ReplaceAll(link, ":slug", ss.String())
+			delete(copyArgs, "slug")
+		}
+		if s, ok := node.args["id"]; ok {
+			ss, err := s.Evaluate(linkContext)
+			if err != nil {
+				return err
+			}
+			link = strings.ReplaceAll(link, ":id", ss.String())
+			delete(copyArgs, "id")
+		}
+	case "current":
+		var ok bool
+		if link, ok = linkContext.Public["route"].(string); !ok {
+			log.Println("no route set")
+		}
 	case "model", "category", "channel", "content":
-		if node.what == "model" {
+		if what == "model" {
 			link = config.Routes.Model
-		} else if node.what == "category" {
+		} else if what == "category" {
 			link = config.Routes.Category
-		} else if node.what == "channel" {
+		} else if what == "channel" {
 			link = config.Routes.Channel
-		} else if node.what == "content" {
+		} else if what == "content" {
 			link = config.Routes.ContentItem
 		}
 		if s, ok := node.args["slug"]; ok {
@@ -121,21 +149,50 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 			}
 			delete(copyArgs, "id")
 		}
-		if node.what == "content" {
+		if what == "content" {
+			category := ""
 			if s, ok := node.args["category"]; ok {
 				se, err := s.Evaluate(linkContext)
 				if err != nil {
 					return err
 				}
-				category := se.String()
+				category = se.String()
 				delete(copyArgs, "category")
-				link = strings.ReplaceAll(link, ":category", category)
 			}
+			if s, ok := linkContext.Public["category"].(*types.CategoryResult); category == "" && ok {
+				category = s.Slug
+			}
+			if s, ok := node.args["categories"]; ok {
+				se, err := s.Evaluate(linkContext)
+				if err != nil {
+					return err
+				}
+				if ss, ok := se.Interface().(types.TaxonomyResults); ok {
+					if len(ss) > 0 {
+						category = []types.TaxonomyResult(ss)[0].Slug
+					}
+					delete(copyArgs, "categories")
+				}
+			}
+			if category == "" {
+				category = "porn"
+			}
+			link = strings.ReplaceAll(link, ":category", category)
 		}
 		link = strings.ReplaceAll(link, ":slug", url.PathEscape(slug))
 		link = strings.ReplaceAll(link, ":id", url.PathEscape(id))
+	default:
+		if r, ok := config.Routes.Custom[what]; ok {
+			link = r
+		} else {
+			link = what
+		}
+		isCustomRoute = true
+		if config.General.MultiLanguage  {
+			link = strings.ReplaceAll(link, ":lang", lang)
+		}
 	}
-	if config.General.MultiLanguage {
+	if config.General.MultiLanguage && !httpRegex.MatchString(link) && !isCustomRoute {
 		link = strings.ReplaceAll(config.Routes.LanguageTemplate, ":route", link)
 		link = strings.ReplaceAll(link, ":lang", lang)
 	}
@@ -166,10 +223,10 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 			if pageTemplate, ok = ctx.Public["page_template"].(string); !ok {
 				log.Println("no page_template var found")
 			}
-			if node.what == "category" && pageTemplate == "top-categories" && pageNum == 1 {
+			if what == "category" && pageTemplate == "top-categories" && pageNum == 1 {
 				isOut = true
 			}
-			if node.what == "content" {
+			if what == "content" {
 				if pageTemplate == "top-content" && pageNum == 1 {
 					isOut = true
 				} else if pageTemplate == "category" && pageNum == 1 {
@@ -177,7 +234,7 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 				}
 			}
 		}
-		if out.IsBool() && out.Bool() && (node.what == "content" || node.what == "category") {
+		if out.IsBool() && out.Bool() && (what == "content" || what == "category") {
 			isOut = true
 		}
 		delete(copyArgs, "out")
@@ -194,14 +251,10 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 	if isOut {
 		// Link to out
 		outLink := config.Routes.Out
-		if config.General.MultiLanguage {
-			outLink = strings.ReplaceAll(config.Routes.LanguageTemplate, ":route", outLink)
-			outLink = strings.ReplaceAll(outLink, ":lang", lang)
-		}
 		outlinkParams := url.Values{}
 		outlinkParams.Set(config.Params.CountRedirect, helpers.EncryptBase64(link))
 		templateName := linkContext.Public["page_template"].(string)
-		if node.what == "category" {
+		if what == "category" {
 			outlinkParams.Set(config.Params.CountType, config.Params.CountTypeTopCategories)
 			outlinkParams.Set(config.Params.CategoryId, id)
 		} else if templateName == "top-content" {
@@ -215,16 +268,8 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 		}
 		outLink = outLink + "?" + outlinkParams.Encode()
 		if isTrade {
-			var ready bytes.Buffer
-			err := config.General.TradeUrlTemplateReady.Execute(
-				&ready,
-				map[string]string{"url": outLink, "encoded_url": url.QueryEscape(outLink)},
-			)
-			if err != nil {
-				log.Println(err)
-				return &pongo2.Error{OrigError: err, Sender: "tag:link"}
-			}
-			outLink = ready.String()
+			outLink = strings.ReplaceAll(outLink, "{{encoded_url}}",
+				strings.ReplaceAll(config.General.TradeUrlTemplate, "{{url}}", outLink))
 		}
 		_, err := writer.WriteString(template.HTMLEscapeString(outLink))
 		if err != nil {
@@ -232,8 +277,17 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 		}
 		return nil
 	}
-	hasParams := false
 	params := url.Values{}
+	if what == "current" {
+		// Setting current uri params
+		if uriParams, ok := linkContext.Public["params"].(map[string]string); ok {
+			for paramKey, paramValue := range uriParams {
+				link = strings.ReplaceAll(link, ":"+paramKey, paramValue)
+			}
+		}
+		// Copying current query params
+		params = url.Values(http.Header(linkContext.Public["canonical_query"].(url.Values)).Clone())
+	}
 	for key, v := range copyArgs {
 		vv, err := v.Evaluate(linkContext)
 		if err != nil {
@@ -256,10 +310,10 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 			key = config.Params.ChannelSlug
 		case "channel_id":
 			key = config.Params.ChannelId
-		case "duration_from":
-			key = config.Params.DurationFrom
-		case "duration_to":
-			key = config.Params.DurationTo
+		case "duration_gte":
+			key = config.Params.DurationGte
+		case "duration_lt":
+			key = config.Params.DurationLt
 		case "search_query":
 			key = config.Params.SearchQuery
 		case "sort_by":
@@ -287,12 +341,14 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 			// Parameter is string and key is sort_by, so we can replace some param values with user defined
 			if key == config.Params.SortBy {
 				switch s {
-				case "sort_by_views":
+				case "views":
 					s = config.Params.SortByViews
-				case "sort_by_duration":
+				case "duration":
 					s = config.Params.SortByDuration
-				case "sort_by_date":
+				case "dated":
 					s = config.Params.SortByDate
+				case "rand":
+					s = config.Params.SortByRand
 				}
 			}
 			if key == config.Params.CountType && link == config.Routes.Out {
@@ -305,36 +361,28 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 					s = config.Params.CountTypeTopContent
 				}
 			}
-			if s != "" {
-				params.Add(key, s)
-				hasParams = true
+			if s == "" {
+				params.Del(key)
+			} else {
+				params.Set(key, s)
 			}
 		} else if !vv.IsNil() {
 			val := fmt.Sprintf("%v", vv.Interface())
 			if val != "" {
-				params.Add(key, val)
-				hasParams = true
+				params.Set(key, val)
 			}
 		}
 	}
-	if hasParams {
+	if len(params) > 0 {
 		link = link + "?" + params.Encode()
 	}
 	if isTrade {
-		var ready bytes.Buffer
-		err := config.General.TradeUrlTemplateReady.Execute(
-			&ready,
-			map[string]string{"url": link, "encoded_url": url.QueryEscape(link)},
-		)
-		if err != nil {
-			log.Println(err)
-			return &pongo2.Error{OrigError: err, Sender: "tag:link"}
-		}
-		link = ready.String()
+		link = strings.ReplaceAll(link, "{{encoded_url}}",
+			strings.ReplaceAll(config.General.TradeUrlTemplate, "{{url}}", link))
 	}
-	_, err := writer.WriteString(template.HTMLEscapeString(link))
-	if err != nil {
-		return &pongo2.Error{Sender: "tag:link", OrigError: err}
+	_, err1 := writer.WriteString(template.HTMLEscapeString(link))
+	if err1 != nil {
+		return &pongo2.Error{Sender: "tag:link", OrigError: err1}
 	}
 	return nil
 }
@@ -343,21 +391,11 @@ func pongo2Link(doc *pongo2.Parser, _ *pongo2.Token, arguments *pongo2.Parser) (
 	tagLink := &tagLinkNode{
 		args: make(map[string]pongo2.IEvaluator),
 	}
-	whatToken := arguments.MatchType(pongo2.TokenString)
-	if whatToken == nil {
-		return nil, arguments.Error("Expected string - one of: top_categories, top_content, autocomplete, search, popular, new, long, model, models, category, channel, content, out", nil)
+	var err *pongo2.Error
+	tagLink.what, err = arguments.ParseExpression()
+	if err != nil {
+		return nil, err
 	}
-	whatTokenOk := false
-	for _, l := range linksTokens {
-		if l == whatToken.Val {
-			whatTokenOk = true
-			break
-		}
-	}
-	if !whatTokenOk {
-		return nil, arguments.Error("Expected string - one of: top_categories, top_content, autocomplete, search, popular, new, long, model, models, category, channel, content, out", nil)
-	}
-	tagLink.what = whatToken.Val
 	for {
 		commaToken := arguments.MatchType(pongo2.TokenSymbol)
 		if commaToken == nil {

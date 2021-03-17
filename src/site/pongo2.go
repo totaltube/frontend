@@ -7,6 +7,7 @@ import (
 	"log"
 	"math"
 	"sersh.com/totaltube/frontend/types"
+	"strconv"
 )
 
 func InitPongo2() {
@@ -178,6 +179,34 @@ func InitPongo2() {
 		log.Fatalln(err)
 	}
 
+	err = pongo2.RegisterFilter("boolean", func(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err *pongo2.Error) {
+		var res = false
+		if in.IsBool() {
+			res = in.Bool()
+		} else if in.IsString() {
+			res, _ = strconv.ParseBool(in.String())
+		} else if in.IsNumber() {
+			res = in.Integer() != 0
+		} else if in.CanSlice() {
+			res = in.Len() > 0
+		}
+		if res {
+			out = pongo2.AsValue("true")
+		} else {
+			out = pongo2.AsValue("false")
+		}
+		return
+	})
+	if err != nil {
+		log.Fatalln(err)
+	}
+	err = pongo2.RegisterFilter("string", func(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err *pongo2.Error) {
+		out = pongo2.AsValue(fmt.Sprintf("%v", in.Interface()))
+		return
+	})
+	if err != nil {
+		log.Fatalln(err)
+	}
 	err = pongo2.RegisterTag("dynamic", pongo2Dynamic)
 	if err != nil {
 		log.Fatalln(err)
@@ -208,6 +237,18 @@ func InitPongo2() {
 		log.Fatalln(err)
 	}
 	err = pongo2.RegisterTag("sort", pongo2Sort)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	err = pongo2.ReplaceTag("set", pongo2Set)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	err = pongo2.RegisterTag("repeat", pongo2Repeat)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	err = pongo2.RegisterTag("dilute", pongo2Dilute)
 	if err != nil {
 		log.Fatalln(err)
 	}

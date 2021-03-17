@@ -3,6 +3,7 @@ package internal
 import (
 	"github.com/BurntSushi/toml"
 	"log"
+	"runtime"
 	"sersh.com/totaltube/frontend/types"
 )
 
@@ -23,11 +24,16 @@ type (
 		ApiSecret      string         `toml:"api_secret"`
 		ApiTimeout     types.Duration `toml:"api_timeout"`
 		LangCookie     string         `toml:"lang_cookie"`
+		Development    bool
 	}
 	Frontend struct {
-		SitesPath   string `toml:"sites_path"`
-		DefaultSite string `toml:"default_site"`
-		SecretKey   string `toml:"secret_key"`
+		SitesPath        string   `toml:"sites_path"`
+		DefaultSite      string   `toml:"default_site"`
+		SecretKey        string   `toml:"secret_key"`
+		CaptchaKey       string   `toml:"captcha_key"`
+		CaptchaSecret    string   `toml:"captcha_secret"`
+		MaxDmcaMinute    int64    `toml:"max_dmca_minute"`
+		CaptchaWhiteList []string `toml:"captcha_whitelist"`
 	}
 	Database struct {
 		Path string `toml:"path"`
@@ -35,7 +41,15 @@ type (
 )
 
 func InitConfig(configPath string) {
-	Config = &ConfigT{General: General{Nginx: true}}
+	Config = &ConfigT{
+		General: General{
+			Nginx:       true,
+			Development: runtime.GOOS == "windows",
+		},
+		Frontend: Frontend{
+			MaxDmcaMinute: 5,
+		},
+	}
 	if _, err := toml.DecodeFile(configPath, Config); err != nil {
 		log.Fatalln(configPath, ":", err)
 	}

@@ -1,7 +1,5 @@
 package site
 
-import "text/template"
-
 type (
 	Config struct {
 		Routes     ConfigRoutes
@@ -24,7 +22,9 @@ type (
 		Category         string
 		Channel          string
 		ContentItem      string `toml:"content_item"`
+		FakePlayer       string `toml:"fake_player"`
 		Out              string
+		Dmca             string
 		Maintenance      string
 		LanguageTemplate string            `toml:"language_template"`
 		Custom           map[string]string `toml:"custom"`
@@ -38,8 +38,8 @@ type (
 		ModelId                string `toml:"model_id"`
 		ChannelSlug            string `toml:"channel_slug"`
 		ChannelId              string `toml:"channel_id"`
-		DurationFrom           string `toml:"duration_from"`
-		DurationTo             string `toml:"duration_to"`
+		DurationGte            string `toml:"duration_gte"`
+		DurationLt             string `toml:"duration_lt"`
 		SearchQuery            string `toml:"search_query"`
 		SearchNatural          string `toml:"search_natural"`
 		SortBy                 string `toml:"sort_by"`
@@ -70,15 +70,14 @@ type (
 		Minify      bool     `toml:"minify"`
 	}
 	ConfigGeneral struct {
-		TradeUrlTemplate           string             `toml:"trade_url_template"`
-		TradeUrlTemplateReady      *template.Template `toml:"-" json:"-"`
-		ModelsPerPage              int                `toml:"models_per_page"`
-		ContentRelatedAmount       int                `toml:"content_related_amount"`
-		FakeVideoPage              bool               `toml:"fake_video_page"`
-		MultiLanguage              bool               `toml:"multi_language"`
-		MinifyHtml                 bool               `toml:"minify_html" json:"-"`
-		PaginationMaxRenderedLinks int                `toml:"pagination_max_rendered_links"`
-		Debug                      bool               `toml:"debug"`
+		TradeUrlTemplate           string `toml:"trade_url_template"`
+		ModelsPerPage              int    `toml:"models_per_page"`
+		ContentRelatedAmount       int    `toml:"content_related_amount"`
+		FakeVideoPage              bool   `toml:"fake_video_page"`
+		MultiLanguage              bool   `toml:"multi_language"`
+		MinifyHtml                 bool   `toml:"minify_html" json:"-"`
+		PaginationMaxRenderedLinks int    `toml:"pagination_max_rendered_links"`
+		Debug                      bool   `toml:"debug"`
 	}
 )
 
@@ -97,6 +96,8 @@ func NewConfig() *Config {
 			Category:         "/category/:slug",
 			Channel:          "/channel/:slug",
 			ContentItem:      "/content/:category/:slug",
+			FakePlayer:       "/player/:data/:hash",
+			Dmca:             "/dmca",
 			Out:              "/c",
 			Maintenance:      "/maintenance",
 			LanguageTemplate: "/:lang:route",
@@ -121,13 +122,13 @@ func NewConfig() *Config {
 			ContentId:              "id",
 			ContentSlug:            "slug",
 			CategorySlug:           "category",
-			CategoryId:             "category_id",
+			CategoryId:             "cid",
 			ModelSlug:              "model",
 			ModelId:                "model_id",
 			ChannelSlug:            "channel",
 			ChannelId:              "channel_id",
-			DurationFrom:           "duration_from",
-			DurationTo:             "duration_to",
+			DurationGte:            "duration_from",
+			DurationLt:             "duration_to",
 			SearchQuery:            "q",
 			SearchNatural:          "natural",
 			SortBy:                 "sort",
