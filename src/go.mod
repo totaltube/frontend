@@ -3,6 +3,7 @@ module sersh.com/totaltube/frontend
 go 1.15
 
 require (
+	github.com/AlecAivazis/survey/v2 v2.2.9
 	github.com/BurntSushi/toml v0.3.1
 	github.com/alecthomas/kong v0.2.11
 	github.com/dgraph-io/badger/v3 v3.2011.1

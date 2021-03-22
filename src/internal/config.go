@@ -17,7 +17,7 @@ type (
 	}
 	General struct {
 		Nginx          bool `toml:"nginx"`
-		Port           uint
+		Port           uint16
 		RealIpHeader   string         `toml:"real_ip_header"`
 		UseIpV6Network bool           `toml:"use_ipv6_network"`
 		ApiUrl         string         `toml:"api_url"`

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/alecthomas/kong"
 	"github.com/posener/complete"
 	"github.com/willabides/kongplete"
@@ -11,11 +12,6 @@ import (
 )
 
 var version = "dev"
-
-var CLI struct {
-	Config string `name:"config" short:"c" type:"path" help:"location of totaltube frontend config.toml" env:"TTF_CONFIG_PATH" default:"/etc/totaltube-frontend/config.toml" predictor:"toml"`
-	RebuildSass bool ``
-}
 
 func main() {
 	if runtime.GOOS == "windows" {
@@ -32,8 +28,15 @@ func main() {
 	kongplete.Complete(parser,
 		kongplete.WithPredictor("toml", complete.PredictFiles("*.toml")),
 	)
-	_, err := parser.Parse(os.Args[1:])
+	ctx, err := parser.Parse(os.Args[1:])
 	parser.FatalIfErrorf(err)
-	internal.InitConfig(CLI.Config)
-	startServer()
+	switch ctx.Command() {
+	case "start":
+		internal.InitConfig(CLI.Config)
+		startServer()
+	case "install":
+		Install()
+	default:
+		fmt.Println("unknown command")
+	}
 }
