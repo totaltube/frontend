@@ -6,9 +6,9 @@ import (
 	"sersh.com/totaltube/frontend/types"
 )
 
-func Autocomplete(query, lang string) (results *types.AutocompleteResults, err error) {
+func Autocomplete(siteDomain, query, lang string) (results *types.AutocompleteResults, err error) {
 	var response json.RawMessage
-	response, err = apiRequest(methodGet, uriAutocomplete, url.Values{
+	response, err = apiRequest(siteDomain, methodGet, uriAutocomplete, url.Values{
 		"lang":  []string{lang},
 		"query": []string{query},
 	})

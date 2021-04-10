@@ -17,6 +17,7 @@ import (
 var botDetector = botdetector.New()
 
 type countInfo struct {
+	hostName     string
 	config       *site.Config
 	categoryId   string
 	contentId    string
@@ -29,6 +30,7 @@ var countChannel = make(chan countInfo, 100)
 
 func Out(c *fiber.Ctx) error {
 	config := c.Locals("config").(*site.Config)
+	hostName := c.Locals("hostName").(string)
 	ip := c.IP()
 	redirectUrl := c.Query(config.Params.CountRedirect)
 	encryptedRedirectUrl := c.Query("e" + config.Params.CountRedirect)
@@ -56,6 +58,7 @@ func Out(c *fiber.Ctx) error {
 	categoryIdParam := c.Query(config.Params.CategoryId)
 	contentIdParam := c.Query(config.Params.ContentId)
 	info := countInfo{
+		hostName:     hostName,
 		config:       config,
 		categoryId:   categoryIdParam,
 		contentId:    contentIdParam,
@@ -67,7 +70,6 @@ func Out(c *fiber.Ctx) error {
 	countChannel <- info
 	return returnFunc()
 }
-
 func doCount() {
 	// function to count in separate goroutine
 	for {
@@ -78,10 +80,8 @@ func doCount() {
 				}
 			}()
 			info := <-countChannel
-			db.SessMutex.Lock(info.ip)
-			defer db.SessMutex.Unlock(info.ip)
-			sess := db.GetSession(info.ip)
-			defer db.SaveSession(info.ip, sess)
+			sess := db.GetSession(info.ip, true)
+			defer db.SaveSession(info.ip, sess, true)
 			var countId int64
 			switch info.countType {
 			case info.config.Params.CountTypeTopCategories:
@@ -95,7 +95,7 @@ func doCount() {
 				sess.LastViewType = info.countType
 				sess.LastViewId = countId
 				// Let's count view of this content
-				err := api.CountView(types.CountViewParams{
+				err := api.CountView(info.hostName, types.CountViewParams{
 					Type:    "content",
 					Id:      countId,
 					Ip:      info.ip,
@@ -117,7 +117,7 @@ func doCount() {
 				}
 				sess.LastClickType = info.countType
 				sess.LastClickId = countId
-				err := api.TopCategoriesClick(types.CountClickParams{
+				err := api.TopCategoriesClick(info.hostName, types.CountClickParams{
 					Ip: info.ip,
 					Id: countId,
 				})
@@ -131,7 +131,7 @@ func doCount() {
 				}
 				sess.LastClickType = info.countType
 				sess.LastClickId = countId
-				err := api.TopContentClick(types.CountClickParams{
+				err := api.TopContentClick(info.hostName, types.CountClickParams{
 					Ip: info.ip,
 					Id: countId,
 				})
@@ -146,7 +146,7 @@ func doCount() {
 				sess.LastClickType = info.countType
 				sess.LastClickId = countId
 				categoryId, _ := strconv.ParseInt(info.categoryId, 10, 32)
-				err := api.CategoryClick(categoryId, types.CountClickParams{
+				err := api.CategoryClick(info.hostName, categoryId, types.CountClickParams{
 					Ip: info.ip,
 					Id: countId,
 				})

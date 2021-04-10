@@ -79,8 +79,9 @@ func SaveDeferredTranslation(from, to, text string) {
 		log.Println(err)
 	}
 }
+
 type toTranslateT struct {
-	key []byte
+	key       []byte
 	translate types.TranslateParams
 }
 
@@ -117,17 +118,17 @@ func doTranslations() {
 					return err
 				}
 				toTranslate = append(toTranslate, toTranslateT{
-					key:       k,
+					key: k,
 					translate: types.TranslateParams{
 						From: doc.From,
-						To: doc.To,
+						To:   doc.To,
 						Text: doc.Text,
 					},
 				})
 			}
 		}
 		for _, t := range toTranslate {
-			translation, err := api.Translate(t.translate)
+			translation, err := api.Translate("", t.translate)
 			if err != nil {
 				log.Printf("Error translating '%s' from %s to %s: %s", t.translate.Text, t.translate.From, t.translate.To, err.Error())
 			} else {

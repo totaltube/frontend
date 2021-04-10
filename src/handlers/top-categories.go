@@ -13,6 +13,7 @@ import (
 func TopCategories(c *fiber.Ctx) error {
 	path := c.Locals("path").(string)
 	config := c.Locals("config").(*site.Config)
+	hostName := c.Locals("hostName").(string)
 	nocache, _ := strconv.ParseBool(c.Query(config.Params.Nocache, "false"))
 	langId := c.Locals("lang").(string)
 	page, _ := strconv.ParseInt(c.Params("page", c.Query(config.Params.Page), "1"), 10, 16)
@@ -27,7 +28,7 @@ func TopCategories(c *fiber.Ctx) error {
 	}
 	parsed, err := site.ParseTemplate("top-categories", path, config, customContext, nocache, cacheKey, cacheTtl,
 		func(ctx pongo2.Context) (pongo2.Context, error) {
-			results, err := api.TopCategories(langId, page)
+			results, err := api.TopCategories(hostName, langId, page)
 			if err != nil {
 				return ctx, err
 			}

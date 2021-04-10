@@ -7,7 +7,7 @@ import (
 )
 
 func initLanguages() {
-	languages, err := api.Languages()
+	languages, err := api.Languages("")
 	if err != nil {
 		log.Fatalln("Can't get languages from api:", err)
 	}

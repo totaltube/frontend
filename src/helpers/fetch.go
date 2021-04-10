@@ -177,7 +177,7 @@ func (f *fetchRequest) Json() (response map[string]interface{}) {
 	}
 	err = json.Unmarshal(bt, &response)
 	if err != nil {
-		log.Println(err)
+		log.Println(err, string(bt))
 		return nil
 	}
 	return

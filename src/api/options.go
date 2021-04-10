@@ -6,9 +6,9 @@ import (
 	"sersh.com/totaltube/frontend/types"
 )
 
-func Options() (results *types.Options, err error) {
+func Options() (siteDomain string, results *types.Options, err error) {
 	var response json.RawMessage
-	response, err = apiRequest(methodGet, uriOptions, url.Values{})
+	response, err = apiRequest(siteDomain, methodGet, uriOptions, url.Values{})
 	if err != nil {
 		return
 	}

@@ -64,8 +64,8 @@ func (node *tagDiluteNode) Execute(ctx *pongo2.ExecutionContext, _ pongo2.Templa
 		return &pongo2.Error{Sender: "tag:dilute", OrigError: errors.New("as not set")}
 	}
 	var result = make([]interface{}, 0, sourceLength+max)
-	var itemsToDilute = make([]interface{}, 0, sourceLength+max-from)
-	var itemsLeft = make([]interface{}, 0, sourceLength-to)
+	var itemsToDilute = make([]interface{}, 0, int(math.Max(float64(sourceLength+max-from), 0)))
+	var itemsLeft = make([]interface{}, 0, int(math.Max(float64(sourceLength-to), 0)))
 	what.Iterate(func(idx, count int, key, value *pongo2.Value) bool {
 		if idx < from {
 			result = append(result, key.Interface())

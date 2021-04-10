@@ -11,9 +11,9 @@ type translateResponse struct {
 	Cached      bool
 }
 
-func Translate(params types.TranslateParams) (translation string, err error) {
+func Translate(siteDomain string, params types.TranslateParams) (translation string, err error) {
 	var response json.RawMessage
-	response, err = apiRequest(methodPost, uriTranslate, params)
+	response, err = apiRequest(siteDomain, methodPost, uriTranslate, params)
 	if err != nil {
 		return
 	}

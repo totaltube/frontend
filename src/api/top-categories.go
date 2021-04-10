@@ -7,9 +7,9 @@ import (
 	"strconv"
 )
 
-func TopCategories(lang string, page int64) (results *types.CategoryResults, err error) {
+func TopCategories(siteDomain, lang string, page int64) (results *types.CategoryResults, err error) {
 	var response json.RawMessage
-	response, err = apiRequest(methodGet, uriTopCategories, url.Values{
+	response, err = apiRequest(siteDomain, methodGet, uriTopCategories, url.Values{
 		"lang": []string{lang},
 		"page": []string{strconv.FormatInt(page, 10)},
 	})

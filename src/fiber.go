@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/BurntSushi/toml"
 	"github.com/gofiber/fiber/v2"
 	recoverMiddleware "github.com/gofiber/fiber/v2/middleware/recover"
 	"log"
@@ -15,9 +14,9 @@ import (
 )
 
 type host struct {
-	fiber  *fiber.App
-	config *site.Config
-	path   string
+	fiber      *fiber.App
+	configPath string
+	path       string
 }
 
 func InitFiber() *fiber.App {
@@ -43,6 +42,7 @@ func InitFiber() *fiber.App {
 				// response already sent
 				return nil
 			}
+			log.Println("error on page", string(c.Request().RequestURI()), ":", err)
 			if c.Accepts("text/html") != "" {
 				return handlers.Generate500(c, err.Error())
 				//return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
@@ -67,26 +67,24 @@ func InitFiber() *fiber.App {
 		if _, err := os.Stat(configPath); err != nil {
 			continue
 		}
+		config := site.GetConfigAndWatch(configPath)
 		h := host{
-			config: site.NewConfig(),
-			path:   m,
+			configPath: configPath,
+			path:       m,
 		}
 		hostName := filepath.Base(m)
-		if _, err := toml.DecodeFile(configPath, h.config); err != nil {
-			log.Fatalln("error reading site config at", configPath, err)
-		}
 		jsPath := filepath.Join(m, "js")
 		if _, err := os.Stat(jsPath); err == nil {
-			site.WatchJS(jsPath, h.config) // Следить за директорией и пересоздавать js
+			site.WatchJS(jsPath, configPath) // Следить за директорией и пересоздавать js
 		}
 		scssPath := filepath.Join(m, "scss")
 		if _, err := os.Stat(scssPath); err == nil {
-			site.WatchScss(scssPath, h.config) // Следить за scss и пересоздавать css
+			site.WatchScss(scssPath, configPath) // Следить за scss и пересоздавать css
 		}
 		h.fiber = fiber.New(fiberConfig)
 		h.fiber.Use(recoverMiddleware.New())
 		h.fiber.Use(func(c *fiber.Ctx) error {
-			c.Locals("config", h.config)
+			c.Locals("config", site.GetConfig(h.configPath))
 			c.Locals("path", h.path)
 			c.Locals("hostName", hostName)
 			c.Locals("lang", "en")
@@ -98,112 +96,112 @@ func InitFiber() *fiber.App {
 			Browse:    false,
 			MaxAge:    3600,
 		})
-		if h.config.Routes.Autocomplete != "" {
-			if h.config.General.MultiLanguage {
-				handlers.LangHandlers(h.fiber, h.config.Routes.Autocomplete, h.config.Routes.LanguageTemplate, handlers.Autocomplete)
+		if config.Routes.Autocomplete != "" {
+			if config.General.MultiLanguage {
+				handlers.LangHandlers(h.fiber, config.Routes.Autocomplete, config.Routes.LanguageTemplate, handlers.Autocomplete)
 			} else {
-				h.fiber.All(h.config.Routes.Autocomplete, handlers.Autocomplete)
+				h.fiber.All(config.Routes.Autocomplete, handlers.Autocomplete)
 			}
 		}
-		if h.config.Routes.Search != "" {
-			if h.config.General.MultiLanguage {
-				handlers.LangHandlers(h.fiber, h.config.Routes.Search, h.config.Routes.LanguageTemplate, handlers.Search)
+		if config.Routes.Search != "" {
+			if config.General.MultiLanguage {
+				handlers.LangHandlers(h.fiber, config.Routes.Search, config.Routes.LanguageTemplate, handlers.Search)
 			} else {
-				h.fiber.All(h.config.Routes.Search, handlers.Search)
+				h.fiber.All(config.Routes.Search, handlers.Search)
 			}
 		}
-		if h.config.Routes.Category != "" {
-			if h.config.General.MultiLanguage {
-				handlers.LangHandlers(h.fiber, h.config.Routes.Category, h.config.Routes.LanguageTemplate, handlers.Category)
+		if config.Routes.Category != "" {
+			if config.General.MultiLanguage {
+				handlers.LangHandlers(h.fiber, config.Routes.Category, config.Routes.LanguageTemplate, handlers.Category)
 			} else {
-				h.fiber.All(h.config.Routes.Category, handlers.Category)
+				h.fiber.All(config.Routes.Category, handlers.Category)
 			}
 		}
-		if h.config.Routes.TopCategories != "" {
-			if h.config.General.MultiLanguage {
-				handlers.LangHandlers(h.fiber, h.config.Routes.TopCategories, h.config.Routes.LanguageTemplate, handlers.TopCategories)
+		if config.Routes.TopCategories != "" {
+			if config.General.MultiLanguage {
+				handlers.LangHandlers(h.fiber, config.Routes.TopCategories, config.Routes.LanguageTemplate, handlers.TopCategories)
 			} else {
-				h.fiber.All(h.config.Routes.TopCategories, handlers.TopCategories)
+				h.fiber.All(config.Routes.TopCategories, handlers.TopCategories)
 			}
 		}
-		if h.config.Routes.TopContent != "" {
-			if h.config.General.MultiLanguage {
-				handlers.LangHandlers(h.fiber, h.config.Routes.TopContent, h.config.Routes.LanguageTemplate, handlers.TopContent)
+		if config.Routes.TopContent != "" {
+			if config.General.MultiLanguage {
+				handlers.LangHandlers(h.fiber, config.Routes.TopContent, config.Routes.LanguageTemplate, handlers.TopContent)
 			} else {
-				h.fiber.All(h.config.Routes.TopContent, handlers.TopContent)
+				h.fiber.All(config.Routes.TopContent, handlers.TopContent)
 			}
 		}
-		if h.config.Routes.Model != "" {
-			if h.config.General.MultiLanguage {
-				handlers.LangHandlers(h.fiber, h.config.Routes.Model, h.config.Routes.LanguageTemplate, handlers.Model)
+		if config.Routes.Model != "" {
+			if config.General.MultiLanguage {
+				handlers.LangHandlers(h.fiber, config.Routes.Model, config.Routes.LanguageTemplate, handlers.Model)
 			} else {
-				h.fiber.All(h.config.Routes.Model, handlers.Model)
+				h.fiber.All(config.Routes.Model, handlers.Model)
 			}
 		}
-		if h.config.Routes.Channel != "" {
-			if h.config.General.MultiLanguage {
-				handlers.LangHandlers(h.fiber, h.config.Routes.Channel, h.config.Routes.LanguageTemplate, handlers.Channel)
+		if config.Routes.Channel != "" {
+			if config.General.MultiLanguage {
+				handlers.LangHandlers(h.fiber, config.Routes.Channel, config.Routes.LanguageTemplate, handlers.Channel)
 			} else {
-				h.fiber.All(h.config.Routes.Channel, handlers.Channel)
+				h.fiber.All(config.Routes.Channel, handlers.Channel)
 			}
 		}
-		if h.config.Routes.ContentItem != "" {
-			if h.config.General.MultiLanguage {
-				handlers.LangHandlers(h.fiber, h.config.Routes.ContentItem, h.config.Routes.LanguageTemplate, handlers.ContentItem)
+		if config.Routes.ContentItem != "" {
+			if config.General.MultiLanguage {
+				handlers.LangHandlers(h.fiber, config.Routes.ContentItem, config.Routes.LanguageTemplate, handlers.ContentItem)
 			} else {
-				h.fiber.All(h.config.Routes.ContentItem, handlers.ContentItem)
+				h.fiber.All(config.Routes.ContentItem, handlers.ContentItem)
 			}
 		}
-		if h.config.Routes.New != "" {
-			if h.config.General.MultiLanguage {
-				handlers.LangHandlers(h.fiber, h.config.Routes.New, h.config.Routes.LanguageTemplate, handlers.New)
+		if config.Routes.New != "" {
+			if config.General.MultiLanguage {
+				handlers.LangHandlers(h.fiber, config.Routes.New, config.Routes.LanguageTemplate, handlers.New)
 			} else {
-				h.fiber.All(h.config.Routes.New, handlers.New)
+				h.fiber.All(config.Routes.New, handlers.New)
 			}
 		}
-		if h.config.Routes.Long != "" {
-			if h.config.General.MultiLanguage {
-				handlers.LangHandlers(h.fiber, h.config.Routes.Long, h.config.Routes.LanguageTemplate, handlers.Long)
+		if config.Routes.Long != "" {
+			if config.General.MultiLanguage {
+				handlers.LangHandlers(h.fiber, config.Routes.Long, config.Routes.LanguageTemplate, handlers.Long)
 			} else {
-				h.fiber.All(h.config.Routes.Long, handlers.Long)
+				h.fiber.All(config.Routes.Long, handlers.Long)
 			}
 		}
-		if h.config.Routes.Popular != "" {
-			if h.config.General.MultiLanguage {
-				handlers.LangHandlers(h.fiber, h.config.Routes.Popular, h.config.Routes.LanguageTemplate, handlers.Popular)
+		if config.Routes.Popular != "" {
+			if config.General.MultiLanguage {
+				handlers.LangHandlers(h.fiber, config.Routes.Popular, config.Routes.LanguageTemplate, handlers.Popular)
 			} else {
-				h.fiber.All(h.config.Routes.Popular, handlers.Popular)
+				h.fiber.All(config.Routes.Popular, handlers.Popular)
 			}
 		}
-		if h.config.Routes.Models != "" {
-			if h.config.General.MultiLanguage {
-				handlers.LangHandlers(h.fiber, h.config.Routes.Models, h.config.Routes.LanguageTemplate, handlers.Models)
+		if config.Routes.Models != "" {
+			if config.General.MultiLanguage {
+				handlers.LangHandlers(h.fiber, config.Routes.Models, config.Routes.LanguageTemplate, handlers.Models)
 			} else {
-				h.fiber.All(h.config.Routes.Models, handlers.Models)
+				h.fiber.All(config.Routes.Models, handlers.Models)
 			}
 		}
-		if h.config.Routes.Out != "" {
-			h.fiber.All(h.config.Routes.Out, handlers.Out)
+		if config.Routes.Out != "" {
+			h.fiber.All(config.Routes.Out, handlers.Out)
 		}
-		if h.config.Routes.FakePlayer != "" {
-			if h.config.General.MultiLanguage {
-				handlers.LangHandlers(h.fiber, h.config.Routes.FakePlayer, h.config.Routes.LanguageTemplate, handlers.FakePlayer)
+		if config.Routes.FakePlayer != "" {
+			if config.General.MultiLanguage {
+				handlers.LangHandlers(h.fiber, config.Routes.FakePlayer, config.Routes.LanguageTemplate, handlers.FakePlayer)
 			} else {
-				h.fiber.All(h.config.Routes.FakePlayer, handlers.FakePlayer)
+				h.fiber.All(config.Routes.FakePlayer, handlers.FakePlayer)
 			}
 		}
-		if h.config.Routes.Dmca  != "" {
-			if h.config.General.MultiLanguage {
-				handlers.LangHandlers(h.fiber, h.config.Routes.Dmca, h.config.Routes.LanguageTemplate, handlers.Dmca)
+		if config.Routes.Dmca != "" {
+			if config.General.MultiLanguage {
+				handlers.LangHandlers(h.fiber, config.Routes.Dmca, config.Routes.LanguageTemplate, handlers.Dmca)
 			} else {
-				h.fiber.All(h.config.Routes.Dmca, handlers.Dmca)
+				h.fiber.All(config.Routes.Dmca, handlers.Dmca)
 			}
 		}
-		if h.config.Routes.Custom != nil {
-			for templateName, routePath := range h.config.Routes.Custom {
+		if config.Routes.Custom != nil {
+			for templateName, routePath := range config.Routes.Custom {
 				tName := templateName
-				if h.config.General.MultiLanguage && strings.Contains(routePath, ":lang") {
-					handlers.LangHandlers(h.fiber, routePath, h.config.Routes.LanguageTemplate, func(c *fiber.Ctx) error {
+				if config.General.MultiLanguage && strings.Contains(routePath, ":lang") {
+					handlers.LangHandlers(h.fiber, routePath, config.Routes.LanguageTemplate, func(c *fiber.Ctx) error {
 						c.Locals("custom_template_name", tName)
 						return handlers.Custom(c)
 					})

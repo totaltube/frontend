@@ -5,6 +5,7 @@ import (
 	"log"
 	"math/rand"
 	"sersh.com/totaltube/frontend/internal"
+	"strings"
 	"time"
 )
 
@@ -13,12 +14,23 @@ var bdb *badger.DB
 func InitDB() {
 	rand.Seed(time.Now().UnixNano())
 	var err error
-	bdb, err = badger.Open(
-		badger.DefaultOptions(internal.Config.Database.Path).
-			WithDetectConflicts(false).
-			WithSyncWrites(false).
-			WithLoggingLevel(badger.ERROR),
-	)
+	for {
+		bdb, err = badger.Open(
+			badger.DefaultOptions(internal.Config.Database.Path).
+				WithDetectConflicts(false).
+				WithSyncWrites(false).
+				WithLoggingLevel(badger.ERROR),
+		)
+		if err != nil {
+			// Waiting until not closed process will close the database.
+			if strings.Contains(err.Error(), "Cannot acquire directory lock") {
+				log.Println("waiting for database unlocking...")
+				time.Sleep(time.Millisecond*200)
+				continue
+			}
+		}
+		break
+	}
 	if err != nil {
 		log.Fatalln("Badger DB initialization error:", err, "Try to remove files from db directory",
 			internal.Config.Database.Path, "if nothing helps")

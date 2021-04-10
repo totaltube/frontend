@@ -15,6 +15,7 @@ import (
 func TopContent(c *fiber.Ctx) error {
 	path := c.Locals("path").(string)
 	config := c.Locals("config").(*site.Config)
+	hostName := c.Locals("hostName").(string)
 	nocache, _ := strconv.ParseBool(c.Query(config.Params.Nocache, "false"))
 	langId := c.Locals("lang").(string)
 	page, _ := strconv.ParseInt(c.Params("page", c.Query(config.Params.Page), "1"), 10, 16)
@@ -31,7 +32,7 @@ func TopContent(c *fiber.Ctx) error {
 		func(ctx pongo2.Context) (pongo2.Context, error) {
 			var results *types.ContentResults
 			var err error
-			results, err = api.TopContent(langId, page)
+			results, err = api.TopContent(hostName, langId, page)
 			if err != nil {
 				log.Println(err)
 				return ctx, nil

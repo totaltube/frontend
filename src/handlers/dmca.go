@@ -22,6 +22,7 @@ var ErrCaptchaError = errors.New("captcha error")
 func Dmca(c *fiber.Ctx) error {
 	path := c.Locals("path").(string)
 	config := c.Locals("config").(*site.Config)
+	hostName := c.Locals("hostName").(string)
 	nocache, _ := strconv.ParseBool(c.Query(config.Params.Nocache, "false"))
 	langId := c.Locals("lang").(string)
 	customContext := generateCustomContext(c, "dmca")
@@ -29,10 +30,8 @@ func Dmca(c *fiber.Ctx) error {
 	cacheTtl := time.Minute * 15
 	isOk := false
 	var ip = c.IP()
-	db.SessMutex.Lock(ip)
-	defer db.SessMutex.Unlock(ip)
-	session := db.GetSession(ip)
-	defer db.SaveSession(ip, session)
+	session := db.GetSession(ip, true)
+	defer db.SaveSession(ip, session, true)
 	if session.LastDmca.IsZero() || session.LastDmca.Before(time.Now().Add(-time.Minute)) {
 		session.DmcaAmount = 0
 		session.LastDmca = time.Now()
@@ -74,7 +73,7 @@ func Dmca(c *fiber.Ctx) error {
 				return ErrCaptchaError
 			}
 		}
-		err = api.Dmca(params)
+		err = api.Dmca(hostName, params)
 		if err != nil {
 			return err
 		}

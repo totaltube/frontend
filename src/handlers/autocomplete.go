@@ -10,8 +10,9 @@ import (
 func Autocomplete(c *fiber.Ctx) error {
 	config := c.Locals("config").(*site.Config)
 	langId := c.Locals("lang").(string)
+	hostName := c.Locals("hostName").(string)
 	searchQuery := c.Query(config.Params.SearchQuery)
-	results, err := api.Autocomplete(searchQuery, langId)
+	results, err := api.Autocomplete(hostName, searchQuery, langId)
 	if err != nil {
 		log.Println("Error querying autocomplete api:", err)
 		return c.JSON(A{})

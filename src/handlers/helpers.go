@@ -67,7 +67,7 @@ func generateCustomContext(c *fiber.Ctx, templateName string) pongo2.Context {
 		} else if k == config.Params.ContentId {
 			k = "content_id"
 			changedQuery[k] = v
-		} else if k == config.Params.SearchQuery  {
+		} else if k == config.Params.SearchQuery {
 			k = "search_query"
 			changedQuery[k] = v
 		} else if k == config.Params.DurationGte {
@@ -219,6 +219,7 @@ func generateCustomContext(c *fiber.Ctx, templateName string) pongo2.Context {
 	customContext := pongo2.Context{
 		"page_template":   templateName,
 		"lang":            internal.GetLanguage(langId),
+		"ip":              c.IP(),
 		"nocache":         nocache,
 		"languages":       internal.GetLanguages(),
 		"page":            page,

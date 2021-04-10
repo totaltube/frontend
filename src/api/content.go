@@ -44,11 +44,11 @@ type ContentParams struct {
 	DurationGte  int64
 	DurationLt   int64
 	SearchQuery  string
-	IsNatural    bool // true, если поисковый запрос создан самим пользователем, а не выбран в автокомплите
+	IsNatural    bool   // true, если поисковый запрос создан самим пользователем, а не выбран в автокомплите
+	UserAgent    string // UserAgent текущего клиента
 }
 
-func Content(params ContentParams) (results *types.ContentResults, err error) {
-	var response json.RawMessage
+func Content(siteDomain string, params ContentParams) (results *types.ContentResults, rawResponse json.RawMessage, err error) {
 	var data = url.Values{}
 	if params.Ip != nil {
 		data.Add("ip", params.Ip.String())
@@ -101,11 +101,14 @@ func Content(params ContentParams) (results *types.ContentResults, err error) {
 	if params.IsNatural {
 		data.Add("is_natural", strconv.FormatBool(params.IsNatural))
 	}
-	response, err = apiRequest(methodGet, uriContent, data)
+	if params.UserAgent != "" {
+		data.Add("user_agent", params.UserAgent)
+	}
+	rawResponse, err = apiRequest(siteDomain, methodGet, uriContent, data)
 	if err != nil {
 		return
 	}
 	results = new(types.ContentResults)
-	err = json.Unmarshal(response, results)
+	err = json.Unmarshal(rawResponse, results)
 	return
 }

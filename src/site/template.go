@@ -5,7 +5,6 @@ import (
 	"github.com/dop251/goja"
 	"github.com/flosch/pongo2/v4"
 	"github.com/gofiber/fiber/v2"
-	"github.com/neverlee/keymutex"
 	"github.com/pkg/errors"
 	"github.com/rjeczalik/notify"
 	"github.com/segmentio/encoding/json"
@@ -21,7 +20,7 @@ import (
 )
 
 var ErrTemplateNotFound = errors.New("template not found")
-var GojaVMMutex = keymutex.New(151)
+//var GojaVMMutex = keymutex.New(151)
 
 type templates struct {
 	sync.Mutex
@@ -55,7 +54,7 @@ func (ts *templates) get(name string) (*pongo2.Template, error) {
 	return nil, ErrTemplateNotFound
 }
 
-func NewTemplates(path string, config *Config) *templates {
+func NewTemplates(path string) *templates {
 	n := templates{path: path, templates: make(map[string]*pongo2.Template)}
 	n.templateSet = pongo2.NewSet(filepath.Base(path), pongo2.DefaultLoader)
 	n.templateSet.Options.LStripBlocks = true
@@ -74,7 +73,7 @@ func NewTemplates(path string, config *Config) *templates {
 					log.Panicln(err)
 				}
 				defer notify.Stop(c)
-				// ждем сигнала при изменении файлов шаблонов
+				// waiting for signal of file changing
 				info := <-c
 				if internal.Config.General.Development {
 					// In dev mode we invalidate all cache
@@ -106,7 +105,7 @@ func NewTemplates(path string, config *Config) *templates {
 				n.Lock()
 				n.lastChange = time.Now()
 				n.Unlock()
-				// Через 1.5 секунды после последнего изменения инвалидируем весь кэш шаблонов
+				// After 1.5 seconds after last change we invalidate all template cache
 				go func() {
 					time.Sleep(time.Millisecond * 1500)
 					n.Lock()
@@ -127,21 +126,21 @@ type siteTemplatesT struct {
 	siteTemplates map[string]*templates
 }
 
-func (st *siteTemplatesT) get(name, path string, config *Config) (*pongo2.Template, error) {
+func (st *siteTemplatesT) get(name, path string) (*pongo2.Template, error) {
 	st.Lock()
 	if ts, ok := st.siteTemplates[path]; ok {
 		st.Unlock()
 		return ts.get(name)
 	}
-	st.siteTemplates[path] = NewTemplates(path, config)
+	st.siteTemplates[path] = NewTemplates(path)
 	st.Unlock()
 	return st.siteTemplates[path].get(name)
 }
 
 var siteTemplates = siteTemplatesT{siteTemplates: map[string]*templates{}}
 
-func GetTemplate(name, path string, config *Config) (*pongo2.Template, error) {
-	return siteTemplates.get(name, path, config)
+func GetTemplate(name, path string) (*pongo2.Template, error) {
+	return siteTemplates.get(name, path)
 }
 
 func ParseTemplate(name, path string, config *Config, customContext pongo2.Context,
@@ -162,8 +161,10 @@ func ParseTemplate(name, path string, config *Config, customContext pongo2.Conte
 				continue
 			}
 			c[funcName] = func(args ...interface{}) interface{} {
-				GojaVMMutex.Lock(baseName)
-				defer GojaVMMutex.Unlock(baseName)
+				helpers.KeyMutex.Lock(baseName)
+				defer helpers.KeyMutex.Unlock(baseName)
+				//GojaVMMutex.Lock(baseName)
+				//defer GojaVMMutex.Unlock(baseName)
 				VM := getJsVM(baseName)
 				VM.Set("config", config)
 				VM.Set("nocache", nocache)
@@ -208,7 +209,7 @@ func ParseTemplate(name, path string, config *Config, customContext pongo2.Conte
 	c = generateContext(name, path, c)
 	addCustomFunctions(c)
 	var template *pongo2.Template
-	template, err = GetTemplate(name, path, config)
+	template, err = GetTemplate(name, path)
 	if err != nil {
 		return
 	}
@@ -248,8 +249,10 @@ func ParseCustomTemplate(name, path string, config *Config,
 		err = errors.New("source template " + extensionFile + " is empty or not exists")
 		return
 	}
-	GojaVMMutex.Lock(name)
-	defer GojaVMMutex.Unlock(name)
+	helpers.KeyMutex.Lock(name)
+	defer helpers.KeyMutex.Unlock(name)
+	//GojaVMMutex.Lock(name)
+	//defer GojaVMMutex.Unlock(name)
 	VM := getJsVM(name)
 	VM.Set("config", config)
 	VM.Set("nocache", nocache)
@@ -345,7 +348,7 @@ func ParseCustomTemplate(name, path string, config *Config,
 		return
 	}
 	var template *pongo2.Template
-	template, err = GetTemplate("custom-"+name, path, config)
+	template, err = GetTemplate("custom-"+name, path)
 	if err != nil {
 		return
 	}

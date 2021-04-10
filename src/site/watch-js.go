@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func WatchJS(path string, config *Config) {
+func WatchJS(path string, configPath string) {
 	var rebuildTimeout = time.Millisecond * 1500
 	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
 		rebuildTimeout = time.Millisecond*100
@@ -58,7 +58,7 @@ func WatchJS(path string, config *Config) {
 						lastChange = time.Now()
 						mu.Unlock()
 						log.Println(ei.Path(),  "changed. Rebuilding js...")
-						err := RebuildJS(path, config)
+						err := RebuildJS(path, GetConfig(configPath))
 						if err != nil {
 							log.Println(err)
 						}

@@ -17,6 +17,10 @@ func (node *tagAlternatesNode) Execute(ctx *pongo2.ExecutionContext, writer pong
 	}
 	langId := context.Public["lang"].(*types.Language).Id
 	languages := context.Public["languages"].([]types.Language)
+	if pt, ok := context.Public["page_template"].(string); ok && pt == "search" {
+		// For search page no alternates, because it can be in native language
+		return nil
+	}
 	var page int64 = 1
 	if p, ok := context.Public["page"]; ok {
 		page = p.(int64)

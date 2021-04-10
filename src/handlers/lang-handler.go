@@ -35,7 +35,12 @@ func LangHandlers(app *fiber.App, route string, langTemplate string, handler fib
 		app.All(route, func(c *fiber.Ctx) error {
 			langCookie := c.Cookies(internal.Config.General.LangCookie)
 			lang := internal.DetectLanguage(langCookie, c.Get("Accept-Language"))
-			r := strings.ReplaceAll(langTemplate, ":lang", lang.Id)
+			var r string
+			if lang == nil {
+				r = strings.ReplaceAll(langTemplate, ":lang", "en")
+			} else {
+				r = strings.ReplaceAll(langTemplate, ":lang", lang.Id)
+			}
 			r = strings.ReplaceAll(r, ":route", route)
 			return c.Redirect(r)
 		})

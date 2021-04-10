@@ -59,5 +59,9 @@ func DetectLanguage(langCookie, acceptLanguageHeader string) *types.Language {
 	if l, ok := tagsMap[tag.String()]; ok {
 		return l
 	}
-	return nil
+	b, _ := tag.Base()
+	if l, ok := languagesMap[b.String()]; ok {
+		return l
+	}
+	return languagesMap["en"]
 }

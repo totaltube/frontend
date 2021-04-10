@@ -7,6 +7,7 @@ import (
 	"github.com/segmentio/encoding/json"
 	"github.com/stretchr/objx"
 	"log"
+	"net"
 	"net/url"
 	"regexp"
 	"sersh.com/totaltube/frontend/api"
@@ -33,11 +34,14 @@ var headerRegex = regexp.MustCompile(`^\s*([^:]+)\s*:\s*(.*?)\s*$`)
 func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.TemplateWriter) *pongo2.Error {
 	fetchContext := pongo2.NewChildExecutionContext(ctx)
 	var cacheTimeout time.Duration
-	if cacheTimeoutE, err := node.cache.Evaluate(fetchContext); err != nil {
-		return err
-	} else {
-		cacheTimeout = time.Second*time.Duration(cacheTimeoutE.Integer())
+	if node.cache != nil {
+		if cacheTimeoutE, err := node.cache.Evaluate(fetchContext); err != nil {
+			return err
+		} else {
+			cacheTimeout = time.Second * time.Duration(cacheTimeoutE.Integer())
+		}
 	}
+	host, _ := ctx.Public["host"].(string)
 	nocache, _ := ctx.Public["nocache"].(bool)
 	if strings.HasPrefix(node.what, "http://") || strings.HasPrefix(node.what, "https://") {
 		// Fetching information from user address
@@ -108,9 +112,9 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 			}
 		}
 		if cacheTimeout > 0 {
-			cacheKey = "fetch:"+helpers.Md5Hash(fmt.Sprintf("%s|%s|%s", node.what, method, params.Encode()))
+			cacheKey = "fetch:" + helpers.Md5Hash(fmt.Sprintf("%s|%s|%s", node.what, method, params.Encode()))
 		}
-		if cacheTimeout >0 && !nocache {
+		if cacheTimeout > 0 && !nocache {
 			v := db.GetCached(cacheKey)
 			if v != nil {
 				data := objx.MustFromJSON(string(v))
@@ -131,7 +135,7 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 		} else {
 			data := f.Json()
 			if data == nil {
-				return &pongo2.Error{Sender: "tag:fetch", OrigError: errors.New("can't fetch "+node.what)}
+				return &pongo2.Error{Sender: "tag:fetch", OrigError: errors.New("can't fetch " + node.what)}
 			}
 			fetchContext.Private["fetch_response"] = data
 			if cacheTimeout > 0 {
@@ -229,6 +233,142 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 	}
 	var fromCache = false
 	switch node.what {
+	case "content":
+		categorySlug := ""
+		categoryId := int64(0)
+		if s, ok := node.args["category_slug"]; ok {
+			sv, err := s.Evaluate(fetchContext)
+			if err != nil {
+				return err
+			}
+			categorySlug = sv.String()
+		}
+		if s, ok := node.args["category_id"]; ok {
+			sv, err := s.Evaluate(fetchContext)
+			if err != nil {
+				return err
+			}
+			categoryId = int64(sv.Integer())
+		}
+		channelSlug := ""
+		channelId := int64(0)
+		if s, ok := node.args["channel_slug"]; ok {
+			sv, err := s.Evaluate(fetchContext)
+			if err != nil {
+				return err
+			}
+			channelSlug = sv.String()
+		}
+		if s, ok := node.args["channel_id"]; ok {
+			sv, err := s.Evaluate(fetchContext)
+			if err != nil {
+				return err
+			}
+			channelId = int64(sv.Integer())
+		}
+		modelSlug := ""
+		modelId := int64(0)
+		if s, ok := node.args["model_slug"]; ok {
+			sv, err := s.Evaluate(fetchContext)
+			if err != nil {
+				return err
+			}
+			modelSlug = sv.String()
+		}
+		if s, ok := node.args["model_id"]; ok {
+			sv, err := s.Evaluate(fetchContext)
+			if err != nil {
+				return err
+			}
+			modelId = int64(sv.Integer())
+		}
+		timeframe := ""
+		if s, ok := node.args["timeframe"]; ok {
+			sv, err := s.Evaluate(fetchContext)
+			if err != nil {
+				return err
+			}
+			timeframe = sv.String()
+		}
+		tag := ""
+		if s, ok := node.args["tag"]; ok {
+			sv, err := s.Evaluate(fetchContext)
+			if err != nil {
+				return err
+			}
+			tag = sv.String()
+		}
+		durationGte := int64(0)
+		durationLt := int64(0)
+		if s, ok := node.args["duration_gte"]; ok {
+			sv, err := s.Evaluate(fetchContext)
+			if err != nil {
+				return err
+			}
+			durationGte = int64(sv.Integer())
+		}
+		if s, ok := node.args["duration_lt"]; ok {
+			sv, err := s.Evaluate(fetchContext)
+			if err != nil {
+				return err
+			}
+			durationLt = int64(sv.Integer())
+		}
+		if cacheTimeout > 0 {
+			cacheKey = "fetch:" + helpers.Md5Hash(fmt.Sprintf("%s|%d|%d|%v|%s|%s|%v|%d|%s|%d|%s|%d|%s|%s|%s|%d|%d", node.what, amount, page, sort,
+				searchQuery, lang, cacheTimeout, categoryId, categorySlug, channelId, channelSlug,
+				modelId, modelSlug, timeframe, tag, durationGte, durationLt))
+		}
+		if cacheTimeout > 0 && !nocache {
+			cached := db.GetCached(cacheKey)
+			if cached != nil {
+				var results = new(types.ContentResults)
+				if err := json.Unmarshal(cached, results); err != nil {
+					log.Println(err)
+				} else {
+					fetchContext.Private["fetched_content"] = results
+					fromCache = true
+				}
+			}
+		}
+		if !fromCache {
+			userAgent := ""
+			if headers, ok := ctx.Public["headers"].(map[string]string); ok {
+				userAgent, _ = headers["User-Agent"]
+			}
+			ip := "127.0.0.1"
+			ip, _ = ctx.Public["ip"].(string)
+			results, rawResponse, err := api.Content(host, api.ContentParams{
+				Ip:           net.ParseIP(ip),
+				Lang:         lang,
+				Page:         int64(page),
+				Amount:       int64(amount),
+				CategoryId:   categoryId,
+				CategorySlug: categorySlug,
+				ChannelId:    channelId,
+				ChannelSlug:  channelSlug,
+				ModelId:      modelId,
+				ModelSlug:    modelSlug,
+				Sort:         sort,
+				Timeframe:    timeframe,
+				Tag:          tag,
+				DurationGte:  durationGte,
+				DurationLt:   durationLt,
+				SearchQuery:  searchQuery,
+				UserAgent:    userAgent,
+			})
+			if err != nil {
+				log.Println(err)
+				return &pongo2.Error{Sender: "tag:fetch", OrigError: err}
+			}
+			fetchContext.Private["fetched_content"] = results
+			if cacheTimeout > 0 {
+				err = db.PutCached(cacheKey, rawResponse, cacheTimeout)
+				if err != nil {
+					log.Println(err)
+				}
+			}
+		}
 	case "categories":
 		if cacheTimeout > 0 && !nocache {
 			cached := db.GetCached(cacheKey)
@@ -243,7 +383,7 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 			}
 		}
 		if !fromCache {
-			results, rawResponse, err := api.CategoriesList(lang, int64(page), sort, int64(amount))
+			results, rawResponse, err := api.CategoriesList(host, lang, int64(page), sort, int64(amount))
 			if err != nil {
 				log.Println(err)
 				return &pongo2.Error{Sender: "tag:fetch", OrigError: err}
@@ -270,7 +410,7 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 			}
 		}
 		if !fromCache {
-			results, rawResponse, err := api.ModelsList(lang, int64(page), sort, int64(amount), searchQuery)
+			results, rawResponse, err := api.ModelsList(host, lang, int64(page), sort, int64(amount), searchQuery)
 			if err != nil {
 				log.Println(err)
 				return &pongo2.Error{Sender: "tag:fetch", OrigError: err}
@@ -297,7 +437,7 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 			}
 		}
 		if !fromCache {
-			results, rawResponse, err := api.ChannelsList(lang, int64(page), sort, int64(amount))
+			results, rawResponse, err := api.ChannelsList(host, lang, int64(page), sort, int64(amount))
 			if err != nil {
 				log.Println(err)
 				return &pongo2.Error{Sender: "tag:fetch", OrigError: err}
@@ -314,7 +454,7 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 		if cacheTimeout > 0 && !nocache {
 			cached := db.GetCached(cacheKey)
 			if cached != nil {
-				var result struct{
+				var result struct {
 					Items []types.TopSearch `json:"items"`
 				}
 				if err := json.Unmarshal(cached, &result); err != nil {
@@ -330,9 +470,9 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 			var rawResponse []byte
 			var err error
 			if sort == api.SortRand {
-				results, rawResponse, err = api.RandomSearches(lang, int64(amount), int64(minSearches))
+				results, rawResponse, err = api.RandomSearches(host, lang, int64(amount), int64(minSearches))
 			} else {
-				results, rawResponse, err = api.TopSearches(lang, int64(amount))
+				results, rawResponse, err = api.TopSearches(host, lang, int64(amount))
 			}
 			if err != nil {
 				log.Println(err)

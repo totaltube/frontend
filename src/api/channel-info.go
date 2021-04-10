@@ -7,9 +7,9 @@ import (
 	"strconv"
 )
 
-func ChannelInfo(lang string, channelInfo int64, channelSlug string) (result *types.ChannelResult, err error) {
+func ChannelInfo(siteDomain, lang string, channelInfo int64, channelSlug string) (result *types.ChannelResult, err error) {
 	var response json.RawMessage
-	response, err = apiRequest(methodGet, uriChannelInfo, url.Values{
+	response, err = apiRequest(siteDomain, methodGet, uriChannelInfo, url.Values{
 		"id":   []string{strconv.FormatInt(channelInfo, 10)},
 		"slug": []string{channelSlug},
 		"lang": []string{lang},

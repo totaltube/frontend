@@ -16,6 +16,7 @@ import (
 func FakePlayer(c *fiber.Ctx) error {
 	path := c.Locals("path").(string)
 	config := c.Locals("config").(*site.Config)
+	hostName := c.Locals("hostName").(string)
 	nocache, _ := strconv.ParseBool(c.Query(config.Params.Nocache, "false"))
 	langId := c.Locals("lang").(string)
 	slug := c.Params("slug")
@@ -35,7 +36,7 @@ func FakePlayer(c *fiber.Ctx) error {
 			// getting category information from cache or from api
 			var results *types.ContentItemResult
 			var err error
-			results, err = api.ContentItem(langId, slug, id, orfl, int64(relatedAmount))
+			results, err = api.ContentItem(hostName, langId, slug, id, orfl, int64(relatedAmount))
 			if err != nil {
 				if strings.Contains(err.Error(), "not found") {
 					_ = Generate404(c, "content item not found")

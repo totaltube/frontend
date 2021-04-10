@@ -8,9 +8,9 @@ import (
 )
 
 func CategoriesList(
-	lang string, page int64, sort SortBy, amount int64,
+	siteDomain, lang string, page int64, sort SortBy, amount int64,
 ) (results *types.CategoryResults, rawResponse json.RawMessage, err error) {
-	rawResponse, err = apiRequest(methodGet, uriCategoriesList, url.Values{
+	rawResponse, err = apiRequest(siteDomain, methodGet, uriCategoriesList, url.Values{
 		"lang":   []string{lang},
 		"sort":   []string{string(sort)},
 		"amount": []string{strconv.FormatInt(amount, 10)},

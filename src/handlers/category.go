@@ -20,6 +20,7 @@ import (
 func Category(c *fiber.Ctx) error {
 	path := c.Locals("path").(string)
 	config := c.Locals("config").(*site.Config)
+	hostName := c.Locals("hostName").(string)
 	nocache, _ := strconv.ParseBool(c.Query(config.Params.Nocache, "false"))
 	langId := c.Locals("lang").(string)
 	page, _ := strconv.ParseInt(c.Params("page", c.Query(config.Params.Page), "1"), 10, 16)
@@ -78,7 +79,7 @@ func Category(c *fiber.Ctx) error {
 				}
 			} else {
 				var err error
-				categoryInfo, err = api.CategoryInfo(langId, categoryId, categorySlug)
+				categoryInfo, err = api.CategoryInfo(hostName, langId, categoryId, categorySlug)
 				if err != nil {
 					if strings.Contains(err.Error(), "not found") {
 						_ = Generate404(c, "category not found")
@@ -96,7 +97,7 @@ func Category(c *fiber.Ctx) error {
 			var results *types.ContentResults
 			var err error
 			if filtered {
-				results, err = api.Content(api.ContentParams{
+				results, _, err = api.Content(hostName, api.ContentParams{
 					Ip:           net.ParseIP(c.IP()),
 					Lang:         langId,
 					Page:         page,
@@ -110,10 +111,11 @@ func Category(c *fiber.Ctx) error {
 					Timeframe:    sortByViewsTimeframe,
 					DurationGte:  durationFrom,
 					DurationLt:   durationTo,
+					UserAgent:    c.Get("User-Agent"),
 				})
 			} else {
 				ctx["count"] = true
-				results, err = api.Category(langId, categoryId, categorySlug, page)
+				results, err = api.Category(hostName, langId, categoryId, categorySlug, page)
 			}
 			if err != nil {
 				if strings.Contains(err.Error(), "not found") {

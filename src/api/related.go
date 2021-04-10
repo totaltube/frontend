@@ -9,7 +9,7 @@ import (
 )
 
 func Related(
-	lang string, id int64, slug string, message string, Type string, amount int64,
+	siteDomain, lang string, id int64, slug string, message string, Type string, amount int64,
 ) (results []types.RelatedItem, err error) {
 	var response json.RawMessage
 	var data = url.Values{}
@@ -31,7 +31,7 @@ func Related(
 	if amount > 0 {
 		data.Add("amount", strconv.FormatInt(amount, 10))
 	}
-	response, err = apiRequest(methodGet, uriRelated, data)
+	response, err = apiRequest(siteDomain, methodGet, uriRelated, data)
 	if err != nil {
 		log.Println(err)
 		return

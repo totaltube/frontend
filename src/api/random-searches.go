@@ -8,8 +8,8 @@ import (
 	"strconv"
 )
 
-func RandomSearches(lang string, amount int64, minSearches int64) (results []types.TopSearch, response json.RawMessage, err error) {
-	response, err = apiRequest(methodGet, uriRandomSearches, url.Values{
+func RandomSearches(siteDomain, lang string, amount int64, minSearches int64) (results []types.TopSearch, response json.RawMessage, err error) {
+	response, err = apiRequest(siteDomain, methodGet, uriRandomSearches, url.Values{
 		"lang":         []string{lang},
 		"amount":       []string{strconv.FormatInt(amount, 10)},
 		"min_searches": []string{strconv.FormatInt(minSearches, 10)},

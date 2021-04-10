@@ -7,14 +7,15 @@ import (
 	"strconv"
 )
 
-func Category(lang string, categoryId int64, categorySlug string, page int64) (results *types.ContentResults, err error) {
+func Category(siteDomain, lang string, categoryId int64, categorySlug string, page int64) (results *types.ContentResults, err error) {
 	var response json.RawMessage
-	response, err = apiRequest(methodGet, uriCategory, url.Values{
+	data := url.Values{
 		"id":   []string{strconv.FormatInt(categoryId, 10)},
 		"slug": []string{categorySlug},
 		"lang": []string{lang},
 		"page": []string{strconv.FormatInt(page, 10)},
-	})
+	}
+	response, err = apiRequest(siteDomain, methodGet, uriCategory, data)
 	if err != nil {
 		return
 	}

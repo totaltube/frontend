@@ -6,9 +6,9 @@ import (
 	"sersh.com/totaltube/frontend/types"
 )
 
-func Timeframes() (results []types.Timeframe, err error) {
+func Timeframes() (siteDomain string, results []types.Timeframe, err error) {
 	var response json.RawMessage
-	response, err = apiRequest(methodGet, uriTimeframes, url.Values{})
+	response, err = apiRequest(siteDomain, methodGet, uriTimeframes, url.Values{})
 	if err != nil {
 		return
 	}

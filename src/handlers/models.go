@@ -15,6 +15,7 @@ import (
 func Models(c *fiber.Ctx) error {
 	path := c.Locals("path").(string)
 	config := c.Locals("config").(*site.Config)
+	hostName := c.Locals("hostName").(string)
 	nocache, _ := strconv.ParseBool(c.Query(config.Params.Nocache, "false"))
 	langId := c.Locals("lang").(string)
 	page, _ := strconv.ParseInt(c.Params("page", c.Query(config.Params.Page), "1"), 10, 16)
@@ -36,7 +37,7 @@ func Models(c *fiber.Ctx) error {
 			// getting category information from cache or from api
 			var results *types.ModelResults
 			var err error
-			results, _, err = api.ModelsList(langId, page, api.SortBy(sortBy), int64(amount), query)
+			results, _, err = api.ModelsList(hostName, langId, page, api.SortBy(sortBy), int64(amount), query)
 			if err != nil {
 				return ctx, err
 			}

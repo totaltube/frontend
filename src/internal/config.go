@@ -3,6 +3,7 @@ package internal
 import (
 	"github.com/BurntSushi/toml"
 	"log"
+	"path/filepath"
 	"runtime"
 	"sersh.com/totaltube/frontend/types"
 )
@@ -11,6 +12,7 @@ var Config *ConfigT
 
 type (
 	ConfigT struct {
+		MainPath string
 		General  General
 		Frontend Frontend
 		Database Database
@@ -53,4 +55,5 @@ func InitConfig(configPath string) {
 	if _, err := toml.DecodeFile(configPath, Config); err != nil {
 		log.Fatalln(configPath, ":", err)
 	}
+	Config.MainPath = filepath.Dir(configPath)
 }

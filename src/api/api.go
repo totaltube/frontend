@@ -53,9 +53,10 @@ const (
 	uriLanguages          apiUri = "languages"
 )
 
-func apiRequest(method method, uri apiUri, data interface{}) (response json.RawMessage, err error) {
+func apiRequest(siteDomain string, method method, uri apiUri, data interface{}) (response json.RawMessage, err error) {
 	f := helpers.Fetch(internal.Config.General.ApiUrl + string(uri))
 	f.WithHeader(fasthttp.HeaderAuthorization, internal.Config.General.ApiSecret)
+	f.WithHeader("Totaltube-Site", siteDomain)
 	f.WithHeader(fasthttp.HeaderAccept, "application/json")
 	f.WithTimeout(time.Duration(internal.Config.General.ApiTimeout))
 	f.WithMethod(string(method))

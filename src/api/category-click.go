@@ -6,9 +6,9 @@ import (
 	"strconv"
 )
 
-func CategoryClick(categoryId int64, params types.CountClickParams) (err error) {
+func CategoryClick(siteDomain string, categoryId int64, params types.CountClickParams) (err error) {
 	uriParams := url.Values{}
 	uriParams.Set("category_id", strconv.FormatInt(categoryId, 10))
-	_, err = apiRequest(methodPost, uriCategoryClick+apiUri("?"+uriParams.Encode()), params)
+	_, err = apiRequest(siteDomain, methodPost, uriCategoryClick+apiUri("?"+uriParams.Encode()), params)
 	return
 }

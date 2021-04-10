@@ -2,9 +2,9 @@ package db
 
 import (
 	"github.com/dgraph-io/badger/v3"
-	"github.com/neverlee/keymutex"
 	"github.com/segmentio/encoding/json"
 	"log"
+	"sersh.com/totaltube/frontend/helpers"
 	"time"
 )
 
@@ -23,9 +23,10 @@ type Session struct {
 	DmcaAmount    int64
 }
 
-var SessMutex = keymutex.New(151)
-
-func GetSession(ip string) (session *Session) {
+func GetSession(ip string, lock ...bool) (session *Session) {
+	if len(lock) > 0 && lock[0] {
+		helpers.KeyMutex.Lock(ip)
+	}
 	key := []byte(sessionPrefix + ip)
 	_ = bdb.View(func(txn *badger.Txn) error {
 		item, err := txn.Get(key)
@@ -46,7 +47,7 @@ func GetSession(ip string) (session *Session) {
 	return
 }
 
-func SaveSession(ip string, session *Session) {
+func SaveSession(ip string, session *Session, unlock ...bool) {
 	if session == nil {
 		return
 	}
@@ -60,4 +61,7 @@ func SaveSession(ip string, session *Session) {
 	_ = bdb.Update(func(txn *badger.Txn) error {
 		return txn.Set(key, val)
 	})
+	if len(unlock) > 0 && unlock[0] {
+		helpers.KeyMutex.Unlock(ip)
+	}
 }

@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func WatchScss(path string, config *Config) {
+func WatchScss(path string, configPath string) {
 	var rebuildTimeout = time.Millisecond * 1500
 	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
 		rebuildTimeout = time.Millisecond*100
@@ -41,7 +41,7 @@ func WatchScss(path string, config *Config) {
 						mu.Unlock()
 						log.Println(ei.Path(),  "changed. Rebuilding scss...")
 						started := time.Now()
-						err := RebuildSCSS(path, config)
+						err := RebuildSCSS(path, GetConfig(configPath))
 						if err != nil {
 							log.Println("Error rebuilding scss:", err)
 						}
