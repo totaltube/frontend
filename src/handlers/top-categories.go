@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"github.com/flosch/pongo2/v4"
 	"github.com/gofiber/fiber/v2"
+	"net/url"
 	"sersh.com/totaltube/frontend/api"
+	"sersh.com/totaltube/frontend/db"
 	"sersh.com/totaltube/frontend/site"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -14,8 +17,31 @@ func TopCategories(c *fiber.Ctx) error {
 	path := c.Locals("path").(string)
 	config := c.Locals("config").(*site.Config)
 	hostName := c.Locals("hostName").(string)
-	nocache, _ := strconv.ParseBool(c.Query(config.Params.Nocache, "false"))
 	langId := c.Locals("lang").(string)
+	if ref := c.Get("Referer"); ref != "" && !config.General.DisableCategoriesRedirect {
+		if u, err := url.Parse(ref); err == nil &&
+			strings.TrimPrefix(strings.ToLower(u.Hostname()), "www.") != hostName &&
+			!botDetector.IsBot(c.Get("User-Agent")) {
+			var s = strings.ToLower(u.Path + " " + u.RawQuery)
+			if categories, err := db.GetCachedTopCategories(hostName); err == nil {
+				for _, cat := range categories.Items {
+					for _, t := range cat.Tags {
+						if strings.Contains(s, t) {
+							var redirectUrl = config.Routes.Category
+							if config.General.MultiLanguage {
+								redirectUrl = strings.ReplaceAll(config.Routes.LanguageTemplate, ":lang", langId)
+								redirectUrl = strings.ReplaceAll(redirectUrl, ":route", config.Routes.Category)
+							}
+							redirectUrl = strings.ReplaceAll(redirectUrl, ":slug", cat.Slug)
+							redirectUrl = strings.ReplaceAll(redirectUrl, ":id", strconv.FormatInt(int64(cat.Id), 10))
+							return c.Redirect(redirectUrl)
+						}
+					}
+				}
+			}
+		}
+	}
+	nocache, _ := strconv.ParseBool(c.Query(config.Params.Nocache, "false"))
 	page, _ := strconv.ParseInt(c.Params("page", c.Query(config.Params.Page), "1"), 10, 16)
 	if page <= 0 {
 		page = 1

@@ -59,7 +59,8 @@ func SaveSession(ip string, session *Session, unlock ...bool) {
 		return
 	}
 	_ = bdb.Update(func(txn *badger.Txn) error {
-		return txn.Set(key, val)
+		entry := badger.NewEntry(key, val).WithTTL(time.Hour * 4)
+		return txn.SetEntry(entry)
 	})
 	if len(unlock) > 0 && unlock[0] {
 		helpers.KeyMutex.Unlock(ip)

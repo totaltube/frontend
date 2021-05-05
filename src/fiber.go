@@ -98,84 +98,84 @@ func InitFiber() *fiber.App {
 		})
 		if config.Routes.Autocomplete != "" {
 			if config.General.MultiLanguage {
-				handlers.LangHandlers(h.fiber, config.Routes.Autocomplete, config.Routes.LanguageTemplate, handlers.Autocomplete)
+				handlers.LangHandlers(h.fiber, config.Routes.Autocomplete, config, handlers.Autocomplete)
 			} else {
 				h.fiber.All(config.Routes.Autocomplete, handlers.Autocomplete)
 			}
 		}
 		if config.Routes.Search != "" {
 			if config.General.MultiLanguage {
-				handlers.LangHandlers(h.fiber, config.Routes.Search, config.Routes.LanguageTemplate, handlers.Search)
+				handlers.LangHandlers(h.fiber, config.Routes.Search, config, handlers.Search)
 			} else {
 				h.fiber.All(config.Routes.Search, handlers.Search)
 			}
 		}
 		if config.Routes.Category != "" {
 			if config.General.MultiLanguage {
-				handlers.LangHandlers(h.fiber, config.Routes.Category, config.Routes.LanguageTemplate, handlers.Category)
+				handlers.LangHandlers(h.fiber, config.Routes.Category, config, handlers.Category)
 			} else {
 				h.fiber.All(config.Routes.Category, handlers.Category)
 			}
 		}
 		if config.Routes.TopCategories != "" {
 			if config.General.MultiLanguage {
-				handlers.LangHandlers(h.fiber, config.Routes.TopCategories, config.Routes.LanguageTemplate, handlers.TopCategories)
+				handlers.LangHandlers(h.fiber, config.Routes.TopCategories, config, handlers.TopCategories)
 			} else {
 				h.fiber.All(config.Routes.TopCategories, handlers.TopCategories)
 			}
 		}
 		if config.Routes.TopContent != "" {
 			if config.General.MultiLanguage {
-				handlers.LangHandlers(h.fiber, config.Routes.TopContent, config.Routes.LanguageTemplate, handlers.TopContent)
+				handlers.LangHandlers(h.fiber, config.Routes.TopContent, config, handlers.TopContent)
 			} else {
 				h.fiber.All(config.Routes.TopContent, handlers.TopContent)
 			}
 		}
 		if config.Routes.Model != "" {
 			if config.General.MultiLanguage {
-				handlers.LangHandlers(h.fiber, config.Routes.Model, config.Routes.LanguageTemplate, handlers.Model)
+				handlers.LangHandlers(h.fiber, config.Routes.Model, config, handlers.Model)
 			} else {
 				h.fiber.All(config.Routes.Model, handlers.Model)
 			}
 		}
 		if config.Routes.Channel != "" {
 			if config.General.MultiLanguage {
-				handlers.LangHandlers(h.fiber, config.Routes.Channel, config.Routes.LanguageTemplate, handlers.Channel)
+				handlers.LangHandlers(h.fiber, config.Routes.Channel, config, handlers.Channel)
 			} else {
 				h.fiber.All(config.Routes.Channel, handlers.Channel)
 			}
 		}
 		if config.Routes.ContentItem != "" {
 			if config.General.MultiLanguage {
-				handlers.LangHandlers(h.fiber, config.Routes.ContentItem, config.Routes.LanguageTemplate, handlers.ContentItem)
+				handlers.LangHandlers(h.fiber, config.Routes.ContentItem, config, handlers.ContentItem)
 			} else {
 				h.fiber.All(config.Routes.ContentItem, handlers.ContentItem)
 			}
 		}
 		if config.Routes.New != "" {
 			if config.General.MultiLanguage {
-				handlers.LangHandlers(h.fiber, config.Routes.New, config.Routes.LanguageTemplate, handlers.New)
+				handlers.LangHandlers(h.fiber, config.Routes.New, config, handlers.New)
 			} else {
 				h.fiber.All(config.Routes.New, handlers.New)
 			}
 		}
 		if config.Routes.Long != "" {
 			if config.General.MultiLanguage {
-				handlers.LangHandlers(h.fiber, config.Routes.Long, config.Routes.LanguageTemplate, handlers.Long)
+				handlers.LangHandlers(h.fiber, config.Routes.Long, config, handlers.Long)
 			} else {
 				h.fiber.All(config.Routes.Long, handlers.Long)
 			}
 		}
 		if config.Routes.Popular != "" {
 			if config.General.MultiLanguage {
-				handlers.LangHandlers(h.fiber, config.Routes.Popular, config.Routes.LanguageTemplate, handlers.Popular)
+				handlers.LangHandlers(h.fiber, config.Routes.Popular, config, handlers.Popular)
 			} else {
 				h.fiber.All(config.Routes.Popular, handlers.Popular)
 			}
 		}
 		if config.Routes.Models != "" {
 			if config.General.MultiLanguage {
-				handlers.LangHandlers(h.fiber, config.Routes.Models, config.Routes.LanguageTemplate, handlers.Models)
+				handlers.LangHandlers(h.fiber, config.Routes.Models, config, handlers.Models)
 			} else {
 				h.fiber.All(config.Routes.Models, handlers.Models)
 			}
@@ -185,14 +185,14 @@ func InitFiber() *fiber.App {
 		}
 		if config.Routes.FakePlayer != "" {
 			if config.General.MultiLanguage {
-				handlers.LangHandlers(h.fiber, config.Routes.FakePlayer, config.Routes.LanguageTemplate, handlers.FakePlayer)
+				handlers.LangHandlers(h.fiber, config.Routes.FakePlayer, config, handlers.FakePlayer)
 			} else {
 				h.fiber.All(config.Routes.FakePlayer, handlers.FakePlayer)
 			}
 		}
 		if config.Routes.Dmca != "" {
 			if config.General.MultiLanguage {
-				handlers.LangHandlers(h.fiber, config.Routes.Dmca, config.Routes.LanguageTemplate, handlers.Dmca)
+				handlers.LangHandlers(h.fiber, config.Routes.Dmca, config, handlers.Dmca)
 			} else {
 				h.fiber.All(config.Routes.Dmca, handlers.Dmca)
 			}
@@ -201,7 +201,7 @@ func InitFiber() *fiber.App {
 			for templateName, routePath := range config.Routes.Custom {
 				tName := templateName
 				if config.General.MultiLanguage && strings.Contains(routePath, ":lang") {
-					handlers.LangHandlers(h.fiber, routePath, config.Routes.LanguageTemplate, func(c *fiber.Ctx) error {
+					handlers.LangHandlers(h.fiber, routePath, config, func(c *fiber.Ctx) error {
 						c.Locals("custom_template_name", tName)
 						return handlers.Custom(c)
 					})

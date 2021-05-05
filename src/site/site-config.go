@@ -77,6 +77,7 @@ type (
 		MultiLanguage              bool   `toml:"multi_language"`
 		MinifyHtml                 bool   `toml:"minify_html" json:"-"`
 		PaginationMaxRenderedLinks int    `toml:"pagination_max_rendered_links"`
+		DisableCategoriesRedirect  bool   `toml:"disable_categories_redirect"`
 		Debug                      bool   `toml:"debug"`
 	}
 )

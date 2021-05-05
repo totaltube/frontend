@@ -26,7 +26,7 @@ type tagFetchNode struct {
 	timeout pongo2.IEvaluator
 	method  pongo2.IEvaluator
 	cache   pongo2.IEvaluator
-	raw     bool // получить ли "сырой" ответ в виде строки, без маршалинга в json?
+	raw     pongo2.IEvaluator // получить ли "сырой" ответ в виде строки, без маршалинга в json?
 }
 
 var headerRegex = regexp.MustCompile(`^\s*([^:]+)\s*:\s*(.*?)\s*$`)
@@ -48,23 +48,27 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 		// First let's check if we have cache
 		cacheKey := ""
 		f := helpers.Fetch(node.what)
-		m, err := node.method.Evaluate(fetchContext)
-		if err != nil {
-			return err
-		}
 		method := "GET"
-		if m.String() != "" {
-			method = strings.ToUpper(m.String())
-			f.WithMethod(method)
+		if node.method != nil {
+			m, err := node.method.Evaluate(fetchContext)
+			if err != nil {
+				return err
+			}
+			if m.String() != "" {
+				method = strings.ToUpper(m.String())
+				f.WithMethod(method)
+			}
 		}
-		t, err := node.timeout.Evaluate(fetchContext)
-		if err != nil {
-			return err
-		}
-		if t.String() != "" {
-			timeout := types.ParseHumanDuration(t.String())
-			if timeout > 0 {
-				f.WithTimeout(timeout)
+		if node.timeout != nil {
+			t, err := node.timeout.Evaluate(fetchContext)
+			if err != nil {
+				return err
+			}
+			if t.String() != "" {
+				timeout := types.ParseHumanDuration(t.String())
+				if timeout > 0 {
+					f.WithTimeout(timeout)
+				}
 			}
 		}
 		var isForm = false
@@ -114,16 +118,28 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 		if cacheTimeout > 0 {
 			cacheKey = "fetch:" + helpers.Md5Hash(fmt.Sprintf("%s|%s|%s", node.what, method, params.Encode()))
 		}
+		isRaw := false
+		if node.raw != nil {
+			raw, err := node.raw.Evaluate(fetchContext)
+			if err != nil {
+				return err
+			}
+			isRaw = raw.Bool()
+		}
 		if cacheTimeout > 0 && !nocache {
 			v := db.GetCached(cacheKey)
 			if v != nil {
-				data := objx.MustFromJSON(string(v))
-				fetchContext.Private["fetch_response"] = data
-				err = node.wrapper.Execute(fetchContext, writer)
+				if isRaw {
+					fetchContext.Private["fetch_response"] = string(v)
+				} else {
+					data := objx.MustFromJSON(string(v))
+					fetchContext.Private["fetch_response"] = data
+				}
+				err := node.wrapper.Execute(fetchContext, writer)
 				return err
 			}
 		}
-		if node.raw {
+		if isRaw {
 			data := f.String()
 			fetchContext.Private["fetch_response"] = data
 			if cacheTimeout > 0 {
@@ -150,7 +166,7 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 				}
 			}
 		}
-		err = node.wrapper.Execute(fetchContext, writer)
+		err := node.wrapper.Execute(fetchContext, writer)
 		return err
 	}
 	amount := 100
@@ -527,6 +543,8 @@ func pongo2Fetch(doc *pongo2.Parser, _ *pongo2.Token, arguments *pongo2.Parser) 
 			tagFetch.method = expression
 		} else if idToken.Val == "cache" {
 			tagFetch.cache = expression
+		} else if idToken.Val == "raw" {
+			tagFetch.raw = expression
 		} else {
 			tagFetch.args[strings.TrimPrefix(idToken.Val, "arg_")] = expression
 		}

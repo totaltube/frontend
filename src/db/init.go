@@ -16,10 +16,12 @@ func InitDB() {
 	var err error
 	for {
 		bdb, err = badger.Open(
-			badger.DefaultOptions(internal.Config.Database.Path).
+			badger.LSMOnlyOptions(internal.Config.Database.Path).
 				WithDetectConflicts(false).
 				WithSyncWrites(false).
-				WithLoggingLevel(badger.ERROR),
+				WithValueLogMaxEntries(100000).
+				WithValueLogFileSize(1e+7).
+				WithLoggingLevel(badger.WARNING),
 		)
 		if err != nil {
 			// Waiting until not closed process will close the database.
@@ -39,11 +41,18 @@ func InitDB() {
 	go func() {
 		var err error
 		for {
-			time.Sleep(time.Second*60 + time.Second*time.Duration(rand.Intn(60)))
-			err = bdb.RunValueLogGC(0.7)
-			if err != nil && err != badger.ErrNoRewrite {
-				log.Println(err)
-			}
+			time.Sleep(time.Second*30 + time.Second*time.Duration(rand.Intn(60)))
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						log.Println("recover in badger db maintenance", r)
+					}
+				}()
+				err = bdb.RunValueLogGC(0.7)
+				if err != nil && err != badger.ErrNoRewrite {
+					log.Println(err)
+				}
+			}()
 		}
 	}()
 	// Translations

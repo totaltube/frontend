@@ -73,6 +73,7 @@ func apiRequest(siteDomain string, method method, uri apiUri, data interface{}) 
 	var resp []byte
 	resp, err = f.Do()
 	if err != nil {
+		err = errors.Wrap(err, "error getting "+internal.Config.General.ApiUrl + string(uri))
 		return
 	}
 	var r apiResponse

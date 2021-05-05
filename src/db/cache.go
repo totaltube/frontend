@@ -33,6 +33,7 @@ func PutCached(cacheKey string, content []byte, ttl time.Duration) (err error) {
 	})
 	return
 }
+
 var clearCacheMutex sync.Mutex
 func ClearCacheByPrefix(prefix string) (err error) {
 	var Prefix = []byte(cachePrefix + prefix)

@@ -86,6 +86,11 @@ type toTranslateT struct {
 }
 
 func doTranslations() {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Println("recover in doTranslations:", r)
+		}
+	}()
 	_ = bdb.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer it.Close()
