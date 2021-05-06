@@ -59,6 +59,9 @@ func LangHandlers(app *fiber.App, route string, siteConfig *site.Config, handler
 										redirectUrl := strings.ReplaceAll(r, ":route", siteConfig.Routes.Category)
 										redirectUrl = strings.ReplaceAll(redirectUrl, ":slug", cat.Slug)
 										redirectUrl = strings.ReplaceAll(redirectUrl, ":id", strconv.FormatInt(int64(cat.Id), 10))
+										if qs := string(c.Request().URI().QueryString()); qs != "" {
+											redirectUrl = redirectUrl + "?" + qs
+										}
 										return c.Redirect(redirectUrl)
 									}
 								}

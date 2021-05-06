@@ -53,8 +53,8 @@ func Channel(c *fiber.Ctx) error {
 	durationLt, _ := strconv.ParseInt(c.Query(config.Params.DurationLt, "0"), 10, 64)
 	customContext := generateCustomContext(c, "channel")
 	cacheKey := "channel:" + helpers.Md5Hash(
-		fmt.Sprintf("%s:%d:%s:%s:%s:%d:%d:%s:%d:%d:%d:%s",
-			langId, page, sortBy, sortByViewsTimeframe, channelSlug, channelId,
+		fmt.Sprintf("%s:%s:%d:%s:%s:%s:%d:%d:%s:%d:%d:%d:%s",
+			hostName, langId, page, sortBy, sortByViewsTimeframe, channelSlug, channelId,
 			modelId, modelSlug, durationGte, durationLt, categoryId, categorySlug),
 	)
 	cacheTtl := time.Minute * 15

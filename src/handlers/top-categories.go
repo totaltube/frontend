@@ -34,6 +34,9 @@ func TopCategories(c *fiber.Ctx) error {
 							}
 							redirectUrl = strings.ReplaceAll(redirectUrl, ":slug", cat.Slug)
 							redirectUrl = strings.ReplaceAll(redirectUrl, ":id", strconv.FormatInt(int64(cat.Id), 10))
+							if qs := string(c.Request().URI().QueryString()); qs != "" {
+								redirectUrl = redirectUrl + "?" + qs
+							}
 							return c.Redirect(redirectUrl)
 						}
 					}
@@ -47,7 +50,7 @@ func TopCategories(c *fiber.Ctx) error {
 		page = 1
 	}
 	customContext := generateCustomContext(c, "top-categories")
-	cacheKey := fmt.Sprintf("top-categories:%s:%d", langId, page)
+	cacheKey := fmt.Sprintf("top-categories:%s:%s:%d", hostName, langId, page)
 	cacheTtl := time.Second * 5
 	if page > 1 {
 		cacheTtl = time.Minute * 5

@@ -26,7 +26,7 @@ func Dmca(c *fiber.Ctx) error {
 	nocache, _ := strconv.ParseBool(c.Query(config.Params.Nocache, "false"))
 	langId := c.Locals("lang").(string)
 	customContext := generateCustomContext(c, "dmca")
-	cacheKey := "dmca:" + langId
+	cacheKey := "dmca:" + hostName + ":" + langId
 	cacheTtl := time.Minute * 15
 	isOk := false
 	var ip = c.IP()

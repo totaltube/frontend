@@ -34,8 +34,8 @@ func New(c *fiber.Ctx) error {
 	durationTo, _ := strconv.ParseInt(c.Query(config.Params.DurationLt, "0"), 10, 64)
 	customContext := generateCustomContext(c, "new")
 	cacheKey := "new:" + helpers.Md5Hash(
-		fmt.Sprintf("%s:%d:%s:%d:%d:%s:%d:%d:%d:%s",
-			langId, page, channelSlug, channelId,
+		fmt.Sprintf("%s:%s:%d:%s:%d:%d:%s:%d:%d:%d:%s",
+			hostName, langId, page, channelSlug, channelId,
 			modelId, modelSlug, durationFrom, durationTo, categoryId, categorySlug),
 	)
 	cacheTtl := time.Minute * 15

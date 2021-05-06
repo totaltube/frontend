@@ -20,6 +20,7 @@ import (
 )
 
 var ErrTemplateNotFound = errors.New("template not found")
+
 //var GojaVMMutex = keymutex.New(151)
 
 type templates struct {
@@ -81,7 +82,7 @@ func NewTemplates(path string) *templates {
 					if err != nil {
 						log.Println(err)
 					}
-				}  else {
+				} else {
 					var changedTemplatePath = info.Path()
 					abs, _ := filepath.Abs(filepath.Join(path, "templates"))
 					if filepath.Dir(changedTemplatePath) == abs && filepath.Ext(changedTemplatePath) == ".twig" {
@@ -272,7 +273,8 @@ func ParseCustomTemplate(name, path string, config *Config,
 		log.Println(err)
 		return
 	}
-	cacheKey := "custom:" + name + ":" + v.String()
+	hostName := customContext["host"].(string)
+	cacheKey := "custom:" + hostName + ":" + name + ":" + v.String()
 	program, err = getJsProgram(name+":cacheTtl", string(source)+" cacheTtl()")
 	if err != nil {
 		log.Println(err)

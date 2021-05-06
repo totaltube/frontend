@@ -28,8 +28,8 @@ func Models(c *fiber.Ctx) error {
 	amount := config.General.ModelsPerPage
 	customContext := generateCustomContext(c, "models")
 	cacheKey := "models:" + helpers.Md5Hash(
-		fmt.Sprintf("%s:%d:%s:%s:%d",
-			langId, page, sortBy, query, amount),
+		fmt.Sprintf("%s:%s:%d:%s:%s:%d",
+			hostName, langId, page, sortBy, query, amount),
 	)
 	cacheTtl := time.Minute * 15
 	parsed, err := site.ParseTemplate("models", path, config, customContext, nocache, cacheKey, cacheTtl,

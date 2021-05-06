@@ -28,7 +28,7 @@ func ContentItem(c *fiber.Ctx) error {
 	relatedAmount := config.General.ContentRelatedAmount
 	customContext := generateCustomContext(c, "content-item")
 	cacheKey := "content-item:" + helpers.Md5Hash(
-		fmt.Sprintf("%s:%d:%s:%v:%d", langId, id, slug, orfl, relatedAmount),
+		fmt.Sprintf("%s:%s:%d:%s:%v:%d", hostName, langId, id, slug, orfl, relatedAmount),
 	)
 	cacheTtl := time.Minute * 30
 	parsed, err := site.ParseTemplate("content-item", path, config, customContext, nocache, cacheKey, cacheTtl,

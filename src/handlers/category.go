@@ -53,8 +53,8 @@ func Category(c *fiber.Ctx) error {
 	durationTo, _ := strconv.ParseInt(c.Query(config.Params.DurationLt, "0"), 10, 64)
 	customContext := generateCustomContext(c, "category")
 	cacheKey := "category:" + helpers.Md5Hash(
-		fmt.Sprintf("%s:%d:%s:%d:%s:%s:%s:%d:%d:%s:%d:%d",
-			langId, categoryId, categorySlug, page, sortBy, sortByViewsTimeframe, channelSlug, channelId,
+		fmt.Sprintf("%s:%s:%d:%s:%d:%s:%s:%s:%d:%d:%s:%d:%d",
+			hostName, langId, categoryId, categorySlug, page, sortBy, sortByViewsTimeframe, channelSlug, channelId,
 			modelId, modelSlug, durationFrom, durationTo),
 	)
 	filtered := channelId > 0 || channelSlug != "" || modelId > 0 || modelSlug != "" || sortBy != "" ||

@@ -23,7 +23,7 @@ func TopContent(c *fiber.Ctx) error {
 		page = 1
 	}
 	customContext := generateCustomContext(c, "top-content")
-	cacheKey := fmt.Sprintf("top-content:%s:%d", langId, page)
+	cacheKey := fmt.Sprintf("top-content:%s:%s:%d", hostName, langId, page)
 	cacheTtl := time.Second * 5
 	if page > 1 {
 		cacheTtl = time.Minute * 5
