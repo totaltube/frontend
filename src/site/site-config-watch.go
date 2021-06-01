@@ -27,7 +27,6 @@ func GetConfigAndWatch(configPath string) *Config {
 		log.Fatalln("error reading site config at", configPath, err)
 	}
 	configsMap[configPath] = config
-	// TODO: make watching of config file and reload it making it usable concurrently
 	go func() {
 		var m sync.Mutex
 		var lastChange time.Time

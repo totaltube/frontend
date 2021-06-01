@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"github.com/flosch/pongo2/v4"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/utils"
 	"net"
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -24,12 +26,12 @@ func Long(c *fiber.Ctx) error {
 		page = 1
 	}
 	modelId, _ := strconv.ParseInt(c.Query(config.Params.ModelId), 10, 64)
-	modelSlug := c.Query(config.Params.ModelSlug)
-	categorySlug := c.Query(config.Params.CategorySlug)
+	modelSlug := utils.ImmutableString(c.Query(config.Params.ModelSlug))
+	categorySlug := utils.ImmutableString(c.Query(config.Params.CategorySlug))
 	categoryId, _ := strconv.ParseInt(c.Query(config.Params.CategoryId), 10, 64)
 	sortBy := "duration"
 	channelId, _ := strconv.ParseInt(c.Query(config.Params.ChannelId, "0"), 10, 64)
-	channelSlug := c.Query(config.Params.ChannelSlug)
+	channelSlug := utils.ImmutableString(c.Query(config.Params.ChannelSlug))
 	durationFrom, _ := strconv.ParseInt(c.Query(config.Params.DurationGte, "0"), 10, 64)
 	durationTo, _ := strconv.ParseInt(c.Query(config.Params.DurationLt, "0"), 10, 64)
 	customContext := generateCustomContext(c, "long")
@@ -38,13 +40,15 @@ func Long(c *fiber.Ctx) error {
 			hostName, langId, page, channelSlug, channelId,
 			modelId, modelSlug, durationFrom, durationTo, categoryId, categorySlug),
 	)
+	ip := utils.ImmutableString(c.IP())
+	userAgent := utils.ImmutableString(c.Get("User-Agent"))
 	cacheTtl := time.Minute * 15
 	parsed, err := site.ParseTemplate("long", path, config, customContext, nocache, cacheKey, cacheTtl,
 		func(ctx pongo2.Context) (pongo2.Context, error) {
 			var results *types.ContentResults
 			var err error
 			results, _, err = api.Content(hostName, api.ContentParams{
-				Ip:           net.ParseIP(c.IP()),
+				Ip:           net.ParseIP(ip),
 				Lang:         langId,
 				Page:         page,
 				CategoryId:   categoryId,
@@ -56,7 +60,7 @@ func Long(c *fiber.Ctx) error {
 				Sort:         api.SortBy(sortBy),
 				DurationGte:  durationFrom,
 				DurationLt:   durationTo,
-				UserAgent:    c.Get("User-Agent"),
+				UserAgent:    userAgent,
 			})
 			if err != nil {
 				return ctx, err
@@ -70,6 +74,9 @@ func Long(c *fiber.Ctx) error {
 			return ctx, nil
 		})
 	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return Generate404(c, err.Error())
+		}
 		return err
 	}
 	c.Set("Content-Type", "text/html")

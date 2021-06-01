@@ -9,6 +9,7 @@ import (
 	"github.com/rjeczalik/notify"
 	"github.com/segmentio/encoding/json"
 	"log"
+	"math"
 	"path/filepath"
 	"sersh.com/totaltube/frontend/db"
 	"sersh.com/totaltube/frontend/helpers"
@@ -20,8 +21,6 @@ import (
 )
 
 var ErrTemplateNotFound = errors.New("template not found")
-
-//var GojaVMMutex = keymutex.New(151)
 
 type templates struct {
 	sync.Mutex
@@ -60,6 +59,7 @@ func NewTemplates(path string) *templates {
 	n.templateSet = pongo2.NewSet(filepath.Base(path), pongo2.DefaultLoader)
 	n.templateSet.Options.LStripBlocks = true
 	n.templateSet.Options.TrimBlocks = true
+	host := filepath.Base(path)
 	go func() {
 		for {
 			func() {
@@ -90,13 +90,13 @@ func NewTemplates(path string) *templates {
 						switch templateName {
 						case "top-categories", "category", "top-content", "404", "500",
 							"model", "models", "content-item", "search", "fake-player":
-							err := db.ClearCacheByPrefix(templateName + ":")
+							err := db.ClearCacheByPrefix(templateName + ":" + host + ":")
 							if err != nil {
 								log.Println(err)
 							}
 						}
 						if strings.HasPrefix(templateName, "custom-") {
-							err := db.ClearCacheByPrefix("custom:" + strings.TrimPrefix(templateName, "custom-") + ":")
+							err := db.ClearCacheByPrefix("custom:" + host + ":" + strings.TrimPrefix(templateName, "custom-") + ":")
 							if err != nil {
 								log.Println(err)
 							}
@@ -194,38 +194,36 @@ func ParseTemplate(name, path string, config *Config, customContext pongo2.Conte
 			}
 		}
 	}
-	if !nocache {
-		cached := db.GetCached(cacheKey)
-		if cached != nil {
-			c = generateContext(name, path, customContext)
-			addCustomFunctions(c)
-			parsed, err = InsertDynamic(cached, c)
+	var cached []byte
+	cached, err = db.GetCachedTimeout(cacheKey, cacheTtl, cacheTtl, func() (result []byte, err error) {
+		var c pongo2.Context
+		c, err = uncachedPrepare(customContext)
+		if err != nil {
 			return
 		}
-	}
-	c, err = uncachedPrepare(customContext)
-	if err != nil {
+		c = generateContext(name, path, c)
+		addCustomFunctions(c)
+		var template *pongo2.Template
+		template, err = GetTemplate(name, path)
+		if err != nil {
+			return
+		}
+		result, err = template.ExecuteBytes(c)
+		if err != nil {
+			return
+		}
+		if config.General.MinifyHtml {
+			result = helpers.MinifyBytes(result)
+		}
+		return
+	}, nocache)
+	if err != nil && !strings.Contains(err.Error(), "not found") {
+		log.Println(err)
 		return
 	}
-	c = generateContext(name, path, c)
+	c = generateContext(name, path, customContext)
 	addCustomFunctions(c)
-	var template *pongo2.Template
-	template, err = GetTemplate(name, path)
-	if err != nil {
-		return
-	}
-	parsed, err = template.ExecuteBytes(c)
-	if err != nil {
-		return
-	}
-	if config.General.MinifyHtml {
-		parsed = helpers.MinifyBytes(parsed)
-	}
-	err = db.PutCached(cacheKey, parsed, cacheTtl)
-	if err != nil {
-		log.Println("can't put item in cache: ", err)
-	}
-	parsed, err = InsertDynamic(parsed, c)
+	parsed, err = InsertDynamic(cached, c)
 	return
 }
 
@@ -286,84 +284,85 @@ func ParseCustomTemplate(name, path string, config *Config,
 		return
 	}
 	cacheTtl := time.Duration(v.ToInteger()) * time.Second
-	if cacheTtl <= 0 {
-		nocache = true
-	}
-	if !nocache {
-		cached := db.GetCached(cacheKey)
-		if cached != nil {
-			c := generateContext(name, path, customContext)
-			parsed, err = InsertDynamic(cached, c)
-			return
-		}
-	}
-	program, err = getJsProgram(name+":prepare", string(source)+" prepare()")
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	v, err = VM.RunProgram(program)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	if ctx, ok := v.Export().(map[string]interface{}); ok {
-		customContext.Update(ctx)
-	}
-	ctx := generateContext(name, path, customContext)
-	program, err = getJsProgram(name+":render", string(source)+" render()")
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	v, err = VM.RunProgram(program)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	if ret, ok := v.Export().(map[string]interface{}); ok {
-		// if render() returns object - output it as json
-		parsed, err = json.Marshal(ret)
-		if err != nil {
-			log.Println(err)
-		}
-		c.Set(fiber.HeaderContentType, "application/json")
-		err = c.Send(parsed)
-		if err != nil {
-			return
-		}
-		err = types.ErrResponseSent
-		return
-	}
-	if ret, ok := v.Export().(string); ok {
-		// if render() returns string - output it as is
-		parsed = []byte(ret)
-		return
-	}
-	if ret, ok := v.Export().(redirectRet); ok {
-		err = c.Redirect(ret.url, ret.code)
+	var ctx pongo2.Context
+	recreate := func() (parsed []byte, err error) {
+		program, err = getJsProgram(name+":prepare", string(source)+" prepare()")
 		if err != nil {
 			log.Println(err)
 			return
 		}
-		err = types.ErrResponseSent
+		v, err = VM.RunProgram(program)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		if ctx, ok := v.Export().(map[string]interface{}); ok {
+			customContext.Update(ctx)
+		}
+		ctx = generateContext(name, path, customContext)
+		program, err = getJsProgram(name+":render", string(source)+" render()")
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		v, err = VM.RunProgram(program)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		if ret, ok := v.Export().(map[string]interface{}); ok {
+			// if render() returns object - output it as json
+			parsed, err = json.Marshal(ret)
+			if err != nil {
+				log.Println(err)
+			}
+			c.Set(fiber.HeaderContentType, "application/json")
+			err = c.Send(parsed)
+			if err != nil {
+				return
+			}
+			err = types.ErrResponseSent
+			return
+		}
+		if ret, ok := v.Export().(string); ok {
+			// if render() returns string - output it as is
+			parsed = []byte(ret)
+			return
+		}
+		if ret, ok := v.Export().(redirectRet); ok {
+			err = c.Redirect(ret.url, ret.code)
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			err = types.ErrResponseSent
+			return
+		}
+		var template *pongo2.Template
+		template, err = GetTemplate("custom-"+name, path)
+		if err != nil {
+			return
+		}
+		parsed, err = template.ExecuteBytes(ctx)
+		if err != nil {
+			return
+		}
+		if config.General.MinifyHtml {
+			parsed = helpers.MinifyBytes(parsed)
+		}
 		return
 	}
-	var template *pongo2.Template
-	template, err = GetTemplate("custom-"+name, path)
-	if err != nil {
+
+	if cacheTtl > 0 {
+		if parsed, err = db.GetCachedTimeout(cacheKey, cacheTtl, time.Duration(math.Max(float64(time.Second*5), float64(cacheTtl/2))), recreate, nocache); err != nil {
+			return
+		}
+		c := generateContext(name, path, customContext)
+		parsed, err = InsertDynamic(parsed, c)
 		return
 	}
-	parsed, err = template.ExecuteBytes(ctx)
-	if err != nil {
+	if parsed, err = recreate(); err != nil {
 		return
-	}
-	if config.General.MinifyHtml {
-		parsed = helpers.MinifyBytes(parsed)
-	}
-	err = db.PutCached(cacheKey, parsed, cacheTtl)
-	if err != nil {
-		log.Println("can't put item in cache: ", err)
 	}
 	parsed, err = InsertDynamic(parsed, ctx)
 	return

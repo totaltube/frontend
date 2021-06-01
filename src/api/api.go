@@ -79,7 +79,7 @@ func apiRequest(siteDomain string, method method, uri apiUri, data interface{}) 
 	var r apiResponse
 	err = json.Unmarshal(resp, &r)
 	if err != nil {
-		log.Println(err)
+		log.Println(err, siteDomain, method, uri, string(resp))
 		return
 	}
 	if !r.Success {

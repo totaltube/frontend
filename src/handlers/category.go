@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"github.com/flosch/pongo2/v4"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/utils"
 	"github.com/segmentio/encoding/json"
 	"log"
+	"math/rand"
 	"net"
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/db"
@@ -27,12 +29,12 @@ func Category(c *fiber.Ctx) error {
 	if page <= 0 {
 		page = 1
 	}
-	categorySlug := c.Params("slug", c.Query(config.Params.CategorySlug))
+	categorySlug := utils.ImmutableString(c.Params("slug", c.Query(config.Params.CategorySlug)))
 	categoryId, _ := strconv.ParseInt(c.Params("id", c.Query(config.Params.CategoryId)), 10, 64)
 	if categoryId == 0 && categorySlug == "" {
 		return Generate404(c, "category not found")
 	}
-	sortBy := c.Query(config.Params.SortBy)
+	sortBy := utils.ImmutableString(c.Query(config.Params.SortBy))
 	if sortBy == config.Params.SortByDate {
 		sortBy = "dated"
 	} else if sortBy == config.Params.SortByDuration {
@@ -44,11 +46,11 @@ func Category(c *fiber.Ctx) error {
 	} else {
 		sortBy = ""
 	}
-	sortByViewsTimeframe := c.Query(config.Params.SortByViewsTimeframe)
+	sortByViewsTimeframe := utils.ImmutableString(c.Query(config.Params.SortByViewsTimeframe))
 	channelId, _ := strconv.ParseInt(c.Query(config.Params.ChannelId, "0"), 10, 64)
-	channelSlug := c.Query(config.Params.ChannelSlug)
+	channelSlug := utils.ImmutableString(c.Query(config.Params.ChannelSlug))
 	modelId, _ := strconv.ParseInt(c.Query(config.Params.ModelId, "0"), 10, 64)
-	modelSlug := c.Query(config.Params.ModelSlug)
+	modelSlug := utils.ImmutableString(c.Query(config.Params.ModelSlug))
 	durationFrom, _ := strconv.ParseInt(c.Query(config.Params.DurationGte, "0"), 10, 64)
 	durationTo, _ := strconv.ParseInt(c.Query(config.Params.DurationLt, "0"), 10, 64)
 	customContext := generateCustomContext(c, "category")
@@ -63,42 +65,31 @@ func Category(c *fiber.Ctx) error {
 	if page > 1 || filtered {
 		cacheTtl = time.Minute * 5
 	}
+	ip := utils.ImmutableString(c.IP())
+	userAgent := c.Get("User-Agent")
 	parsed, err := site.ParseTemplate("category", path, config, customContext, nocache, cacheKey, cacheTtl,
 		func(ctx pongo2.Context) (pongo2.Context, error) {
 			// getting category information from cache or from api
-			categoryInfoCacheKey := fmt.Sprintf("cinfo:%d:%s:%s", categoryId, categorySlug, langId)
-			categoryInfoCacheTtl := time.Minute * 60 * 24
-			categoryInfoCached := db.GetCached(categoryInfoCacheKey)
-			var categoryInfo *types.CategoryResult
-			if categoryInfoCached != nil && !nocache {
-				categoryInfo = new(types.CategoryResult)
-				err := json.Unmarshal(categoryInfoCached, categoryInfo)
-				if err != nil {
-					log.Println(err)
-					return ctx, err
-				}
-			} else {
-				var err error
-				categoryInfo, err = api.CategoryInfo(hostName, langId, categoryId, categorySlug)
-				if err != nil {
-					if strings.Contains(err.Error(), "not found") {
-						_ = Generate404(c, "category not found")
-						return ctx, types.ErrResponseSent
-					}
-					log.Println(err)
-					return ctx, err
-				}
-				err = db.PutCached(categoryInfoCacheKey, helpers.ToJSON(categoryInfo), categoryInfoCacheTtl)
-				if err != nil {
-					log.Println(err)
-					return ctx, err
-				}
+			categoryInfoCacheKey := fmt.Sprintf("in:cinfo:%d:%s:%s", categoryId, categorySlug, langId)
+			categoryInfoCacheTtl := time.Hour*24 + time.Duration(rand.Intn(3600*6))*time.Second
+			categoryInfoCached, err := db.GetCachedTimeout(categoryInfoCacheKey, categoryInfoCacheTtl, time.Hour*4, func() ([]byte, error) {
+				_, rawResponse, err := api.CategoryInfo(hostName, langId, categoryId, categorySlug)
+				return rawResponse, err
+			}, nocache)
+			if err != nil {
+				log.Println(err)
+				return ctx, err
+			}
+			categoryInfo := new(types.CategoryResult)
+			err = json.Unmarshal(categoryInfoCached, categoryInfo)
+			if err != nil {
+				log.Println(err)
+				return ctx, err
 			}
 			var results *types.ContentResults
-			var err error
 			if filtered {
 				results, _, err = api.Content(hostName, api.ContentParams{
-					Ip:           net.ParseIP(c.IP()),
+					Ip:           net.ParseIP(ip),
 					Lang:         langId,
 					Page:         page,
 					CategoryId:   categoryId,
@@ -111,17 +102,13 @@ func Category(c *fiber.Ctx) error {
 					Timeframe:    sortByViewsTimeframe,
 					DurationGte:  durationFrom,
 					DurationLt:   durationTo,
-					UserAgent:    c.Get("User-Agent"),
+					UserAgent:    userAgent,
 				})
 			} else {
 				ctx["count"] = true
 				results, err = api.Category(hostName, langId, categoryId, categorySlug, page)
 			}
 			if err != nil {
-				if strings.Contains(err.Error(), "not found") {
-					_ = Generate404(c, err.Error())
-					return nil, types.ErrResponseSent
-				}
 				return ctx, err
 			}
 			ctx["category"] = categoryInfo
@@ -134,6 +121,9 @@ func Category(c *fiber.Ctx) error {
 			return ctx, nil
 		})
 	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return Generate404(c, err.Error())
+		}
 		return err
 	}
 	c.Set("Content-Type", "text/html")

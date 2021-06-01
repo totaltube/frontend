@@ -11,6 +11,7 @@ import (
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
 	"strings"
+	"time"
 )
 
 type host struct {
@@ -24,15 +25,21 @@ func InitFiber() *fiber.App {
 		ProxyHeader:           internal.Config.General.RealIpHeader,
 		CaseSensitive:         true,
 		DisableStartupMessage: true,
+		DisableKeepalive: true,
+		ReadBufferSize: 16384,
+		WriteBufferSize: 16384,
+		ReadTimeout: time.Second*30,
+		WriteTimeout: time.Second*30,
 		ErrorHandler: func(c *fiber.Ctx, err error) (result error) {
 			defer func() {
 				if r, ok := recover().(error); r != nil && ok {
 					log.Println(r)
 					if c.Accepts("application/json") != "" && c.Accepts("text/html") == "" {
-						result = c.JSON(map[string]interface{}{
+						result = c.JSON(fiber.Map{
 							"success": false,
 							"value":   err.Error(),
 						})
+						c.Set("Content-Type", "application/json; charset=utf-8")
 						return
 					}
 					result = c.Status(fiber.StatusInternalServerError).SendString(err.Error())
@@ -42,13 +49,13 @@ func InitFiber() *fiber.App {
 				// response already sent
 				return nil
 			}
-			log.Println("error on page", string(c.Request().RequestURI()), ":", err)
+			log.Println("error on page", "https://"+string(c.Request().Host())+string(c.Request().RequestURI()), ":", err)
 			if c.Accepts("text/html") != "" {
 				return handlers.Generate500(c, err.Error())
 				//return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
 			}
 			if c.Accepts("application/json") != "" {
-				return c.JSON(map[string]interface{}{
+				return c.JSON(fiber.Map{
 					"success": false,
 					"value":   err.Error(),
 				})

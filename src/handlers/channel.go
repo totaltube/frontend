@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"github.com/flosch/pongo2/v4"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/utils"
 	"github.com/segmentio/encoding/json"
 	"log"
+	"math/rand"
 	"net"
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/db"
@@ -28,11 +30,11 @@ func Channel(c *fiber.Ctx) error {
 		page = 1
 	}
 	modelId, _ := strconv.ParseInt(c.Query(config.Params.ModelId), 10, 64)
-	modelSlug := c.Query(config.Params.ModelSlug)
-	categorySlug := c.Query(config.Params.CategorySlug)
+	modelSlug := utils.ImmutableString(c.Query(config.Params.ModelSlug))
+	categorySlug := utils.ImmutableString(c.Query(config.Params.CategorySlug))
 	categoryId, _ := strconv.ParseInt(c.Query(config.Params.CategoryId), 10, 64)
-	sortBy := c.Query(config.Params.SortBy, "dated")
-	sortByViewsTimeframe := c.Query(config.Params.SortByViewsTimeframe)
+	sortBy := utils.ImmutableString(c.Query(config.Params.SortBy, "dated"))
+	sortByViewsTimeframe := utils.ImmutableString(c.Query(config.Params.SortByViewsTimeframe))
 	if sortBy == config.Params.SortByDate {
 		sortBy = "dated"
 	} else if sortBy == config.Params.SortByDuration {
@@ -45,7 +47,7 @@ func Channel(c *fiber.Ctx) error {
 		sortBy = ""
 	}
 	channelId, _ := strconv.ParseInt(c.Params("id", c.Query(config.Params.ChannelId, "0")), 10, 64)
-	channelSlug := c.Params("slug", c.Query(config.Params.ChannelSlug))
+	channelSlug := utils.ImmutableString(c.Params("slug", c.Query(config.Params.ChannelSlug)))
 	if channelId == 0 && channelSlug == "" {
 		return Generate404(c, "channel not found")
 	}
@@ -58,41 +60,30 @@ func Channel(c *fiber.Ctx) error {
 			modelId, modelSlug, durationGte, durationLt, categoryId, categorySlug),
 	)
 	cacheTtl := time.Minute * 15
+	ip := utils.ImmutableString(c.IP())
+	userAgent := utils.ImmutableString(c.Get("User-Agent"))
 	parsed, err := site.ParseTemplate("channel", path, config, customContext, nocache, cacheKey, cacheTtl,
 		func(ctx pongo2.Context) (pongo2.Context, error) {
 			// getting category information from cache or from api
-			channelInfoCacheKey := fmt.Sprintf("chinfo:%d:%s:%s", channelId, channelSlug, langId)
-			channelInfoCacheTtl := time.Minute * 60 * 24
-			channelInfoCached := db.GetCached(channelInfoCacheKey)
-			var channelInfo *types.ChannelResult
-			if channelInfoCached != nil && !nocache {
-				channelInfo = new(types.ChannelResult)
-				err := json.Unmarshal(channelInfoCached, channelInfo)
-				if err != nil {
-					log.Println(err)
-					return ctx, err
-				}
-			} else {
-				var err error
-				channelInfo, err = api.ChannelInfo(hostName, langId, channelId, channelSlug)
-				if err != nil {
-					if strings.Contains(err.Error(), "not found") {
-						_ = Generate404(c, "channel not found")
-						return ctx, types.ErrResponseSent
-					}
-					log.Println(err)
-					return ctx, err
-				}
-				err = db.PutCached(channelInfoCacheKey, helpers.ToJSON(channelInfo), channelInfoCacheTtl)
-				if err != nil {
-					log.Println(err)
-					return ctx, err
-				}
+			channelInfoCacheKey := fmt.Sprintf("in:chinfo:%d:%s:%s", channelId, channelSlug, langId)
+			channelInfoCacheTtl := time.Hour * 24 + time.Duration(rand.Intn(3600*6))*time.Second
+			channelInfoCached, err := db.GetCachedTimeout(channelInfoCacheKey, channelInfoCacheTtl, time.Hour*4, func() ([]byte, error) {
+				_, rawResponse, err := api.ChannelInfo(hostName, langId, channelId, channelSlug)
+				return rawResponse, err
+			}, nocache)
+			if err != nil {
+				log.Println(err)
+				return ctx, err
+			}
+			channelInfo := new(types.ChannelResult)
+			err = json.Unmarshal(channelInfoCached, channelInfo)
+			if err != nil {
+				log.Println(err)
+				return ctx, err
 			}
 			var results *types.ContentResults
-			var err error
 			results, _, err = api.Content(hostName, api.ContentParams{
-				Ip:           net.ParseIP(c.IP()),
+				Ip:           net.ParseIP(ip),
 				Lang:         langId,
 				Page:         page,
 				CategoryId:   categoryId,
@@ -105,13 +96,9 @@ func Channel(c *fiber.Ctx) error {
 				Timeframe:    sortByViewsTimeframe,
 				DurationGte:  durationGte,
 				DurationLt:   durationLt,
-				UserAgent:    c.Get("User-Agent"),
+				UserAgent:    userAgent,
 			})
 			if err != nil {
-				if strings.Contains(err.Error(), "not found") {
-					_ = Generate404(c, err.Error())
-					return ctx, types.ErrResponseSent
-				}
 				return ctx, err
 			}
 			ctx["channel"] = channelInfo
@@ -124,6 +111,9 @@ func Channel(c *fiber.Ctx) error {
 			return ctx, nil
 		})
 	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return Generate404(c, err.Error())
+		}
 		return err
 	}
 	c.Set("Content-Type", "text/html")

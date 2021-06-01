@@ -2,6 +2,7 @@ package api
 
 import (
 	"github.com/segmentio/encoding/json"
+	"log"
 	"net/url"
 	"sersh.com/totaltube/frontend/types"
 	"strconv"
@@ -24,5 +25,8 @@ func ContentItem(
 	}
 	results = new(types.ContentItemResult)
 	err = json.Unmarshal(response, results)
+	if err != nil {
+		log.Println(err, string(response))
+	}
 	return
 }

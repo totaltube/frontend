@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/flosch/pongo2/v4"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/utils"
 	"net/url"
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/internal"
@@ -84,11 +85,11 @@ func generateCustomContext(c *fiber.Ctx, templateName string) pongo2.Context {
 	queryString := string(c.Context().QueryArgs().QueryString())
 	headers := map[string]string{}
 	c.Request().Header.VisitAll(func(key, value []byte) {
-		headers[string(key)] = string(value)
+		headers[utils.ImmutableString(string(key))] = utils.ImmutableString(string(value))
 	})
 	cookies := map[string]string{}
 	c.Request().Header.VisitAllCookie(func(key, value []byte) {
-		cookies[string(key)] = string(value)
+		cookies[utils.ImmutableString(string(key))] = utils.ImmutableString(string(value))
 	})
 	canonicalQuery := url.Values{}
 	route := config.Routes.TopCategories
@@ -219,7 +220,7 @@ func generateCustomContext(c *fiber.Ctx, templateName string) pongo2.Context {
 	customContext := pongo2.Context{
 		"page_template":   templateName,
 		"lang":            internal.GetLanguage(langId),
-		"ip":              c.IP(),
+		"ip":              utils.ImmutableString(c.IP()),
 		"nocache":         nocache,
 		"languages":       internal.GetLanguages(),
 		"page":            page,

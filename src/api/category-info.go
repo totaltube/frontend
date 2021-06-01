@@ -7,9 +7,8 @@ import (
 	"strconv"
 )
 
-func CategoryInfo(siteDomain, lang string, categoryId int64, categorySlug string) (result *types.CategoryResult, err error) {
-	var response json.RawMessage
-	response, err = apiRequest(siteDomain, methodGet, uriCategoryInfo, url.Values{
+func CategoryInfo(siteDomain, lang string, categoryId int64, categorySlug string) (result *types.CategoryResult, rawResponse json.RawMessage, err error) {
+	rawResponse, err = apiRequest(siteDomain, methodGet, uriCategoryInfo, url.Values{
 		"id":   []string{strconv.FormatInt(categoryId, 10)},
 		"slug": []string{categorySlug},
 		"lang": []string{lang},
@@ -18,6 +17,6 @@ func CategoryInfo(siteDomain, lang string, categoryId int64, categorySlug string
 		return
 	}
 	result = new(types.CategoryResult)
-	err = json.Unmarshal(response, result)
+	err = json.Unmarshal(rawResponse, result)
 	return
 }

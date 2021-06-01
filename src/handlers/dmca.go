@@ -3,6 +3,7 @@ package handlers
 import (
 	"github.com/flosch/pongo2/v4"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/utils"
 	"github.com/pkg/errors"
 	"log"
 	"sersh.com/totaltube/frontend/api"
@@ -26,12 +27,11 @@ func Dmca(c *fiber.Ctx) error {
 	nocache, _ := strconv.ParseBool(c.Query(config.Params.Nocache, "false"))
 	langId := c.Locals("lang").(string)
 	customContext := generateCustomContext(c, "dmca")
-	cacheKey := "dmca:" + hostName + ":" + langId
 	cacheTtl := time.Minute * 15
 	isOk := false
-	var ip = c.IP()
-	session := db.GetSession(ip, true)
-	defer db.SaveSession(ip, session, true)
+	var ip = utils.ImmutableString(c.IP())
+	session := db.GetSession(ip)
+	defer db.SaveSession(ip, session)
 	if session.LastDmca.IsZero() || session.LastDmca.Before(time.Now().Add(-time.Minute)) {
 		session.DmcaAmount = 0
 		session.LastDmca = time.Now()
@@ -86,6 +86,7 @@ func Dmca(c *fiber.Ctx) error {
 		nocache = true
 	}
 	renderCaptcha := session.DmcaAmount > internal.Config.Frontend.MaxDmcaMinute
+	cacheKey := "dmca:" + hostName + ":" + langId + ":" + strconv.FormatBool(isOk) + ":" + strconv.FormatBool(renderCaptcha)
 	parsed, err := site.ParseTemplate("dmca", path, config, customContext, nocache, cacheKey, cacheTtl,
 		func(ctx pongo2.Context) (pongo2.Context, error) {
 			ctx["ok"] = isOk

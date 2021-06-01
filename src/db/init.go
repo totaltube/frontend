@@ -13,6 +13,7 @@ var bdb *badger.DB
 
 func InitDB() {
 	rand.Seed(time.Now().UnixNano())
+	launchCacheWorkers()
 	var err error
 	for {
 		bdb, err = badger.Open(

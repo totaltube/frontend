@@ -115,9 +115,6 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 				}
 			}
 		}
-		if cacheTimeout > 0 {
-			cacheKey = "fetch:" + helpers.Md5Hash(fmt.Sprintf("%s|%s|%s", node.what, method, params.Encode()))
-		}
 		isRaw := false
 		if node.raw != nil {
 			raw, err := node.raw.Evaluate(fetchContext)
@@ -126,44 +123,30 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 			}
 			isRaw = raw.Bool()
 		}
-		if cacheTimeout > 0 && !nocache {
-			v := db.GetCached(cacheKey)
-			if v != nil {
-				if isRaw {
-					fetchContext.Private["fetch_response"] = string(v)
-				} else {
-					data := objx.MustFromJSON(string(v))
-					fetchContext.Private["fetch_response"] = data
-				}
-				err := node.wrapper.Execute(fetchContext, writer)
-				return err
+		if cacheTimeout > 0 {
+			cacheKey = "in:fetch:" + helpers.Md5Hash(fmt.Sprintf("%s|%s|%s", node.what, method, params.Encode()))
+			cached, err := db.GetCachedTimeout(cacheKey, cacheTimeout, cacheTimeout, func() ([]byte, error) {
+				return f.Do()
+			}, nocache)
+			if err != nil {
+				log.Println(err)
+				return &pongo2.Error{Sender: "tag:fetch", OrigError: err}
 			}
-		}
-		if isRaw {
-			data := f.String()
-			fetchContext.Private["fetch_response"] = data
-			if cacheTimeout > 0 {
-				err := db.PutCached(cacheKey, []byte(data), cacheTimeout)
-				if err != nil {
-					log.Println(err)
-				}
+			if isRaw {
+				fetchContext.Private["fetch_response"] = string(cached)
+			} else {
+				fetchContext.Private["fetch_response"] = objx.MustFromJSON(string(cached))
 			}
 		} else {
-			data := f.Json()
-			if data == nil {
-				return &pongo2.Error{Sender: "tag:fetch", OrigError: errors.New("can't fetch " + node.what)}
+			raw, err := f.Do()
+			if err != nil {
+				log.Println(err)
+				return &pongo2.Error{Sender: "tag:fetch", OrigError: err}
 			}
-			fetchContext.Private["fetch_response"] = data
-			if cacheTimeout > 0 {
-				bt, err := json.Marshal(data)
-				if err != nil {
-					log.Println(err)
-				} else {
-					err = db.PutCached(cacheKey, bt, cacheTimeout)
-					if err != nil {
-						log.Println(err)
-					}
-				}
+			if isRaw {
+				fetchContext.Private["fetch_response"] = string(raw)
+			} else {
+				fetchContext.Private["fetch_response"] = objx.MustFromJSON(string(raw))
 			}
 		}
 		err := node.wrapper.Execute(fetchContext, writer)
@@ -244,10 +227,9 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 	}
 	cacheKey := ""
 	if cacheTimeout > 0 {
-		cacheKey = "fetch:" + helpers.Md5Hash(fmt.Sprintf("%s|%d|%d|%v|%s|%s|%v|%d", node.what, amount, page, sort,
+		cacheKey = "in:fetch:" + host + ":" + helpers.Md5Hash(fmt.Sprintf("%s|%d|%d|%v|%s|%s|%v|%d", node.what, amount, page, sort,
 			searchQuery, lang, cacheTimeout, minSearches))
 	}
-	var fromCache = false
 	switch node.what {
 	case "content":
 		categorySlug := ""
@@ -330,31 +312,51 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 			}
 			durationLt = int64(sv.Integer())
 		}
+		userAgent := ""
+		if headers, ok := ctx.Public["headers"].(map[string]string); ok {
+			userAgent, _ = headers["User-Agent"]
+		}
+		ip := "127.0.0.1"
+		ip, _ = ctx.Public["ip"].(string)
 		if cacheTimeout > 0 {
-			cacheKey = "fetch:" + helpers.Md5Hash(fmt.Sprintf("%s|%d|%d|%v|%s|%s|%v|%d|%s|%d|%s|%d|%s|%s|%s|%d|%d", node.what, amount, page, sort,
+			cacheKey = "in:fetch:" + host + ":" + helpers.Md5Hash(fmt.Sprintf("%s|%d|%d|%v|%s|%s|%v|%d|%s|%d|%s|%d|%s|%s|%s|%d|%d", node.what, amount, page, sort,
 				searchQuery, lang, cacheTimeout, categoryId, categorySlug, channelId, channelSlug,
 				modelId, modelSlug, timeframe, tag, durationGte, durationLt))
-		}
-		if cacheTimeout > 0 && !nocache {
-			cached := db.GetCached(cacheKey)
-			if cached != nil {
-				var results = new(types.ContentResults)
-				if err := json.Unmarshal(cached, results); err != nil {
-					log.Println(err)
-				} else {
-					fetchContext.Private["fetched_content"] = results
-					fromCache = true
-				}
+			cached, err := db.GetCachedTimeout(cacheKey, cacheTimeout, cacheTimeout/2, func() ([]byte, error) {
+				_, rawResponse, err := api.Content(host, api.ContentParams{
+					Ip:           net.ParseIP(ip),
+					Lang:         lang,
+					Page:         int64(page),
+					Amount:       int64(amount),
+					CategoryId:   categoryId,
+					CategorySlug: categorySlug,
+					ChannelId:    channelId,
+					ChannelSlug:  channelSlug,
+					ModelId:      modelId,
+					ModelSlug:    modelSlug,
+					Sort:         sort,
+					Timeframe:    timeframe,
+					Tag:          tag,
+					DurationGte:  durationGte,
+					DurationLt:   durationLt,
+					SearchQuery:  searchQuery,
+					UserAgent:    userAgent,
+				})
+				return rawResponse, err
+			}, nocache)
+			if err != nil {
+				log.Println(err)
+				return &pongo2.Error{Sender: "tag:fetch", OrigError: err}
 			}
-		}
-		if !fromCache {
-			userAgent := ""
-			if headers, ok := ctx.Public["headers"].(map[string]string); ok {
-				userAgent, _ = headers["User-Agent"]
+			var results = new(types.ContentResults)
+			if err = json.Unmarshal(cached, results); err != nil {
+				log.Println(err)
+				return &pongo2.Error{Sender: "tag:fetch", OrigError: err}
+			} else {
+				fetchContext.Private["fetched_content"] = results
 			}
-			ip := "127.0.0.1"
-			ip, _ = ctx.Public["ip"].(string)
-			results, rawResponse, err := api.Content(host, api.ContentParams{
+		} else {
+			results, _, err := api.Content(host, api.ContentParams{
 				Ip:           net.ParseIP(ip),
 				Lang:         lang,
 				Page:         int64(page),
@@ -378,126 +380,120 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 				return &pongo2.Error{Sender: "tag:fetch", OrigError: err}
 			}
 			fetchContext.Private["fetched_content"] = results
-			if cacheTimeout > 0 {
-				err = db.PutCached(cacheKey, rawResponse, cacheTimeout)
-				if err != nil {
-					log.Println(err)
-				}
-			}
 		}
 	case "categories":
-		if cacheTimeout > 0 && !nocache {
-			cached := db.GetCached(cacheKey)
-			if cached != nil {
-				var results = new(types.CategoryResults)
-				if err := json.Unmarshal(cached, results); err != nil {
-					log.Println(err)
-				} else {
-					fetchContext.Private["categories"] = results
-					fromCache = true
-				}
+		if cacheTimeout > 0 {
+			cached, err := db.GetCachedTimeout(cacheKey, cacheTimeout, cacheTimeout, func() ([]byte, error) {
+				_, rawResponse, err := api.CategoriesList(host, lang, int64(page), sort, int64(amount))
+				return rawResponse, err
+			}, nocache)
+			if err != nil {
+				log.Println(err)
+				return &pongo2.Error{Sender: "tag:fetch", OrigError: err}
 			}
-		}
-		if !fromCache {
-			results, rawResponse, err := api.CategoriesList(host, lang, int64(page), sort, int64(amount))
+			var results = new(types.CategoryResults)
+			if err = json.Unmarshal(cached, results); err != nil {
+				log.Println(err)
+				return &pongo2.Error{Sender: "tag:fetch", OrigError: err}
+			} else {
+				fetchContext.Private["categories"] = results
+			}
+		} else {
+			results, _, err := api.CategoriesList(host, lang, int64(page), sort, int64(amount))
 			if err != nil {
 				log.Println(err)
 				return &pongo2.Error{Sender: "tag:fetch", OrigError: err}
 			}
 			fetchContext.Private["categories"] = results
-			if cacheTimeout > 0 {
-				err = db.PutCached(cacheKey, rawResponse, cacheTimeout)
-				if err != nil {
-					log.Println(err)
-				}
-			}
 		}
 	case "models":
-		if cacheTimeout > 0 && !nocache {
-			cached := db.GetCached(cacheKey)
-			if cached != nil {
-				var results = new(types.ModelResults)
-				if err := json.Unmarshal(cached, results); err != nil {
-					log.Println(err)
-				} else {
-					fetchContext.Private["models"] = results
-					fromCache = true
-				}
+		if cacheTimeout > 0 {
+			cached, err := db.GetCachedTimeout(cacheKey, cacheTimeout, cacheTimeout, func() ([]byte, error) {
+				_, rawResponse, err := api.ModelsList(host, lang, int64(page), sort, int64(amount), searchQuery)
+				return rawResponse, err
+			}, nocache)
+			if err != nil {
+				log.Println(err)
+				return &pongo2.Error{Sender: "tag:fetch", OrigError: err}
 			}
-		}
-		if !fromCache {
-			results, rawResponse, err := api.ModelsList(host, lang, int64(page), sort, int64(amount), searchQuery)
+			var results = new(types.ModelResults)
+			if err = json.Unmarshal(cached, results); err != nil {
+				log.Println(err)
+				return &pongo2.Error{Sender: "tag:fetch", OrigError: err}
+			} else {
+				fetchContext.Private["models"] = results
+			}
+		} else {
+			results, _, err := api.ModelsList(host, lang, int64(page), sort, int64(amount), searchQuery)
 			if err != nil {
 				log.Println(err)
 				return &pongo2.Error{Sender: "tag:fetch", OrigError: err}
 			}
 			fetchContext.Private["models"] = results
-			if cacheTimeout > 0 {
-				err = db.PutCached(cacheKey, rawResponse, cacheTimeout)
-				if err != nil {
-					log.Println(err)
-				}
-			}
 		}
 	case "channels":
-		if cacheTimeout > 0 && !nocache {
-			cached := db.GetCached(cacheKey)
-			if cached != nil {
-				var results = new(types.ChannelResults)
-				if err := json.Unmarshal(cached, results); err != nil {
-					log.Println(err)
-				} else {
-					fetchContext.Private["channels"] = results
-					fromCache = true
-				}
+		if cacheTimeout > 0 {
+			cached, err := db.GetCachedTimeout(cacheKey, cacheTimeout, cacheTimeout, func() ([]byte, error) {
+				_, rawResponse, err := api.ChannelsList(host, lang, int64(page), sort, int64(amount))
+				return rawResponse, err
+			}, nocache)
+			if err != nil {
+				log.Println(err)
+				return &pongo2.Error{Sender: "tag:fetch", OrigError: err}
 			}
-		}
-		if !fromCache {
-			results, rawResponse, err := api.ChannelsList(host, lang, int64(page), sort, int64(amount))
+			var results = new(types.ChannelResults)
+			if err = json.Unmarshal(cached, results); err != nil {
+				log.Println(err)
+				return &pongo2.Error{Sender: "tag:fetch", OrigError: err}
+			} else {
+				fetchContext.Private["channels"] = results
+			}
+		} else {
+			results, _, err := api.ChannelsList(host, lang, int64(page), sort, int64(amount))
 			if err != nil {
 				log.Println(err)
 				return &pongo2.Error{Sender: "tag:fetch", OrigError: err}
 			}
 			fetchContext.Private["channels"] = results
-			if cacheTimeout > 0 {
-				err = db.PutCached(cacheKey, rawResponse, cacheTimeout)
-				if err != nil {
-					log.Println(err)
-				}
-			}
 		}
 	case "searches":
-		if cacheTimeout > 0 && !nocache {
-			cached := db.GetCached(cacheKey)
-			if cached != nil {
-				var result struct {
-					Items []types.TopSearch `json:"items"`
-				}
-				if err := json.Unmarshal(cached, &result); err != nil {
-					log.Println(err)
+		if cacheTimeout > 0 {
+			cached, err := db.GetCachedTimeout(cacheKey, cacheTimeout, cacheTimeout, func() ([]byte, error) {
+				var rawResponse []byte
+				var err error
+				if sort == api.SortRand {
+					_, rawResponse, err = api.RandomSearches(host, lang, int64(amount), int64(minSearches))
 				} else {
-					fetchContext.Private["searches"] = result.Items
-					fromCache = true
+					_, rawResponse, err = api.TopSearches(host, lang, int64(amount))
 				}
+				return rawResponse, err
+			}, nocache)
+			if err != nil {
+				log.Println(err)
+				return &pongo2.Error{Sender: "tag:fetch", OrigError: err}
 			}
-		}
-		if !fromCache {
+			var result struct {
+				Items []types.TopSearch `json:"items"`
+			}
+			if err = json.Unmarshal(cached, &result); err != nil {
+				log.Println(err)
+				return &pongo2.Error{Sender: "tag:fetch", OrigError: err}
+			} else {
+				fetchContext.Private["searches"] = result.Items
+			}
+		} else {
 			var results []types.TopSearch
-			var rawResponse []byte
 			var err error
 			if sort == api.SortRand {
-				results, rawResponse, err = api.RandomSearches(host, lang, int64(amount), int64(minSearches))
+				results, _, err = api.RandomSearches(host, lang, int64(amount), int64(minSearches))
 			} else {
-				results, rawResponse, err = api.TopSearches(host, lang, int64(amount))
+				results, _, err = api.TopSearches(host, lang, int64(amount))
 			}
 			if err != nil {
 				log.Println(err)
 				return &pongo2.Error{Sender: "tag:fetch", OrigError: err}
 			}
 			fetchContext.Private["searches"] = results
-			if cacheTimeout > 0 {
-				err = db.PutCached(cacheKey, rawResponse, cacheTimeout)
-			}
 		}
 	}
 	Err := node.wrapper.Execute(fetchContext, writer)

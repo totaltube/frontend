@@ -70,6 +70,9 @@ func TopCategories(c *fiber.Ctx) error {
 			return ctx, nil
 		})
 	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return Generate404(c, err.Error())
+		}
 		return err
 	}
 	c.Set("Content-Type", "text/html")

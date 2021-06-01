@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/utils"
 	"github.com/logocomune/botdetector"
 	"log"
 	"sersh.com/totaltube/frontend/api"
@@ -31,13 +32,13 @@ var countChannel = make(chan countInfo, 100)
 func Out(c *fiber.Ctx) error {
 	config := c.Locals("config").(*site.Config)
 	hostName := c.Locals("hostName").(string)
-	ip := c.IP()
+	ip := utils.ImmutableString(c.IP())
 	redirectUrl := c.Query(config.Params.CountRedirect)
 	encryptedRedirectUrl := c.Query("e" + config.Params.CountRedirect)
 	if redirectUrl == "" && encryptedRedirectUrl != "" {
 		redirectUrl = helpers.DecryptBase64(encryptedRedirectUrl)
 	}
-	countType := c.Query(config.Params.CountType)
+	countType := utils.ImmutableString(c.Query(config.Params.CountType))
 	countThumbId, _ := strconv.ParseInt(c.Query(config.Params.CountThumbId, "-1"), 10, 16)
 	returnFunc := func() error {
 		// Function which redirects or return json at the end.
@@ -55,8 +56,8 @@ func Out(c *fiber.Ctx) error {
 		return returnFunc()
 	}
 	// All calculations are done in background
-	categoryIdParam := c.Query(config.Params.CategoryId)
-	contentIdParam := c.Query(config.Params.ContentId)
+	categoryIdParam := utils.ImmutableString(c.Query(config.Params.CategoryId))
+	contentIdParam := utils.ImmutableString(c.Query(config.Params.ContentId))
 	info := countInfo{
 		hostName:     hostName,
 		config:       config,
@@ -80,8 +81,9 @@ func doCount() {
 				}
 			}()
 			info := <-countChannel
-			sess := db.GetSession(info.ip, true)
-			defer db.SaveSession(info.ip, sess, true)
+			var ip = info.ip
+			sess := db.GetSession(ip)
+			defer db.SaveSession(ip, sess)
 			var countId int64
 			switch info.countType {
 			case info.config.Params.CountTypeTopCategories:
@@ -151,7 +153,7 @@ func doCount() {
 					Id: countId,
 				})
 				if err != nil {
-					log.Println("category click api error: ", err)
+					log.Println("category click api error: ", err, info.hostName, categoryId, info.ip, countId)
 				}
 				return
 			}

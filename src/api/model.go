@@ -9,9 +9,8 @@ import (
 
 func ModelInfo(
 	siteDomain, lang string, id int64, slug string,
-) (results *types.ModelResult, err error) {
-	var response json.RawMessage
-	response, err = apiRequest(siteDomain, methodGet, uriModel, url.Values{
+) (results *types.ModelResult, rawResponse json.RawMessage, err error) {
+	rawResponse, err = apiRequest(siteDomain, methodGet, uriModel, url.Values{
 		"lang": []string{lang},
 		"slug": []string{slug},
 		"id":   []string{strconv.FormatInt(id, 10)},
@@ -20,6 +19,6 @@ func ModelInfo(
 		return
 	}
 	results = new(types.ModelResult)
-	err = json.Unmarshal(response, results)
+	err = json.Unmarshal(rawResponse, results)
 	return
 }

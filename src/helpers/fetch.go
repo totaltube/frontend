@@ -1,13 +1,17 @@
 package helpers
 
 import (
+	"bytes"
 	"crypto/tls"
 	"fmt"
 	"github.com/pkg/errors"
 	"github.com/segmentio/encoding/json"
 	"github.com/valyala/fasthttp"
+	"io"
+	"io/ioutil"
 	"log"
 	"net"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -75,7 +79,7 @@ func (f *fetchRequest) WithRawData(data []byte) *fetchRequest {
 
 func (f *fetchRequest) WithJsonData(data interface{}) *fetchRequest {
 	f.data = data
-	f.headers[fasthttp.HeaderContentType] = "application/json"
+	f.headers["Content-Type"] = "application/json"
 	if f.method == "GET" {
 		f.method = "POST"
 	}
@@ -84,11 +88,11 @@ func (f *fetchRequest) WithJsonData(data interface{}) *fetchRequest {
 
 func (f *fetchRequest) WithFormData(data map[string]interface{}) *fetchRequest {
 	f.data = data
-	f.headers[fasthttp.HeaderContentType] = "application/x-www-form-urlencoded;charset=UTF-8"
+	f.headers["Content-Type"] = "application/x-www-form-urlencoded;charset=UTF-8"
 	if f.method == "GET" {
 		f.method = "POST"
 	}
-	return  f
+	return f
 }
 
 func (f *fetchRequest) WithTimeout(timeout time.Duration) *fetchRequest {
@@ -97,6 +101,83 @@ func (f *fetchRequest) WithTimeout(timeout time.Duration) *fetchRequest {
 }
 
 func (f *fetchRequest) Do() (response []byte, err error) {
+	client := http.Client{
+		Timeout:   f.timeout,
+		Transport: &http.Transport{DisableKeepAlives: true, TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
+	}
+	var body io.Reader
+	if f.data != nil {
+		switch d := f.data.(type) {
+		case []byte:
+			body = bytes.NewReader(d)
+		default:
+			var dd []byte
+			if f.headers["Content-Type"] == "application/x-www-form-urlencoded;charset=UTF-8" {
+				form := url.Values{}
+				if m, ok := d.(map[string]interface{}); !ok {
+					log.Printf("wrong data type - %T\n", f.data)
+					return
+				} else {
+					for k, v := range m {
+						form.Set(k, fmt.Sprintf("%v", v))
+					}
+				}
+				dd = []byte(form.Encode())
+				body = bytes.NewReader(dd)
+			} else {
+				dd, err = json.Marshal(f.data)
+				if err != nil {
+					log.Println("can't marshal to json fetch function data")
+					return
+				} else {
+					body = bytes.NewReader(dd)
+				}
+			}
+		}
+	}
+	requestUrl := f.url
+	var request *http.Request
+	request, err = http.NewRequest(f.method, requestUrl, body)
+	if err != nil {
+		log.Println("error creating client request:", err)
+		return
+	}
+	requestQuery := request.URL.Query()
+	for k, v := range f.query {
+		for _, vv := range v {
+			requestQuery.Add(k, vv)
+		}
+	}
+	request.URL.RawQuery = requestQuery.Encode()
+	for name, val := range f.headers {
+		request.Header.Set(name, val)
+	}
+	var resp *http.Response
+	resp, err = client.Do(request)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	if resp.StatusCode != 200 {
+		err = errors.New(fmt.Sprintf("wrong status code: %d", resp.StatusCode))
+		log.Println(f.url, err)
+	}
+	resp.Header.Get("Accept")
+	if strings.Contains(request.Header.Get("Accept"), "application/json") {
+		// проверим, что возвращенный ответ также json:
+		if !strings.Contains(resp.Header.Get("Content-Type"), "/json") {
+			err = errors.New(fmt.Sprintf("wrong content type: %s", resp.Header.Get("Content-Type")))
+			log.Println(err)
+			return
+		}
+	}
+	response, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Println(err)
+	}
+	return
+}
+func (f *fetchRequest) DoFastHttp() (response []byte, err error) {
 	c := &fasthttp.Client{
 		MaxIdleConnDuration: f.timeout,
 		Dial: func(addr string) (net.Conn, error) {
@@ -158,7 +239,7 @@ func (f *fetchRequest) Do() (response []byte, err error) {
 	}
 	if freq.Header.HasAcceptEncoding("application/json") {
 		// проверим, что возвращенный ответ также json:
-		if !strings.HasSuffix(string(resp.Header.ContentType()), "/json") {
+		if !strings.Contains(string(resp.Header.ContentType()), "/json") {
 			err = errors.New(fmt.Sprintf("wrong content type: %s", resp.Header.ContentType()))
 			log.Println(err)
 			return
@@ -169,7 +250,7 @@ func (f *fetchRequest) Do() (response []byte, err error) {
 }
 
 func (f *fetchRequest) Json() (response map[string]interface{}) {
-	f.headers[fasthttp.HeaderAccept] = "application/json"
+	f.headers["Accept"] = "application/json"
 	bt, err := f.Do()
 	if err != nil {
 		log.Println(err)

@@ -23,10 +23,8 @@ type Session struct {
 	DmcaAmount    int64
 }
 
-func GetSession(ip string, lock ...bool) (session *Session) {
-	if len(lock) > 0 && lock[0] {
-		helpers.KeyMutex.Lock(ip)
-	}
+func GetSession(ip string) (session *Session) {
+	helpers.KeyMutex.Lock(ip)
 	key := []byte(sessionPrefix + ip)
 	_ = bdb.View(func(txn *badger.Txn) error {
 		item, err := txn.Get(key)
@@ -47,7 +45,8 @@ func GetSession(ip string, lock ...bool) (session *Session) {
 	return
 }
 
-func SaveSession(ip string, session *Session, unlock ...bool) {
+func SaveSession(ip string, session *Session) {
+	defer helpers.KeyMutex.Unlock(ip)
 	if session == nil {
 		return
 	}
@@ -62,7 +61,4 @@ func SaveSession(ip string, session *Session, unlock ...bool) {
 		entry := badger.NewEntry(key, val).WithTTL(time.Hour * 4)
 		return txn.SetEntry(entry)
 	})
-	if len(unlock) > 0 && unlock[0] {
-		helpers.KeyMutex.Unlock(ip)
-	}
 }
