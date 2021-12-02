@@ -6,7 +6,7 @@ type AutocompleteItem struct {
 	Type    string `json:"type,omitempty"`
 	Slug    string `json:"slug,omitempty"`
 	Id      int64  `json:"id,omitempty"`
-	Total   int64  `json:"total,omitempty"`
+	Total   int64  `json:"total"`
 }
 
 type AutocompleteResults struct {

@@ -3,16 +3,16 @@ package api
 import (
 	"github.com/segmentio/encoding/json"
 	"net/url"
-	"sersh.com/totaltube/frontend/types"
+	"sersh.com/totaltube/frontend/internal"
 )
 
-func Options() (siteDomain string, results *types.Options, err error) {
+func Options(siteDomain string) (results *internal.Options, err error) {
 	var response json.RawMessage
-	response, err = apiRequest(siteDomain, methodGet, uriOptions, url.Values{})
+	response, err = ApiRequest(siteDomain, methodGet, uriOptions, url.Values{})
 	if err != nil {
 		return
 	}
-	results = new(types.Options)
+	results = new(internal.Options)
 	err = json.Unmarshal(response, results)
 	return
 }

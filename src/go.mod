@@ -8,13 +8,11 @@ require (
 	github.com/StackExchange/wmi v0.0.0-20210224194228-fe8f1750fd46 // indirect
 	github.com/alecthomas/kong v0.2.11
 	github.com/dgraph-io/badger/v3 v3.2011.1
-	github.com/dlclark/regexp2 v1.4.0 // indirect
-	github.com/dop251/goja v0.0.0-20210126164150-f5884268f0c0
-	github.com/dop251/goja_nodejs v0.0.0-20201222133159-1629e8d0b836
+	github.com/dop251/goja v0.0.0-20210904102640-6338b3246846
+	github.com/dop251/goja_nodejs v0.0.0-20210225215109-d91c329300e7
 	github.com/evanw/esbuild v0.8.8
 	github.com/flosch/pongo2/v4 v4.0.0
 	github.com/go-ole/go-ole v1.2.5 // indirect
-	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
 	github.com/gofiber/fiber/v2 v2.1.2
 	github.com/jpillora/overseer v1.1.6
 	github.com/klauspost/compress v1.10.7
@@ -29,6 +27,9 @@ require (
 	github.com/valyala/fasthttp v1.16.0
 	github.com/wellington/go-libsass v0.9.2
 	github.com/willabides/kongplete v0.1.0
-	golang.org/x/sys v0.0.0-20210331175145-43e1dd70ce54 // indirect
-	golang.org/x/text v0.3.3
+	golang.org/x/crypto v0.0.0-20211117183948-ae814b36b871 // indirect
+	golang.org/x/net v0.0.0-20211201190559-0a0e4e1bb54c // indirect
+	golang.org/x/sys v0.0.0-20211124211545-fe61309f8881 // indirect
+	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
+	golang.org/x/text v0.3.7
 )

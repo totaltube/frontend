@@ -10,7 +10,7 @@ import (
 func ModelsList(
 	siteDomain, lang string, page int64, sort SortBy, amount int64, searchQuery string,
 ) (results *types.ModelResults, response json.RawMessage, err error) {
-	response, err = apiRequest(siteDomain, methodGet, uriModelsList, url.Values{
+	response, err = ApiRequest(siteDomain, methodGet, uriModelsList, url.Values{
 		"lang":   []string{lang},
 		"sort":   []string{string(sort)},
 		"amount": []string{strconv.FormatInt(amount, 10)},

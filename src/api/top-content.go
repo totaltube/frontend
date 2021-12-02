@@ -9,7 +9,7 @@ import (
 
 func TopContent(siteDomain, lang string, page int64) (results *types.ContentResults, err error) {
 	var response json.RawMessage
-	response, err = apiRequest(siteDomain, methodGet, uriTopContent, url.Values{
+	response, err = ApiRequest(siteDomain, methodGet, uriTopContent, url.Values{
 		"lang": []string{lang},
 		"page": []string{strconv.FormatInt(page, 10)},
 	})

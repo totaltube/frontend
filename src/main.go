@@ -3,11 +3,13 @@ package main
 import (
 	"fmt"
 	"github.com/alecthomas/kong"
+	"github.com/pkg/errors"
 	"github.com/posener/complete"
 	"github.com/willabides/kongplete"
 	"log"
 	"os"
 	"runtime"
+	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/internal"
 )
 
@@ -33,6 +35,10 @@ func main() {
 	switch ctx.Command() {
 	case "start":
 		internal.InitConfig(CLI.Config)
+		internal.Config.Options, err = api.Options(internal.Config.Frontend.DefaultSite)
+		if err != nil {
+			panic(errors.Wrap(err, "Can't get sites options"))
+		}
 		startServer()
 	case "install":
 		Install()

@@ -167,16 +167,16 @@ func ParseTemplate(name, path string, config *Config, customContext pongo2.Conte
 				//GojaVMMutex.Lock(baseName)
 				//defer GojaVMMutex.Unlock(baseName)
 				VM := getJsVM(baseName)
-				VM.Set("config", config)
-				VM.Set("nocache", nocache)
+				_ = VM.Set("config", config)
+				_ = VM.Set("nocache", nocache)
 				for k, v := range c {
-					VM.Set(k, v)
+					_ = VM.Set(k, v)
 				}
 				var argsString string
 				var argsNameArray = make([]string, 0, len(args))
 				for argIndex, arg := range args {
 					var argName = fmt.Sprintf("arg%d", argIndex)
-					VM.Set(argName, arg)
+					_ = VM.Set(argName, arg)
 					argsNameArray = append(argsNameArray, argName)
 				}
 				argsString = strings.Join(argsNameArray, ",")
@@ -195,10 +195,11 @@ func ParseTemplate(name, path string, config *Config, customContext pongo2.Conte
 		}
 	}
 	var cached []byte
-	cached, err = db.GetCachedTimeout(cacheKey, cacheTtl, cacheTtl, func() (result []byte, err error) {
+	cached, err = db.GetCachedTimeout(cacheKey, cacheTtl, time.Duration(math.Max(float64(time.Minute*10), float64(cacheTtl))), func() (result []byte, err error) {
 		var c pongo2.Context
 		c, err = uncachedPrepare(customContext)
 		if err != nil {
+			log.Println(err)
 			return
 		}
 		c = generateContext(name, path, c)
@@ -217,8 +218,10 @@ func ParseTemplate(name, path string, config *Config, customContext pongo2.Conte
 		}
 		return
 	}, nocache)
-	if err != nil && !strings.Contains(err.Error(), "not found") {
-		log.Println(err)
+	if err != nil {
+		if !strings.Contains(err.Error(), "not found") {
+			log.Println(err)
+		}
 		return
 	}
 	c = generateContext(name, path, customContext)
@@ -250,14 +253,24 @@ func ParseCustomTemplate(name, path string, config *Config,
 	}
 	helpers.KeyMutex.Lock(name)
 	defer helpers.KeyMutex.Unlock(name)
-	//GojaVMMutex.Lock(name)
-	//defer GojaVMMutex.Unlock(name)
 	VM := getJsVM(name)
-	VM.Set("config", config)
-	VM.Set("nocache", nocache)
-	VM.Set("redirect", doRedirect)
+	if err = VM.Set("config", config); err != nil {
+		log.Println(err)
+		return
+	}
+	if err = VM.Set("nocache", nocache); err != nil {
+		log.Println(err)
+		return
+	}
+	if err = VM.Set("redirect", doRedirect); err != nil {
+		log.Println(err)
+		return
+	}
 	for k, v := range customContext {
-		VM.Set(k, v)
+		if err = VM.Set(k, v); err != nil {
+			log.Println(err)
+			return
+		}
 	}
 	var program *goja.Program
 	program, err = getJsProgram(name+":cacheKey", string(source)+" cacheKey()")
@@ -284,6 +297,53 @@ func ParseCustomTemplate(name, path string, config *Config,
 		return
 	}
 	cacheTtl := time.Duration(v.ToInteger()) * time.Second
+	// Adding custom functions to context
+	var addCustomFunctions = func(c pongo2.Context) {
+		matches, _ := filepath.Glob(filepath.Join(path, "extensions/function-*.js"))
+		for _, m := range matches {
+			baseName := filepath.Base(m)
+			funcName := strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(baseName, "function-"), ".js"))
+			if funcName == "" {
+				continue
+			}
+			var source = getJsSource(m)
+			if len(source) == 0 {
+				continue
+			}
+			c[funcName] = func(args ...interface{}) interface{} {
+				helpers.KeyMutex.Lock(baseName)
+				defer helpers.KeyMutex.Unlock(baseName)
+				//GojaVMMutex.Lock(baseName)
+				//defer GojaVMMutex.Unlock(baseName)
+				VM := getJsVM(baseName)
+				_ = VM.Set("config", config)
+				_ = VM.Set("nocache", nocache)
+				for k, v := range c {
+					_ = VM.Set(k, v)
+				}
+				var argsString string
+				var argsNameArray = make([]string, 0, len(args))
+				for argIndex, arg := range args {
+					var argName = fmt.Sprintf("arg%d", argIndex)
+					_ = VM.Set(argName, arg)
+					argsNameArray = append(argsNameArray, argName)
+				}
+				argsString = strings.Join(argsNameArray, ",")
+				program, err := getJsProgram("function:"+funcName, string(source)+" "+funcName+"("+argsString+")")
+				if err != nil {
+					log.Println(err)
+					return nil
+				}
+				v, err := VM.RunProgram(program)
+				if err != nil {
+					log.Println(err)
+					return nil
+				}
+				return v.Export()
+			}
+		}
+	}
+
 	var ctx pongo2.Context
 	recreate := func() (parsed []byte, err error) {
 		program, err = getJsProgram(name+":prepare", string(source)+" prepare()")
@@ -300,6 +360,10 @@ func ParseCustomTemplate(name, path string, config *Config,
 			customContext.Update(ctx)
 		}
 		ctx = generateContext(name, path, customContext)
+		addCustomFunctions(ctx)
+		for k, val := range ctx {
+			_ = VM.Set(k, val)
+		}
 		program, err = getJsProgram(name+":render", string(source)+" render()")
 		if err != nil {
 			log.Println(err)
@@ -358,6 +422,7 @@ func ParseCustomTemplate(name, path string, config *Config,
 			return
 		}
 		c := generateContext(name, path, customContext)
+		addCustomFunctions(c)
 		parsed, err = InsertDynamic(parsed, c)
 		return
 	}
@@ -365,5 +430,6 @@ func ParseCustomTemplate(name, path string, config *Config,
 		return
 	}
 	parsed, err = InsertDynamic(parsed, ctx)
+	addCustomFunctions(ctx)
 	return
 }

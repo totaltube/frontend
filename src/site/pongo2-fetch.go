@@ -202,7 +202,7 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 		}
 		sort = api.SortBy(sv.String())
 		if sort != api.SortPopular && sort != api.SortRand && sort != api.SortDuration &&
-			sort != api.SortDated && sort != api.SortViews && sort != api.SortTitle {
+			sort != api.SortDated && sort != api.SortViews && sort != api.SortTitle && sort != api.SortRandNoPaging {
 			return &pongo2.Error{
 				Sender:    "tag:fetch",
 				OrigError: errors.New("invalid sort param"),

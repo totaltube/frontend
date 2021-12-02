@@ -129,3 +129,42 @@ func Category(c *fiber.Ctx) error {
 	c.Set("Content-Type", "text/html")
 	return c.Send(parsed)
 }
+
+func getCategoryTopFunc(hostName string, langId string) func(args ...interface{}) *types.ContentResults {
+	return func(args ...interface{}) *types.ContentResults {
+		parsingName := true
+		var categoryId int64
+		var categorySlug string
+		var page int64
+		curName := ""
+		for k := range args {
+			if parsingName {
+				curName = fmt.Sprintf("%v", args[k])
+				parsingName = false
+				continue
+			}
+			val := fmt.Sprintf("%v", args[k])
+			parsingName = true
+			switch curName {
+			case "lang":
+				langId = val
+			case "page":
+				page, _ = strconv.ParseInt(val, 10, 16)
+			case "category_id", "id":
+				categoryId, _ = strconv.ParseInt(val, 10, 32)
+			case "category_slug", "slug":
+				categorySlug = val
+			}
+		}
+		if categoryId == 0 && categorySlug == "" {
+			log.Println("error getting top category content - need to set category_id or category_slug param")
+			return nil
+		}
+		if results, err := api.Category(hostName, langId, categoryId, categorySlug, page); err != nil {
+			log.Println("error getting category top content: ", err)
+			return nil
+		} else {
+			return results
+		}
+	}
+}

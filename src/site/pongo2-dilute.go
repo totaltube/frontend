@@ -3,6 +3,7 @@ package site
 import (
 	"github.com/flosch/pongo2/v4"
 	"github.com/pkg/errors"
+	"log"
 	"math"
 	"math/rand"
 )
@@ -33,6 +34,7 @@ func (node *tagDiluteNode) Execute(ctx *pongo2.ExecutionContext, _ pongo2.Templa
 		return err
 	}
 	if !with.CanSlice() {
+		log.Printf("%T, %v", with.Interface(), with.Interface())
 		return &pongo2.Error{Sender: "tag:dilute", OrigError: errors.New("variable to dilute with must be array")}
 	}
 	diluteLength := with.Len()
@@ -82,6 +84,9 @@ func (node *tagDiluteNode) Execute(ctx *pongo2.ExecutionContext, _ pongo2.Templa
 			return true
 		}
 		indexToInsert := int(math.Floor(rand.Float64() * float64(len(itemsToDilute))))
+		if indexToInsert+1 > len(itemsToDilute) {
+			return true
+		}
 		itemsToDilute = append(itemsToDilute[:indexToInsert+1], itemsToDilute[indexToInsert:]...)
 		itemsToDilute[indexToInsert] = key.Interface()
 		return true

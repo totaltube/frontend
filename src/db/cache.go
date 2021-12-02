@@ -1,8 +1,11 @@
 package db
 
 import (
+	"errors"
+	"fmt"
 	"github.com/dgraph-io/badger/v3"
 	"log"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -50,21 +53,27 @@ var innerRecreateQueue = make(chan recreateInfo, 50) // extra queue for requests
 
 func recreateJob(job recreateInfo) {
 	defer func() {
+		if job.doneChannel != nil {
+			defer func() {
+				close(job.doneChannel)
+			}()
+		}
 		if r := recover(); r != nil {
 			log.Println("recover in cache recreate worker: ", r)
+			debug.PrintStack()
+			if job.doneChannel != nil {
+				job.doneChannel <- errors.New(fmt.Sprintf("%s", r))
+			}
 		}
 	}()
 	var key = []byte(cachePrefix + job.cacheKey)
 	var expireKey = []byte(cachePrefix + "_exp_" + job.cacheKey)
-	if job.doneChannel != nil {
-		defer func() {
-			close(job.doneChannel)
-		}()
-	}
 	defer recreatingNow.Delete(job.cacheKey)
 	result, err := job.recreateFunction()
-	if err != nil && !strings.Contains(err.Error(), "not found") {
-		log.Println(err)
+	if err != nil  {
+		if !strings.Contains(err.Error(), "not found") {
+			log.Println(err)
+		}
 	} else {
 		err = bdb.Update(func(txn *badger.Txn) error {
 			// we set ttl slightly higher than requested timeout, because we want to use old cache sometimes
@@ -187,6 +196,14 @@ func GetCachedTimeout(cacheKey string, timeout time.Duration, extendedTimeout ti
 	}
 	err = <-done
 	if err != nil {
+		// Removing old cache
+		if found {
+			_ = bdb.Update(func(txn *badger.Txn) error {
+				_ = txn.Delete(key)
+				_ = txn.Delete(expireKey)
+				return nil
+			})
+		}
 		return
 	}
 	return GetCachedTimeout(cacheKey, timeout, extendedTimeout, recreate, false)

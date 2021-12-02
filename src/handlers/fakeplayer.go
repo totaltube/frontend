@@ -56,5 +56,6 @@ func FakePlayer(c *fiber.Ctx) error {
 		return err
 	}
 	c.Set("Content-Type", "text/html")
+	c.Set("X-Robots-Tag", "noindex")
 	return c.Send(parsed)
 }

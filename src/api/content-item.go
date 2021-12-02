@@ -13,7 +13,7 @@ func ContentItem(
 	omitRelatedForLink bool, relatedAmount int64,
 ) (results *types.ContentItemResult, err error) {
 	var response json.RawMessage
-	response, err = apiRequest(siteDomain, methodGet, uriContentItem, url.Values{
+	response, err = ApiRequest(siteDomain, methodGet, uriContentItem, url.Values{
 		"lang":    []string{lang},
 		"slug":    []string{slug},
 		"id":      []string{strconv.FormatInt(id, 10)},

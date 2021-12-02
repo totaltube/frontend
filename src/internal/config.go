@@ -16,6 +16,7 @@ type (
 		General  General
 		Frontend Frontend
 		Database Database
+		Options  *Options
 	}
 	General struct {
 		Nginx          bool `toml:"nginx"`

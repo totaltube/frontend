@@ -9,6 +9,6 @@ import (
 func CategoryClick(siteDomain string, categoryId int64, params types.CountClickParams) (err error) {
 	uriParams := url.Values{}
 	uriParams.Set("category_id", strconv.FormatInt(categoryId, 10))
-	_, err = apiRequest(siteDomain, methodPost, uriCategoryClick+apiUri("?"+uriParams.Encode()), params)
+	_, err = ApiRequest(siteDomain, methodPost, uriCategoryClick+ApiUri("?"+uriParams.Encode()), params)
 	return
 }

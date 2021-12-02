@@ -12,8 +12,8 @@ import (
 )
 
 type Data map[string]interface{}
-type method string
-type apiUri string
+type Method string
+type ApiUri string
 
 type apiResponse struct {
 	Success bool            `json:"success"`
@@ -21,39 +21,39 @@ type apiResponse struct {
 }
 
 const (
-	methodGet    method = "GET"
-	methodPost   method = "POST"
-	methodPut    method = "PUT"
-	methodDelete method = "DELETE"
+	methodGet    Method = "GET"
+	methodPost   Method = "POST"
+	methodPut    Method = "PUT"
+	methodDelete Method = "DELETE"
 )
 const (
-	uriAutocomplete       apiUri = "autocomplete"
-	uriTimeframes         apiUri = "timeframes"
-	uriOptions            apiUri = "options"
-	uriContentItem        apiUri = "content-item"
-	uriTopContent         apiUri = "top-content"
-	uriCategory           apiUri = "category"
-	uriCategoryInfo       apiUri = "category-info"
-	uriChannelInfo        apiUri = "channel-info"
-	uriTopCategories      apiUri = "top-categories"
-	uriContent            apiUri = "content"
-	uriCategoriesList     apiUri = "categories-list"
-	uriModelsList         apiUri = "models-list"
-	uriModel              apiUri = "model"
-	uriChannelsList       apiUri = "channels-list"
-	uriTopSearches        apiUri = "searches/top"
-	uriRandomSearches     apiUri = "searches/random"
-	uriRelated            apiUri = "related"
-	uriDmca               apiUri = "dmca"
-	uriCountView          apiUri = "count-view"
-	uriTopCategoriesClick apiUri = "count-click/top-categories"
-	uriCategoryClick      apiUri = "count-click/category"
-	uriTopContentClick    apiUri = "count-click/top-content"
-	uriTranslate          apiUri = "translate"
-	uriLanguages          apiUri = "languages"
+	uriAutocomplete       ApiUri = "autocomplete"
+	uriTimeframes         ApiUri = "timeframes"
+	uriOptions            ApiUri = "options"
+	uriContentItem        ApiUri = "content-item"
+	uriTopContent         ApiUri = "top-content"
+	uriCategory           ApiUri = "category"
+	uriCategoryInfo       ApiUri = "category-info"
+	uriChannelInfo        ApiUri = "channel-info"
+	uriTopCategories      ApiUri = "top-categories"
+	uriContent            ApiUri = "content"
+	uriCategoriesList     ApiUri = "categories-list"
+	uriModelsList         ApiUri = "models-list"
+	uriModel              ApiUri = "model"
+	uriChannelsList       ApiUri = "channels-list"
+	uriTopSearches        ApiUri = "searches/top"
+	uriRandomSearches     ApiUri = "searches/random"
+	uriRelated            ApiUri = "related"
+	uriDmca               ApiUri = "dmca"
+	uriCountView          ApiUri = "count-view"
+	uriTopCategoriesClick ApiUri = "count-click/top-categories"
+	uriCategoryClick      ApiUri = "count-click/category"
+	uriTopContentClick    ApiUri = "count-click/top-content"
+	uriTranslate          ApiUri = "translate"
+	uriLanguages          ApiUri = "languages"
 )
 
-func apiRequest(siteDomain string, method method, uri apiUri, data interface{}) (response json.RawMessage, err error) {
+func ApiRequest(siteDomain string, method Method, uri ApiUri, data interface{}) (response json.RawMessage, err error) {
 	f := helpers.Fetch(internal.Config.General.ApiUrl + string(uri))
 	f.WithHeader(fasthttp.HeaderAuthorization, internal.Config.General.ApiSecret)
 	f.WithHeader("Totaltube-Site", siteDomain)
@@ -73,7 +73,7 @@ func apiRequest(siteDomain string, method method, uri apiUri, data interface{}) 
 	var resp []byte
 	resp, err = f.Do()
 	if err != nil {
-		err = errors.Wrap(err, "error getting "+internal.Config.General.ApiUrl + string(uri))
+		err = errors.Wrap(err, "error getting "+internal.Config.General.ApiUrl+string(uri))
 		return
 	}
 	var r apiResponse

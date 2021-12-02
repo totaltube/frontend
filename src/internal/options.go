@@ -1,4 +1,4 @@
-package types
+package internal
 
 type PageLayoutT struct {
 	Amount        int32 `json:"amount"`

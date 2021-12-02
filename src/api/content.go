@@ -11,14 +11,15 @@ import (
 type SortBy string
 
 const (
-	SortPopular  SortBy = "popular"
-	SortDated    SortBy = "dated"
-	SortViews    SortBy = "views"
-	SortDuration SortBy = "duration"
-	SortRand     SortBy = "rand"
-	SortTitle    SortBy = "title"
-	SortTotal    SortBy = "total"
-	SortNone     SortBy = ""
+	SortPopular      SortBy = "popular"
+	SortDated        SortBy = "dated"
+	SortViews        SortBy = "views"
+	SortDuration     SortBy = "duration"
+	SortRand         SortBy = "rand"
+	SortRandNoPaging SortBy = "rand1"
+	SortTitle        SortBy = "title"
+	SortTotal        SortBy = "total"
+	SortNone         SortBy = ""
 )
 
 const (
@@ -28,24 +29,25 @@ const (
 )
 
 type ContentParams struct {
-	Ip           net.IP
-	Lang         string
-	Page         int64
-	Amount       int64
-	CategoryId   int64
-	CategorySlug string
-	ChannelId    int64
-	ChannelSlug  string
-	ModelId      int64
-	ModelSlug    string
-	Sort         SortBy
-	Timeframe    string // таймфрейм при сортировке по views
-	Tag          string
-	DurationGte  int64
-	DurationLt   int64
-	SearchQuery  string
-	IsNatural    bool   // true, если поисковый запрос создан самим пользователем, а не выбран в автокомплите
-	UserAgent    string // UserAgent текущего клиента
+	Ip             net.IP
+	Lang           string
+	Page           int64
+	Amount         int64
+	CategoryId     int64
+	CategorySlug   string
+	ChannelId      int64
+	ChannelSlug    string
+	ModelId        int64
+	ModelSlug      string
+	RelatedMessage string // на основании которого будет выдан related контент ( для модели это title модели )
+	Sort           SortBy
+	Timeframe      string // таймфрейм при сортировке по views
+	Tag            string
+	DurationGte    int64
+	DurationLt     int64
+	SearchQuery    string
+	IsNatural      bool   // true, если поисковый запрос создан самим пользователем, а не выбран в автокомплите
+	UserAgent      string // UserAgent текущего клиента
 }
 
 func Content(siteDomain string, params ContentParams) (results *types.ContentResults, rawResponse json.RawMessage, err error) {
@@ -104,7 +106,10 @@ func Content(siteDomain string, params ContentParams) (results *types.ContentRes
 	if params.UserAgent != "" {
 		data.Add("user_agent", params.UserAgent)
 	}
-	rawResponse, err = apiRequest(siteDomain, methodGet, uriContent, data)
+	if params.RelatedMessage != "" {
+		data.Add("related_message", params.RelatedMessage)
+	}
+	rawResponse, err = ApiRequest(siteDomain, methodGet, uriContent, data)
 	if err != nil {
 		return
 	}

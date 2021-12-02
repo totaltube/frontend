@@ -6,13 +6,12 @@ import (
 	"fmt"
 	"github.com/pkg/errors"
 	"github.com/segmentio/encoding/json"
-	"github.com/valyala/fasthttp"
 	"io"
 	"io/ioutil"
 	"log"
-	"net"
 	"net/http"
 	"net/url"
+	"sersh.com/totaltube/frontend/internal"
 	"strings"
 	"time"
 )
@@ -27,12 +26,18 @@ type fetchRequest struct {
 }
 
 func newFetchRequest(u string) *fetchRequest {
+	var headers = map[string]string{
+		"User-Agent": "Totaltube Frontend/1.0 (+https://totaltraffictrader.com/)",
+	}
+	parsed, err := url.Parse(u)
+	if err != nil || (parsed.Host == "" && parsed.Scheme == "") {
+		u = internal.Config.General.ApiUrl + u
+		headers["Authorization"] = internal.Config.General.ApiSecret
+	}
 	n := fetchRequest{
-		method: "GET",
-		url:    u,
-		headers: map[string]string{
-			fasthttp.HeaderUserAgent: "Totaltube Frontend/1.0 (+https://totaltraffictrader.com/)",
-		},
+		method:  "GET",
+		url:     u,
+		headers: headers,
 		query:   url.Values{},
 		data:    nil,
 		timeout: time.Second * 5,
@@ -175,77 +180,6 @@ func (f *fetchRequest) Do() (response []byte, err error) {
 	if err != nil {
 		log.Println(err)
 	}
-	return
-}
-func (f *fetchRequest) DoFastHttp() (response []byte, err error) {
-	c := &fasthttp.Client{
-		MaxIdleConnDuration: f.timeout,
-		Dial: func(addr string) (net.Conn, error) {
-			return fasthttp.DialTimeout(addr, f.timeout)
-		},
-		MaxConnsPerHost: 10,
-		TLSConfig: &tls.Config{
-			InsecureSkipVerify: true,
-		},
-	}
-	freq := fasthttp.AcquireRequest()
-	defer fasthttp.ReleaseRequest(freq)
-	freq.SetRequestURI(f.url)
-	freq.SetConnectionClose()
-	freq.Header.SetMethod(f.method)
-	for name, val := range f.headers {
-		freq.Header.Set(name, val)
-	}
-	freq.URI().SetQueryString(f.query.Encode())
-	if f.data != nil {
-		switch d := f.data.(type) {
-		case []byte:
-			freq.SetBody(d)
-		default:
-			var dd []byte
-			if f.headers[fasthttp.HeaderContentType] == "application/x-www-form-urlencoded;charset=UTF-8" {
-				form := url.Values{}
-				if m, ok := d.(map[string]interface{}); !ok {
-					log.Printf("wrong data type - %T\n", f.data)
-					return
-				} else {
-					for k, v := range m {
-						form.Set(k, fmt.Sprintf("%v", v))
-					}
-				}
-				dd = []byte(form.Encode())
-				freq.SetBody(dd)
-			} else {
-				dd, err = json.Marshal(f.data)
-				if err != nil {
-					log.Println("can't marshal to json fetch function data")
-					return
-				} else {
-					freq.SetBody(dd)
-				}
-			}
-		}
-	}
-	resp := fasthttp.AcquireResponse()
-	defer fasthttp.ReleaseResponse(resp)
-	err = c.DoTimeout(freq, resp, f.timeout)
-	if err != nil {
-		return
-	}
-	if resp.StatusCode() != 200 {
-		err = errors.New(fmt.Sprintf("wrong status code: %d", resp.StatusCode()))
-		log.Println(f.url, err)
-		return
-	}
-	if freq.Header.HasAcceptEncoding("application/json") {
-		// проверим, что возвращенный ответ также json:
-		if !strings.Contains(string(resp.Header.ContentType()), "/json") {
-			err = errors.New(fmt.Sprintf("wrong content type: %s", resp.Header.ContentType()))
-			log.Println(err)
-			return
-		}
-	}
-	response = resp.Body()
 	return
 }
 

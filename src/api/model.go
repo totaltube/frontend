@@ -10,7 +10,7 @@ import (
 func ModelInfo(
 	siteDomain, lang string, id int64, slug string,
 ) (results *types.ModelResult, rawResponse json.RawMessage, err error) {
-	rawResponse, err = apiRequest(siteDomain, methodGet, uriModel, url.Values{
+	rawResponse, err = ApiRequest(siteDomain, methodGet, uriModel, url.Values{
 		"lang": []string{lang},
 		"slug": []string{slug},
 		"id":   []string{strconv.FormatInt(id, 10)},

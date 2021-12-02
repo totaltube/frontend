@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"github.com/flosch/pongo2/v4"
 	"github.com/gofiber/fiber/v2"
+	"log"
 	"net/url"
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/db"
 	"sersh.com/totaltube/frontend/site"
+	"sersh.com/totaltube/frontend/types"
 	"strconv"
 	"strings"
 	"time"
@@ -77,4 +79,33 @@ func TopCategories(c *fiber.Ctx) error {
 	}
 	c.Set("Content-Type", "text/html")
 	return c.Send(parsed)
+}
+
+func getTopCategoriesFunc(hostName string, langId string) func(args ...interface{}) *types.CategoryResults {
+	return func(args ...interface{}) *types.CategoryResults {
+		parsingName := true
+		var page int64
+		curName := ""
+		for k := range args {
+			if parsingName {
+				curName = fmt.Sprintf("%v", args[k])
+				parsingName = false
+				continue
+			}
+			val := fmt.Sprintf("%v", args[k])
+			parsingName = true
+			switch curName {
+			case "lang":
+				langId = val
+			case "page":
+				page, _ = strconv.ParseInt(val, 10, 64)
+			}
+		}
+		results, err := api.TopCategories(hostName, langId, page)
+		if err != nil {
+			log.Println("can't get top content:", err)
+			return nil
+		}
+		return results
+	}
 }

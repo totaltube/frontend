@@ -5,6 +5,7 @@ import (
 	"github.com/flosch/pongo2/v4"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/utils"
+	"log"
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/site"
@@ -59,4 +60,42 @@ func Models(c *fiber.Ctx) error {
 	}
 	c.Set("Content-Type", "text/html")
 	return c.Send(parsed)
+}
+
+func getModelsListFunc(hostName string, langId string, defaultAmount int64) func(args ...interface{}) *types.ModelResults {
+	return func(args ...interface{}) *types.ModelResults {
+		parsingName := true
+		var amount = defaultAmount
+		var page int64
+		var sortBy = api.SortTitle
+		var searchQuery = ""
+		curName := ""
+		for k := range args {
+			if parsingName {
+				curName = fmt.Sprintf("%v", args[k])
+				parsingName = false
+				continue
+			}
+			val := fmt.Sprintf("%v", args[k])
+			parsingName = true
+			switch curName {
+			case "lang":
+				langId = val
+			case "page":
+				page, _ = strconv.ParseInt(val, 10, 64)
+			case "sort":
+				sortBy = api.SortBy(val)
+			case "amount":
+				amount, _ = strconv.ParseInt(val, 10, 64)
+			case "search_query":
+				searchQuery = val
+			}
+		}
+		results, _, err := api.ModelsList(hostName, langId, page, sortBy, amount, searchQuery)
+		if err != nil {
+			log.Println("can't get models list:", err)
+			return nil
+		}
+		return results
+	}
 }

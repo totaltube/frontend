@@ -83,20 +83,20 @@ func Model(c *fiber.Ctx) error {
 			}
 			var results *types.ContentResults
 			results, _, err = api.Content(hostName, api.ContentParams{
-				Ip:           net.ParseIP(ip),
-				Lang:         langId,
-				Page:         page,
-				CategoryId:   categoryId,
-				CategorySlug: categorySlug,
-				ChannelId:    channelId,
-				ChannelSlug:  channelSlug,
-				ModelId:      modelId,
-				ModelSlug:    modelSlug,
-				Sort:         api.SortBy(sortBy),
-				Timeframe:    sortByViewsTimeframe,
-				DurationGte:  durationFrom,
-				DurationLt:   durationTo,
-				UserAgent:    userAgent,
+				Ip:             net.ParseIP(ip),
+				Lang:           langId,
+				Page:           page,
+				CategoryId:     categoryId,
+				CategorySlug:   categorySlug,
+				ChannelId:      channelId,
+				ChannelSlug:    channelSlug,
+				ModelId:        modelId,
+				ModelSlug:      modelSlug,
+				Sort:           api.SortBy(sortBy),
+				Timeframe:      sortByViewsTimeframe,
+				DurationGte:    durationFrom,
+				DurationLt:     durationTo,
+				UserAgent:      userAgent,
 			})
 			if err != nil {
 				return ctx, err

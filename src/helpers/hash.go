@@ -3,8 +3,11 @@ package helpers
 import (
 	"crypto/md5"
 	"crypto/sha1"
+	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/base64"
 	"encoding/hex"
+	"golang.org/x/crypto/md4"
 	"log"
 	"sersh.com/totaltube/frontend/internal"
 	"sync"
@@ -17,11 +20,52 @@ func Sha1Hash(s string) (hash string) {
 	return hex.EncodeToString(bs)
 }
 
+func Sha1HashRaw(s string) (hash []byte) {
+	h := sha1.New()
+	h.Write([]byte(s))
+	return h.Sum(nil)
+}
+
 func Md5Hash(s string) (hash string) {
 	h := md5.New()
 	h.Write([]byte(s))
 	bs := h.Sum(nil)
 	return hex.EncodeToString(bs)
+}
+func Md5HashRaw(s string) (hash []byte) {
+	h := md5.New()
+	h.Write([]byte(s))
+	return h.Sum(nil)
+}
+func Md4Hash(s string) (hash string) {
+	h := md4.New()
+	h.Write([]byte(s))
+	bs := h.Sum(nil)
+	return hex.EncodeToString(bs)
+}
+func Md4HashRaw(s string) (hash []byte) {
+	h := md4.New()
+	h.Write([]byte(s))
+	return h.Sum(nil)
+}
+func Sha256Hash(s string) (hash string) {
+	h := sha256.Sum256([]byte(s))
+	hash = hex.EncodeToString(h[:])
+	return
+}
+func Sha256HashRaw(s string) (hash []byte) {
+	h := sha256.Sum256([]byte(s))
+	return h[:]
+}
+
+func Sha512Hash(s string) (hash string) {
+	h := sha512.Sum512([]byte(s))
+	hash = hex.EncodeToString(h[:])
+	return
+}
+func Sha512HashRaw(s string) (hash []byte) {
+	h := sha512.Sum512([]byte(s))
+	return h[:]
 }
 
 var encryptionKey string

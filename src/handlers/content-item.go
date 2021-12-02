@@ -6,6 +6,7 @@ import (
 	"github.com/flosch/pongo2/v4"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/utils"
+	"log"
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/site"
@@ -57,4 +58,46 @@ func ContentItem(c *fiber.Ctx) error {
 	}
 	c.Set("Content-Type", "text/html")
 	return c.Send(parsed)
+}
+
+func getContentItemFunc(hostName string, langId string) func(args ...interface{}) *types.ContentItemResult {
+	return func(args ...interface{}) *types.ContentItemResult {
+		parsingName := true
+		var id int64
+		var slug string
+		var orfl bool
+		var relatedAmount int64
+		curName := ""
+		for k := range args {
+			if parsingName {
+				curName = fmt.Sprintf("%v", args[k])
+				parsingName = false
+				continue
+			}
+			val := fmt.Sprintf("%v", args[k])
+			parsingName = true
+			switch curName {
+			case "lang":
+				langId = val
+			case "id":
+				id, _ = strconv.ParseInt(val, 10, 64)
+			case "slug":
+				slug = val
+			case "related_amount":
+				relatedAmount, _ = strconv.ParseInt(val, 10, 64)
+			case "orfl":
+				orfl, _ = strconv.ParseBool(val)
+			}
+		}
+		if id == 0 && slug == "" {
+			log.Println("can't get content item: no id or slug")
+			return nil
+		}
+		results, err := api.ContentItem(hostName, langId, slug, id, orfl, relatedAmount)
+		if err != nil {
+			log.Println("can't get content item:", err)
+			return nil
+		}
+		return results
+	}
 }

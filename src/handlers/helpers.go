@@ -5,10 +5,15 @@ import (
 	"github.com/flosch/pongo2/v4"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/utils"
+	"log"
+	"net"
 	"net/url"
+	"reflect"
+	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/internal"
 	"sersh.com/totaltube/frontend/site"
+	"sersh.com/totaltube/frontend/types"
 	"strconv"
 	"strings"
 	"time"
@@ -24,6 +29,7 @@ func generateCustomContext(c *fiber.Ctx, templateName string) pongo2.Context {
 	}
 	params := helpers.FiberAllParams(c)
 	query := helpers.FiberAllQuery(c)
+	userAgent := utils.ImmutableString(c.Get("User-Agent"))
 	var changedQuery = make(map[string]string)
 	for k, v := range query {
 		if k == config.Params.SortBy {
@@ -217,23 +223,63 @@ func generateCustomContext(c *fiber.Ctx, templateName string) pongo2.Context {
 	}
 	nocache, _ := strconv.ParseBool(c.Query(config.Params.Nocache, "false"))
 	var globals = make(map[string]interface{})
+	ip := utils.ImmutableString(c.IP())
 	customContext := pongo2.Context{
-		"page_template":   templateName,
-		"lang":            internal.GetLanguage(langId),
-		"ip":              utils.ImmutableString(c.IP()),
-		"nocache":         nocache,
-		"languages":       internal.GetLanguages(),
-		"page":            page,
-		"host":            hostName,
-		"params":          params,
-		"query":           query,
-		"querystring":     queryString,
-		"headers":         headers,
-		"cookies":         cookies,
-		"canonical_query": canonicalQuery,
-		"config":          config,
-		"global_config":   internal.Config,
-		"route":           route,
+		"page_template":       templateName,
+		"lang":                internal.GetLanguage(langId),
+		"ip":                  ip,
+		"user_agent":          userAgent,
+		"nocache":             nocache,
+		"languages":           internal.GetLanguages(),
+		"page":                page,
+		"host":                hostName,
+		"params":              params,
+		"query":               query,
+		"querystring":         queryString,
+		"headers":             headers,
+		"cookies":             cookies,
+		"canonical_query":     canonicalQuery,
+		"config":              config,
+		"global_config":       internal.Config,
+		"route":               route,
+		"get_content":         getContentFunc(hostName, langId, userAgent, ip),
+		"get_top_content":     getTopContentFunc(hostName, langId),
+		"get_top_categories":  getTopCategoriesFunc(hostName, langId),
+		"get_content_item":    getContentItemFunc(hostName, langId),
+		"get_models_list":     getModelsListFunc(hostName, langId, int64(config.General.ModelsPerPage)),
+		"get_categories_list": getCategoriesListFunc(hostName, langId, 100),
+		"get_channels_list":   getChannelsListFunc(hostName, langId, 100),
+		"get_category_top":    getCategoryTopFunc(hostName, langId),
+		"add_random_content": func(items []*types.ContentResult, amount ...interface{}) []*types.ContentResult {
+			var amt int64 = 0
+			if len(amount) > 0 {
+				amt, _ = strconv.ParseInt(fmt.Sprintf("%v", amount[0]), 10, 64)
+			}
+			if amt == 0 {
+				amt = int64(internal.Config.Options.Popularity.Layouts.Category.Amount)
+			}
+			if int(amt) <= len(items) {
+				return items
+			}
+			results, _, err := api.Content(hostName, api.ContentParams{
+				Ip:        net.ParseIP(ip),
+				UserAgent: userAgent,
+				Lang:      langId,
+				Amount:    amt - int64(len(items)),
+				Sort:      api.SortRandNoPaging,
+			})
+			if err != nil {
+				log.Println(err)
+				return items
+			}
+			return append(items, results.Items...)
+		},
+		"merge": func(dst, src interface{}) interface{} {
+			dv := reflect.ValueOf(dst)
+			sv := reflect.ValueOf(src)
+			dv2 := reflect.AppendSlice(dv, sv)
+			return dv2.Interface()
+		},
 	}
 	customContext["set_cookie"] = func(name string, value interface{}, expire interface{}) {
 		var expires = time.Now().Add(time.Minute * 60)
@@ -293,8 +339,8 @@ func Generate500(c *fiber.Ctx, errMessage string) error {
 	langId := c.Locals("lang").(string)
 	customContext := generateCustomContext(c, "500")
 	customContext["error"] = errMessage
-	cacheKey := fmt.Sprintf("500:%s", langId)
-	cacheTtl := time.Minute * 5
+	cacheKey := fmt.Sprintf("500:%s:%s", langId, helpers.Md5Hash(errMessage))
+	cacheTtl := time.Minute
 	parsed, err := site.ParseTemplate("500", path, config, customContext, nocache, cacheKey, cacheTtl,
 		func(ctx pongo2.Context) (pongo2.Context, error) {
 			return ctx, nil

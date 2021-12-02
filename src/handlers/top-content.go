@@ -36,7 +36,7 @@ func TopContent(c *fiber.Ctx) error {
 			results, err = api.TopContent(hostName, langId, page)
 			if err != nil {
 				log.Println(err)
-				return ctx, nil
+				return ctx, err
 			}
 			if page == 1 {
 				ctx["count"] = true
@@ -57,4 +57,33 @@ func TopContent(c *fiber.Ctx) error {
 	}
 	c.Set("Content-Type", "text/html")
 	return c.Send(parsed)
+}
+
+func getTopContentFunc(hostName string, langId string) func(args ...interface{}) *types.ContentResults {
+	return func(args ...interface{}) *types.ContentResults {
+		parsingName := true
+		var page int64
+		curName := ""
+		for k := range args {
+			if parsingName {
+				curName = fmt.Sprintf("%v", args[k])
+				parsingName = false
+				continue
+			}
+			val := fmt.Sprintf("%v", args[k])
+			parsingName = true
+			switch curName {
+			case "lang":
+				langId = val
+			case "page":
+				page, _ = strconv.ParseInt(val, 10, 64)
+			}
+		}
+		results, err := api.TopContent(hostName, langId, page)
+		if err != nil {
+			log.Println("can't get top content:", err)
+			return nil
+		}
+		return results
+	}
 }

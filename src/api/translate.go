@@ -13,8 +13,9 @@ type translateResponse struct {
 
 func Translate(siteDomain string, params types.TranslateParams) (translation string, err error) {
 	var response json.RawMessage
-	response, err = apiRequest(siteDomain, methodPost, uriTranslate, params)
+	response, err = ApiRequest(siteDomain, methodPost, uriTranslate, params)
 	if err != nil {
+		log.Println(err)
 		return
 	}
 	var tr translateResponse

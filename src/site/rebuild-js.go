@@ -44,10 +44,12 @@ func RebuildJS(path string, config *Config) error {
 	result := api.Build(api.BuildOptions{
 		EntryPoints:       entryFiles,
 		Outdir:            outDir,
-		Define:            map[string]string{"CONFIG": string(configJson)},
+		Define:            map[string]string{"CONFIG": string(configJson), "process.env.NODE_ENV": "production"},
 		Bundle:            true,
 		Write:             true,
 		LogLevel:          api.LogLevelInfo,
+		Target:            api.ES2019,
+		Platform:          api.PlatformBrowser,
 		MinifyWhitespace:  config.Javascript.Minify,
 		MinifyIdentifiers: config.Javascript.Minify,
 		MinifySyntax:      config.Javascript.Minify,

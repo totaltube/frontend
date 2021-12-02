@@ -15,7 +15,7 @@ func Category(siteDomain, lang string, categoryId int64, categorySlug string, pa
 		"lang": []string{lang},
 		"page": []string{strconv.FormatInt(page, 10)},
 	}
-	response, err = apiRequest(siteDomain, methodGet, uriCategory, data)
+	response, err = ApiRequest(siteDomain, methodGet, uriCategory, data)
 	if err != nil {
 		return
 	}

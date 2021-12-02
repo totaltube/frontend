@@ -51,15 +51,25 @@ var iframeHttpReplace = regexp.MustCompile(`(?i)^http://`)
 
 func generateContext(name string, sitePath string, customContext pongo2.Context) pongo2.Context {
 	var ctx = pongo2.Context{
-		"flate":   helpers.Flate,
-		"deflate": helpers.Deflate,
-		"gzip":    helpers.Gzip,
-		"ungzip":  helpers.Ungzip,
-		"zip":     helpers.Zip,
-		"unzip":   helpers.Unzip,
-		"base64":  helpers.Base64,
-		"sha1":    helpers.Sha1Hash,
-		"md5":     helpers.Md5Hash,
+		"flate":        helpers.Flate,
+		"deflate":      helpers.Deflate,
+		"gzip":         helpers.Gzip,
+		"ungzip":       helpers.Ungzip,
+		"zip":          helpers.Zip,
+		"unzip":        helpers.Unzip,
+		"base64":       helpers.Base64,
+		"sha1":         helpers.Sha1Hash,
+		"sha1_raw":     helpers.Sha1HashRaw,
+		"md5":          helpers.Md5Hash,
+		"md5_raw":      helpers.Md5HashRaw,
+		"md4":          helpers.Md4Hash,
+		"md4_raw":      helpers.Md4HashRaw,
+		"sha256":       helpers.Sha256Hash,
+		"sha256_raw":   helpers.Sha256HashRaw,
+		"sha512":       helpers.Sha512Hash,
+		"sha512_raw":   helpers.Sha512HashRaw,
+		"time8601":     helpers.Time8601,
+		"duration8601": helpers.Duration8601,
 		"translate": func(text string) string {
 			return deferredTranslate("en", customContext["lang"].(*types.Language).Id, text)
 		},
@@ -74,6 +84,9 @@ func generateContext(name string, sitePath string, customContext pongo2.Context)
 			return "/" + strings.TrimPrefix(filePath, "/")
 		},
 		"now": time.Now(),
+		"len": func(items *pongo2.Value) int {
+			return items.Len()
+		},
 		"time_ago": func(t time.Time) string {
 			langId := strings.ReplaceAll(customContext["lang"].(*types.Language).Id, "-", "_")
 			return timeago.New(t).WithLocale(langId).Format()

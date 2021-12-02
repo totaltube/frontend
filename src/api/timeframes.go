@@ -8,7 +8,7 @@ import (
 
 func Timeframes() (siteDomain string, results []types.Timeframe, err error) {
 	var response json.RawMessage
-	response, err = apiRequest(siteDomain, methodGet, uriTimeframes, url.Values{})
+	response, err = ApiRequest(siteDomain, methodGet, uriTimeframes, url.Values{})
 	if err != nil {
 		return
 	}

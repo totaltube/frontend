@@ -7,7 +7,9 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"sersh.com/totaltube/frontend/db"
 	"sersh.com/totaltube/frontend/helpers"
+	"sersh.com/totaltube/frontend/types"
 	"sync"
 	"time"
 )
@@ -58,7 +60,22 @@ func getJsVM(name string) *goja.Runtime {
 	var gojaRegistry = new(require.Registry)
 	gojaRegistry.Enable(VM)
 	console.Enable(VM)
-	VM.Set("fetch", helpers.Fetch)
+	err := VM.Set("fetch", helpers.Fetch)
+	if err != nil {
+		panic(err)
+	}
+	err = VM.Set("cache", func(cacheKey string, timeout string, recreate func() string) string {
+		timeoutDuration := types.ParseHumanDuration(timeout)
+		extendedTimeout := timeoutDuration / 2
+		res, _ := db.GetCachedTimeout(cacheKey, timeoutDuration, extendedTimeout, func() ([]byte, error) {
+			recreateRes := recreate()
+			return []byte(recreateRes), nil
+		}, false)
+		return string(res)
+	})
+	if err != nil {
+		panic(err)
+	}
 	jsVMs[name] = VM
 	return VM
 }
