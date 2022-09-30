@@ -3,16 +3,18 @@ package site
 import (
 	"errors"
 	"fmt"
-	"github.com/flosch/pongo2/v4"
 	"html/template"
 	"log"
 	"net/http"
 	"net/url"
 	"regexp"
-	"sersh.com/totaltube/frontend/helpers"
-	"sersh.com/totaltube/frontend/types"
 	"strconv"
 	"strings"
+
+	"github.com/flosch/pongo2/v4"
+
+	"sersh.com/totaltube/frontend/helpers"
+	"sersh.com/totaltube/frontend/types"
 )
 
 var httpRegex = regexp.MustCompile(`(?i)^(https?://|//)`)
@@ -90,7 +92,7 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 			}
 			delete(copyArgs, "query")
 		}
-		link = strings.ReplaceAll(config.Routes.Search, ":query",
+		link = strings.ReplaceAll(config.Routes.Search, "{query}",
 			strings.ReplaceAll(url.PathEscape(searchQuery), "%20", "+"))
 	case "fake_player":
 		link = config.Routes.FakePlayer
@@ -99,7 +101,7 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 			if err != nil {
 				return err
 			}
-			link = strings.ReplaceAll(link, ":slug", ss.String())
+			link = strings.ReplaceAll(link, "{slug}", ss.String())
 			delete(copyArgs, "slug")
 		}
 		if s, ok := node.args["id"]; ok {
@@ -107,7 +109,7 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 			if err != nil {
 				return err
 			}
-			link = strings.ReplaceAll(link, ":id", ss.String())
+			link = strings.ReplaceAll(link, "{id}", ss.String())
 			delete(copyArgs, "id")
 		}
 	case "current":
@@ -177,10 +179,10 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 			if category == "" {
 				category = "porn"
 			}
-			link = strings.ReplaceAll(link, ":category", category)
+			link = strings.ReplaceAll(link, "{category}", category)
 		}
-		link = strings.ReplaceAll(link, ":slug", url.PathEscape(slug))
-		link = strings.ReplaceAll(link, ":id", url.PathEscape(id))
+		link = strings.ReplaceAll(link, "{slug}", url.PathEscape(slug))
+		link = strings.ReplaceAll(link, "{id}", url.PathEscape(id))
 	default:
 		if r, ok := config.Routes.Custom[what]; ok {
 			link = r
@@ -189,15 +191,15 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 		}
 		isCustomRoute = true
 		if config.General.MultiLanguage  {
-			link = strings.ReplaceAll(link, ":lang", lang)
+			link = strings.ReplaceAll(link, "{lang}", lang)
 		}
 	}
 	if config.General.MultiLanguage && !httpRegex.MatchString(link) && !isCustomRoute {
-		link = strings.ReplaceAll(config.Routes.LanguageTemplate, ":route", link)
-		link = strings.ReplaceAll(link, ":lang", lang)
+		link = strings.ReplaceAll(config.Routes.LanguageTemplate, "{route}", link)
+		link = strings.ReplaceAll(link, "{lang}", lang)
 	}
 	var pageNum int64 = 1
-	if strings.Contains(link, ":page") {
+	if strings.Contains(link, "{page}") {
 		if s, ok := node.args["page"]; ok {
 			se, err := s.Evaluate(linkContext)
 			if err != nil {
@@ -208,7 +210,7 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 				page = "1"
 			}
 			pageNum, _ = strconv.ParseInt(page, 10, 64)
-			link = strings.ReplaceAll(link, ":page", page)
+			link = strings.ReplaceAll(link, "{page}", page)
 			delete(copyArgs, "page")
 		}
 	}
@@ -282,7 +284,7 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 		// Setting current uri params
 		if uriParams, ok := linkContext.Public["params"].(map[string]string); ok {
 			for paramKey, paramValue := range uriParams {
-				link = strings.ReplaceAll(link, ":"+paramKey, paramValue)
+				link = strings.ReplaceAll(link, "{"+paramKey+"}", paramValue)
 			}
 		}
 		// Copying current query params

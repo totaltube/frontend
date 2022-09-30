@@ -1,7 +1,9 @@
 package handlers
 
-import "github.com/gofiber/fiber/v2"
+import (
+	"net/http"
+)
 
-func Handle404(c *fiber.Ctx) error {
-	return Generate404(c, "page not found")
-}
+var Handle404 = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	Output404(w, r, "page not found")
+})

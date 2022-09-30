@@ -1,18 +1,16 @@
 package site
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"math"
+	"net/http"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/dop251/goja"
 	"github.com/flosch/pongo2/v4"
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/utils"
 	"github.com/pkg/errors"
 
 	"sersh.com/totaltube/frontend/db"
@@ -33,8 +31,21 @@ func doRedirect(url string, code ...int) (r redirectRet) {
 	return
 }
 
+type ErrSendResponse struct {
+	Redirect     string
+	RedirectCode int
+	JSON         interface{}
+	Text         []byte
+}
+
+func (e ErrSendResponse) Error() string {
+	return "custom response"
+}
+
+
+
 func ParseCustomTemplate(name, path string, config *Config,
-	customContext pongo2.Context, nocache bool, fiberCtx *fiber.Ctx) (parsed []byte, err error) {
+	customContext pongo2.Context, nocache bool, w http.ResponseWriter, r *http.Request) (parsed []byte, err error) {
 	extensionFile := filepath.Join(path, "extensions/route-"+name+".js")
 	var source = getJsSource(extensionFile)
 	if len(source) == 0 {
@@ -102,21 +113,21 @@ func ParseCustomTemplate(name, path string, config *Config,
 			if e, ok := expire.(int); ok {
 				expires = time.Now().Add(time.Hour * 24 * time.Duration(e))
 			}
-			var cookie = &fiber.Cookie{
+			var cookie = &http.Cookie{
 				Name:    name,
 				Value:   fmt.Sprintf("%v", value),
 				Expires: expires,
 			}
-			fiberCtx.Cookie(cookie)
+			http.SetCookie(w, cookie)
 		}
-		headers := map[string]string{}
-		fiberCtx.Request().Header.VisitAll(func(key, value []byte) {
-			headers[string(utils.CopyBytes(key))] = string(utils.CopyBytes(value))
-		})
-		cookies := map[string]string{}
-		fiberCtx.Request().Header.VisitAllCookie(func(key, value []byte) {
-			cookies[string(utils.CopyBytes(key))] = string(utils.CopyBytes(value))
-		})
+		headers := make(map[string]string)
+		for k := range r.Header {
+			headers[k] = r.Header.Get(k)
+		}
+		cookies := make(map[string]string)
+		for _, cookie := range r.Cookies() {
+			cookies[cookie.Name] = cookie.Value
+		}
 		ctx["cookies"] = cookies
 		ctx["headers"] = headers
 	}
@@ -199,11 +210,7 @@ func ParseCustomTemplate(name, path string, config *Config,
 		}
 		if ret, ok := v.Export().(map[string]interface{}); ok {
 			// if render() returns object - output it as json
-			parsed, err = json.Marshal(ret)
-			if err != nil {
-				log.Println(err)
-			}
-			err = ErrSendResponse{JSON: parsed}
+			err = ErrSendResponse{JSON: ret}
 			return
 		}
 		if ret, ok := v.Export().(string); ok {
@@ -252,15 +259,4 @@ func ParseCustomTemplate(name, path string, config *Config,
 	addDynamicFunctions(ctx)
 	parsed, err = InsertDynamic(parsed, ctx)
 	return
-}
-
-type ErrSendResponse struct {
-	Redirect     string
-	RedirectCode int
-	JSON         []byte
-	Text         []byte
-}
-
-func (e ErrSendResponse) Error() string {
-	return "custom response"
 }

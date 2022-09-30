@@ -1,12 +1,14 @@
 package handlers
 
 import (
+	"context"
+	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/go-chi/chi/v5"
 
 	"sersh.com/totaltube/frontend/db"
 	"sersh.com/totaltube/frontend/internal"
@@ -14,80 +16,92 @@ import (
 )
 
 // LangHandlers Function creates language routes like /ru/someroute, /en/someroute etc.
-func LangHandlers(app *fiber.App, route string, siteConfig *site.Config, handlers ...fiber.Handler) {
+func LangHandlers(hr *chi.Mux, route string, siteConfig *site.Config, handler http.Handler) {
 	languages := internal.GetLanguages()
 	for _, l := range languages {
 		langId := l.Id
-		var r string
-		if strings.Contains(route, ":lang") {
-			r = strings.ReplaceAll(route, ":lang", langId)
+		var preparedRoute string
+		if strings.Contains(route, "{lang}") {
+			preparedRoute = strings.ReplaceAll(route, "{lang}", langId)
 		} else {
-			r = strings.ReplaceAll(siteConfig.Routes.LanguageTemplate, ":lang", langId)
-			r = strings.ReplaceAll(r, ":route", route)
+			preparedRoute = strings.ReplaceAll(siteConfig.Routes.LanguageTemplate, "{lang}", langId)
+			preparedRoute = strings.ReplaceAll(preparedRoute, "{route}", route)
 		}
-		h := append([]fiber.Handler{func(c *fiber.Ctx) error {
-			c.Locals("lang", langId)
-			c.Cookie(&fiber.Cookie{
+		hr.Handle(preparedRoute, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := context.WithValue(r.Context(), "lang", langId)
+			r.AddCookie(&http.Cookie{
 				Name:     internal.Config.General.LangCookie,
 				Value:    langId,
 				Expires:  time.Now().Add(time.Hour * 24 * 30),
-				SameSite: "lax",
+				SameSite: http.SameSiteLaxMode,
 			})
-			return c.Next()
-		}}, handlers...)
-		app.All(r, h...)
-	}
-	if !strings.Contains(route, ":lang") {
-		// And route to detect lang
-		if route == siteConfig.Routes.TopCategories {
-			app.All(route, func(c *fiber.Ctx) error {
-				langCookie := c.Cookies(internal.Config.General.LangCookie)
-				hostName := c.Locals("hostName").(string)
-				lang := internal.DetectLanguage(langCookie, c.Get("Accept-Language"))
-				var r string
-				if lang == nil {
-					r = strings.ReplaceAll(siteConfig.Routes.LanguageTemplate, ":lang", "en")
-				} else {
-					r = strings.ReplaceAll(siteConfig.Routes.LanguageTemplate, ":lang", lang.Id)
-				}
-				if ref := c.Get("Referer"); ref != "" {
-					if u, err := url.Parse(ref); err == nil &&
-						strings.TrimPrefix(strings.ToLower(u.Hostname()), "www.") != hostName &&
-						!botDetector.IsBot(c.Get("User-Agent")) {
-						var s = strings.ToLower(u.Path + " " + u.RawQuery)
-						if categories, err := db.GetCachedTopCategories(hostName); err == nil {
-							for _, cat := range categories.Items {
-								for _, t := range cat.Tags {
-									if strings.Contains(s, t) {
-										redirectUrl := strings.ReplaceAll(r, ":route", siteConfig.Routes.Category)
-										redirectUrl = strings.ReplaceAll(redirectUrl, ":slug", cat.Slug)
-										redirectUrl = strings.ReplaceAll(redirectUrl, ":id", strconv.FormatInt(int64(cat.Id), 10))
-										if qs := string(c.Request().URI().QueryString()); qs != "" {
-											redirectUrl = redirectUrl + "?" + qs
+			handler.ServeHTTP(w, r.WithContext(ctx))
+		}))
+		if !strings.Contains(route, "{lang}") {
+			// And route to detect lang
+			if route == siteConfig.Routes.TopCategories {
+				hr.Handle(route, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					langCookie, _ := r.Cookie(internal.Config.General.LangCookie)
+					hostName := r.Context().Value("hostName").(string)
+					langValue := "en"
+					if langCookie != nil {
+						langValue = langCookie.Value
+					}
+
+					if ref := r.Header.Get("Referer"); ref != "" {
+						if u, err := url.Parse(ref); err == nil &&
+							strings.TrimPrefix(strings.ToLower(u.Hostname()), "www.") != hostName &&
+							!botDetector.IsBot(r.Header.Get("User-Agent")) {
+							var s = strings.ToLower(u.Path + " " + u.RawQuery)
+							if categories, err := db.GetCachedTopCategories(hostName); err == nil {
+								for _, cat := range categories.Items {
+									for _, t := range cat.Tags {
+										if strings.Contains(s, t) {
+											redirectUrl := strings.ReplaceAll(preparedRoute, "{route}", siteConfig.Routes.Category)
+											redirectUrl = strings.ReplaceAll(redirectUrl, "{slug}", cat.Slug)
+											redirectUrl = strings.ReplaceAll(redirectUrl, "{id}", strconv.FormatInt(int64(cat.Id), 10))
+											if qs := r.URL.RawQuery; qs != "" {
+												redirectUrl = redirectUrl + "?" + qs
+											}
+											http.Redirect(w, r, redirectUrl, 302)
+											return
 										}
-										return c.Redirect(redirectUrl)
 									}
 								}
 							}
 						}
 					}
-				}
-				r = strings.ReplaceAll(r, ":route", route)
-				return c.Redirect(r)
-			})
-		} else {
-			app.All(route, func(c *fiber.Ctx) error {
-				langCookie := c.Cookies(internal.Config.General.LangCookie)
-				lang := internal.DetectLanguage(langCookie, c.Get("Accept-Language"))
-				var r string
-				if lang == nil {
-					r = strings.ReplaceAll(siteConfig.Routes.LanguageTemplate, ":lang", "en")
-				} else {
-					r = strings.ReplaceAll(siteConfig.Routes.LanguageTemplate, ":lang", lang.Id)
-				}
-				r = strings.ReplaceAll(r, ":route", route)
-				return c.Redirect(r)
-			})
+					lang := internal.DetectLanguage(langValue, r.Header.Get("Accept-Language"))
+					var redirectUri string
+					if lang == nil {
+						redirectUri = strings.ReplaceAll(siteConfig.Routes.LanguageTemplate, "{lang}", "en")
+					} else {
+						redirectUri = strings.ReplaceAll(siteConfig.Routes.LanguageTemplate, "{lang}", lang.Id)
+					}
+					redirectUri = strings.ReplaceAll(redirectUri, "{route}", route)
+					http.Redirect(w, r, redirectUri, 302)
+					return
+				}))
+			} else {
+				hr.Handle(route, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					langCookie, _ := r.Cookie(internal.Config.General.LangCookie)
+					langValue := "en"
+					if langCookie != nil {
+						langValue = langCookie.Value
+					}
+					lang := internal.DetectLanguage(langValue, r.Header.Get("Accept-Language"))
+					var redirectUri string
+					if lang == nil {
+						redirectUri = strings.ReplaceAll(siteConfig.Routes.LanguageTemplate, "{lang}", "en")
+					} else {
+						redirectUri = strings.ReplaceAll(siteConfig.Routes.LanguageTemplate, "{lang}", lang.Id)
+					}
+					redirectUri = strings.ReplaceAll(redirectUri, "{route}", route)
+					http.Redirect(w, r, redirectUri, 302)
+					return
+				}))
+			}
 		}
 	}
+
 }

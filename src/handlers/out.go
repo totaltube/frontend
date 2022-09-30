@@ -2,11 +2,11 @@ package handlers
 
 import (
 	"log"
+	"net/http"
 	"strconv"
 	"strings"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/utils"
+	"github.com/go-chi/render"
 	"github.com/logocomune/botdetector"
 
 	"sersh.com/totaltube/frontend/api"
@@ -31,35 +31,38 @@ type countInfo struct {
 
 var countChannel = make(chan countInfo, 100)
 
-func Out(c *fiber.Ctx) error {
-	config := c.Locals("config").(*site.Config)
-	hostName := c.Locals("hostName").(string)
-	ip := utils.CopyString(c.IP())
-	redirectUrl := c.Query(config.Params.CountRedirect)
-	encryptedRedirectUrl := c.Query("e" + config.Params.CountRedirect)
+var Out = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	config := r.Context().Value("config").(*site.Config)
+	hostName := r.Context().Value("hostName").(string)
+	ip := r.Context().Value("ip").(string)
+	redirectUrl := r.URL.Query().Get(config.Params.CountRedirect)
+	encryptedRedirectUrl := r.URL.Query().Get("e" + config.Params.CountRedirect)
 	if redirectUrl == "" && encryptedRedirectUrl != "" {
 		redirectUrl = helpers.DecryptBase64(encryptedRedirectUrl)
 	}
-	countType := utils.CopyString(c.Query(config.Params.CountType))
-	countThumbId, _ := strconv.ParseInt(c.Query(config.Params.CountThumbId, "-1"), 10, 16)
-	returnFunc := func() error {
+	countType := r.URL.Query().Get(config.Params.CountType)
+	countThumbId, _ := strconv.ParseInt(helpers.FirstNotEmpty(r.URL.Query().Get(config.Params.CountThumbId), "-1"), 10, 16)
+	returnFunc := func() {
 		// Function which redirects or return json at the end.
 		if redirectUrl != "" {
 			if internal.Config.General.Nginx && strings.HasPrefix(redirectUrl, "/") {
-				c.Set("X-Accel-Redirect", redirectUrl)
-				return c.Send([]byte(""))
+				w.Header().Set("X-Accel-Redirect", redirectUrl)
+				return
 			}
-			return c.Redirect(redirectUrl)
+			http.Redirect(w, r, redirectUrl, 302)
+			return
 		}
-		return c.JSON(M{"success": true})
+		render.JSON(w, r, M{"success": true})
+		return
 	}
-	if botDetector.IsBot(c.Get("User-Agent")) {
+	if botDetector.IsBot(r.Header.Get("User-Agent")) {
 		// Do not count anything for bots
-		return returnFunc()
+		returnFunc()
+		return
 	}
 	// All calculations are done in background
-	categoryIdParam := utils.CopyString(c.Query(config.Params.CategoryId))
-	contentIdParam := utils.CopyString(c.Query(config.Params.ContentId))
+	categoryIdParam := r.URL.Query().Get(config.Params.CategoryId)
+	contentIdParam := r.URL.Query().Get(config.Params.ContentId)
 	info := countInfo{
 		hostName:     hostName,
 		config:       config,
@@ -69,10 +72,11 @@ func Out(c *fiber.Ctx) error {
 		countType:    countType,
 		countThumbId: countThumbId,
 	}
-	// lets count in background in separate goroutine, by sending in buffered channel
+	// let's count in background in separate goroutine, by sending in buffered channel
 	countChannel <- info
-	return returnFunc()
-}
+	returnFunc()
+})
+
 func doCount() {
 	// function to count in separate goroutine
 	for {

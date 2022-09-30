@@ -4,14 +4,13 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"net/http"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/flosch/pongo2/v4"
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/utils"
 	"github.com/pkg/errors"
 	"github.com/rjeczalik/notify"
 
@@ -144,9 +143,11 @@ func GetTemplate(name, path string) (*pongo2.Template, error) {
 	return siteTemplates.get(name, path)
 }
 
+
 func ParseTemplate(name, path string, config *Config, customContext pongo2.Context,
 	nocache bool, cacheKey string, cacheTtl time.Duration,
-	uncachedPrepare func(ctx pongo2.Context) (pongo2.Context, error), fiberCtx *fiber.Ctx) (parsed []byte, err error) {
+	uncachedPrepare func(ctx pongo2.Context) (pongo2.Context, error),
+	w http.ResponseWriter, r *http.Request) (parsed []byte, err error) {
 	var c pongo2.Context
 	var addDynamicFunctions = func(ctx pongo2.Context) {
 		ctx["set_cookie"] = func(name string, value interface{}, expire interface{}) {
@@ -163,21 +164,21 @@ func ParseTemplate(name, path string, config *Config, customContext pongo2.Conte
 			if e, ok := expire.(int); ok {
 				expires = time.Now().Add(time.Hour * 24 * time.Duration(e))
 			}
-			var cookie = &fiber.Cookie{
+			var cookie = &http.Cookie{
 				Name:    name,
 				Value:   fmt.Sprintf("%v", value),
 				Expires: expires,
 			}
-			fiberCtx.Cookie(cookie)
+			http.SetCookie(w, cookie)
 		}
-		headers := map[string]string{}
-		fiberCtx.Request().Header.VisitAll(func(key, value []byte) {
-			headers[string(utils.CopyBytes(key))] = string(utils.CopyBytes(value))
-		})
-		cookies := map[string]string{}
-		fiberCtx.Request().Header.VisitAllCookie(func(key, value []byte) {
-			cookies[string(utils.CopyBytes(key))] = string(utils.CopyBytes(value))
-		})
+		headers := make(map[string]string)
+		for k := range r.Header {
+			headers[k] = r.Header.Get(k)
+		}
+		cookies := make(map[string]string)
+		for _, cookie := range r.Cookies() {
+			cookies[cookie.Name] = cookie.Value
+		}
 		ctx["cookies"] = cookies
 		ctx["headers"] = headers
 	}

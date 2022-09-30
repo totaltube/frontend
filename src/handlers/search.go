@@ -3,14 +3,15 @@ package handlers
 import (
 	"fmt"
 	"net"
+	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/flosch/pongo2/v4"
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/utils"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/render"
 	"github.com/pkg/errors"
 
 	"sersh.com/totaltube/frontend/api"
@@ -19,30 +20,32 @@ import (
 	"sersh.com/totaltube/frontend/types"
 )
 
-func Search(c *fiber.Ctx) error {
-	path := c.Locals("path").(string)
-	config := c.Locals("config").(*site.Config)
-	hostName := c.Locals("hostName").(string)
-	nocache, _ := strconv.ParseBool(c.Query(config.Params.Nocache, "false"))
-	langId := c.Locals("lang").(string)
-	page, _ := strconv.ParseInt(c.Params("page", c.Query(config.Params.Page), "1"), 10, 16)
+
+
+var Search = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	path := r.Context().Value("path").(string)
+	config := r.Context().Value("config").(*site.Config)
+	hostName := r.Context().Value("hostName").(string)
+	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))
+	langId := r.Context().Value("lang").(string)
+	page, _ := strconv.ParseInt(helpers.FirstNotEmpty(chi.URLParam(r, "page"), r.URL.Query().Get(config.Params.Page), "1"), 10, 16)
 	if page <= 0 {
 		page = 1
 	}
-	searchQuery, _ := url.PathUnescape(strings.ReplaceAll(c.Params("query"), "+", "%20"))
+	searchQuery, _ := url.PathUnescape(strings.ReplaceAll(chi.URLParam(r, "query"), "+", "%20"))
 	if searchQuery == "" {
-		searchQuery = utils.CopyString(c.Query(config.Params.SearchQuery))
+		searchQuery = r.URL.Query().Get(config.Params.SearchQuery)
 	}
 	if searchQuery == "" {
-		return errors.New("search query not set")
+		panic(errors.New("search query not set"))
 	}
 	isNatural, _ := strconv.ParseBool(config.Params.SearchNatural)
-	modelId, _ := strconv.ParseInt(c.Query(config.Params.ModelId), 10, 64)
-	modelSlug := utils.CopyString(c.Query(config.Params.ModelSlug))
-	categorySlug := utils.CopyString(c.Query(config.Params.CategorySlug))
-	categoryId, _ := strconv.ParseInt(c.Query(config.Params.CategoryId), 10, 64)
-	sortBy := utils.CopyString(c.Query(config.Params.SortBy))
-	sortByTimeframe := utils.CopyString(c.Query(config.Params.SortByViewsTimeframe))
+	modelId, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.ModelId), 10, 64)
+	modelSlug := r.URL.Query().Get(config.Params.ModelSlug)
+	categorySlug := r.URL.Query().Get(config.Params.CategorySlug)
+	categoryId, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.CategoryId), 10, 64)
+	sortBy := r.URL.Query().Get(config.Params.SortBy)
+	sortByTimeframe := r.URL.Query().Get(config.Params.SortByViewsTimeframe)
 	if sortBy == config.Params.SortByDate {
 		sortBy = "dated"
 	} else if sortBy == config.Params.SortByDuration {
@@ -54,18 +57,18 @@ func Search(c *fiber.Ctx) error {
 	} else {
 		sortBy = ""
 	}
-	channelId, _ := strconv.ParseInt(c.Query(config.Params.ChannelId, "0"), 10, 64)
-	channelSlug := utils.CopyString(c.Query(config.Params.ChannelSlug))
-	durationFrom, _ := strconv.ParseInt(c.Query(config.Params.DurationGte, "0"), 10, 64)
-	durationTo, _ := strconv.ParseInt(c.Query(config.Params.DurationLt, "0"), 10, 64)
-	customContext := generateCustomContext(c, "search")
+	channelId, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.ChannelId), 10, 64)
+	channelSlug := r.URL.Query().Get(config.Params.ChannelSlug)
+	durationFrom, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.DurationGte), 10, 64)
+	durationTo, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.DurationLt), 10, 64)
+	customContext := generateCustomContext(w, r, "search")
 	cacheKey := "search:" + helpers.Md5Hash(
 		fmt.Sprintf("%s:%s:%d:%s:%d:%d:%s:%d:%d:%d:%s:%s:%s",
 			hostName, langId, page, channelSlug, channelId,
 			modelId, modelSlug, durationFrom, durationTo, categoryId, categorySlug, sortBy, searchQuery),
 	)
-	ip := utils.CopyString(c.IP())
-	userAgent := utils.CopyString(c.Get("User-Agent"))
+	ip := r.Context().Value("ip").(string)
+	userAgent := r.Header.Get("User-Agent")
 	cacheTtl := time.Minute * 15
 	parsed, err := site.ParseTemplate("search", path, config, customContext, nocache, cacheKey, cacheTtl,
 		func(ctx pongo2.Context) (pongo2.Context, error) {
@@ -100,13 +103,14 @@ func Search(c *fiber.Ctx) error {
 			ctx["page"] = int64(results.Page)
 			ctx["pages"] = int64(results.Pages)
 			return ctx, nil
-		}, c)
+		}, w, r)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			return Generate404(c, err.Error())
+			Output404(w, r, err.Error())
+			return
 		}
-		return err
+		Output500(w, r, err)
+		return
 	}
-	c.Set("Content-Type", "text/html")
-	return c.Send(parsed)
-}
+	render.HTML(w, r, string(parsed))
+})

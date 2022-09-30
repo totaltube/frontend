@@ -3,29 +3,32 @@ package handlers
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/flosch/pongo2/v4"
-	"github.com/gofiber/fiber/v2"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/render"
 
 	"sersh.com/totaltube/frontend/api"
+	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
 )
 
-func TopContent(c *fiber.Ctx) error {
-	path := c.Locals("path").(string)
-	config := c.Locals("config").(*site.Config)
-	hostName := c.Locals("hostName").(string)
-	nocache, _ := strconv.ParseBool(c.Query(config.Params.Nocache, "false"))
-	langId := c.Locals("lang").(string)
-	page, _ := strconv.ParseInt(c.Params("page", c.Query(config.Params.Page), "1"), 10, 16)
+var TopContent = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	path := r.Context().Value("path").(string)
+	config := r.Context().Value("config").(*site.Config)
+	hostName := r.Context().Value("hostName").(string)
+	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))
+	langId := r.Context().Value("lang").(string)
+	page, _ := strconv.ParseInt(helpers.FirstNotEmpty(chi.URLParam(r, "page"), r.URL.Query().Get(config.Params.Page), "1"), 10, 16)
 	if page <= 0 {
 		page = 1
 	}
-	customContext := generateCustomContext(c, "top-content")
+	customContext := generateCustomContext(w, r, "top-content")
 	cacheKey := fmt.Sprintf("top-content:%s:%s:%d", hostName, langId, page)
 	cacheTtl := time.Second * 5
 	if page > 1 {
@@ -50,16 +53,17 @@ func TopContent(c *fiber.Ctx) error {
 			ctx["page"] = int64(results.Page)
 			ctx["pages"] = int64(results.Pages)
 			return ctx, nil
-		}, c)
+		}, w, r)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			return Generate404(c, err.Error())
+			Output404(w, r, err.Error())
+			return
 		}
-		return err
+		Output500(w, r, err)
+		return
 	}
-	c.Set("Content-Type", "text/html")
-	return c.Send(parsed)
-}
+	render.HTML(w, r, string(parsed))
+})
 
 func getTopContentFunc(hostName string, langId string) func(args ...interface{}) *types.ContentResults {
 	return func(args ...interface{}) *types.ContentResults {

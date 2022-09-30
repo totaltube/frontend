@@ -2,23 +2,24 @@ package handlers
 
 import (
 	"log"
+	"net/http"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/utils"
+	"github.com/go-chi/render"
 
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/site"
 )
 
-func Autocomplete(c *fiber.Ctx) error {
-	config := c.Locals("config").(*site.Config)
-	langId := c.Locals("lang").(string)
-	hostName := c.Locals("hostName").(string)
-	searchQuery := utils.CopyString(c.Query(config.Params.SearchQuery))
+var Autocomplete = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	config := r.Context().Value("config").(*site.Config)
+	langId := r.Context().Value("lang").(string)
+	hostName := r.Context().Value("hostName").(string)
+	searchQuery := r.URL.Query().Get(config.Params.SearchQuery)
 	results, err := api.Autocomplete(hostName, searchQuery, langId)
 	if err != nil {
-		log.Println("Error querying autocomplete api:", err)
-		return c.JSON(A{})
+		log.Println("Error querying autocomplete api: ", err)
+		render.JSON(w, r, A{})
+		return
 	}
-	return c.JSON(results.Items)
-}
+	render.JSON(w, r, results.Items)
+})

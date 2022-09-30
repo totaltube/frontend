@@ -4,16 +4,19 @@ package main
 
 import (
 	"fmt"
-	"github.com/jpillora/overseer"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
+	"syscall"
+
+	"github.com/jpillora/overseer"
+
 	"sersh.com/totaltube/frontend/db"
 	"sersh.com/totaltube/frontend/handlers"
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/internal"
 	"sersh.com/totaltube/frontend/site"
-	"syscall"
 )
 
 func startServer() {
@@ -27,10 +30,14 @@ func server(_ overseer.State) {
 	site.InitPongo2()
 	handlers.InitBackgrounds()
 	helpers.InitMinifier()
-	app := InitFiber()
+	app := InitRouter()
 	go func() {
 		log.Println("Running totaltube-frontend on port", internal.Config.General.Port)
-		fmt.Println(app.Listen(fmt.Sprintf(":%d", internal.Config.General.Port)))
+		err := http.ListenAndServe(fmt.Sprintf(":%d", internal.Config.General.Port), app)
+		if err != nil {
+			fmt.Println(err)
+		}
+		//fmt.Println(app.Listen(fmt.Sprintf(":%d", internal.Config.General.Port)))
 	}()
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)

@@ -2,12 +2,14 @@ package site
 
 import (
 	"fmt"
-	"github.com/flosch/pongo2/v4"
 	"net/http"
 	"net/url"
-	"sersh.com/totaltube/frontend/types"
 	"strconv"
 	"strings"
+
+	"github.com/flosch/pongo2/v4"
+
+	"sersh.com/totaltube/frontend/types"
 )
 
 
@@ -28,8 +30,8 @@ func getCanonical(ctx pongo2.Context, langId string, page int64, q ...url.Values
 		route = r.(string)
 	}
 	canonicalQuery := url.Values(http.Header(ctx["canonical_query"].(url.Values)).Clone())
-	if strings.Contains(route, ":page") {
-		route = strings.ReplaceAll(route, ":page", strconv.FormatInt(page, 10))
+	if strings.Contains(route, "{page}") {
+		route = strings.ReplaceAll(route, "{page}", strconv.FormatInt(page, 10))
 	} else if page > 1 {
 		canonicalQuery.Set(config.Params.Page, strconv.FormatInt(page, 10))
 	}
@@ -39,8 +41,8 @@ func getCanonical(ctx pongo2.Context, langId string, page int64, q ...url.Values
 		}
 	}
 	if config.General.MultiLanguage {
-		route = strings.ReplaceAll(config.Routes.LanguageTemplate, ":route", route)
-		route = strings.ReplaceAll(route, ":lang", langId)
+		route = strings.ReplaceAll(config.Routes.LanguageTemplate, "{route}", route)
+		route = strings.ReplaceAll(route, "{lang}", langId)
 	}
 	for _, qq := range q {
 		for key, val := range qq {

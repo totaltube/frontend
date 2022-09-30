@@ -23,6 +23,5 @@ func InsertDynamic(src []byte, userCtx pongo2.Context) (result []byte, err error
 		}
 		return result
 	})
-	userCtx["set_cookie"] = nil // unset dynamic function with fiber inside.
 	return
 }

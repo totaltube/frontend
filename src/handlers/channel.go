@@ -5,13 +5,14 @@ import (
 	"log"
 	"math/rand"
 	"net"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/flosch/pongo2/v4"
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/utils"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/render"
 	"github.com/segmentio/encoding/json"
 
 	"sersh.com/totaltube/frontend/api"
@@ -21,22 +22,22 @@ import (
 	"sersh.com/totaltube/frontend/types"
 )
 
-func Channel(c *fiber.Ctx) error {
-	path := c.Locals("path").(string)
-	config := c.Locals("config").(*site.Config)
-	hostName := c.Locals("hostName").(string)
-	nocache, _ := strconv.ParseBool(c.Query(config.Params.Nocache, "false"))
-	langId := c.Locals("lang").(string)
-	page, _ := strconv.ParseInt(c.Params("page", c.Query(config.Params.Page), "1"), 10, 16)
+var Channel = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	path := r.Context().Value("path").(string)
+	config := r.Context().Value("config").(*site.Config)
+	hostName := r.Context().Value("hostName").(string)
+	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))
+	langId := r.Context().Value("lang").(string)
+	page, _ := strconv.ParseInt(helpers.FirstNotEmpty(chi.URLParam(r, "page"), r.URL.Query().Get(config.Params.Page), "1"), 10, 16)
 	if page <= 0 {
 		page = 1
 	}
-	modelId, _ := strconv.ParseInt(c.Query(config.Params.ModelId), 10, 64)
-	modelSlug := utils.CopyString(c.Query(config.Params.ModelSlug))
-	categorySlug := utils.CopyString(c.Query(config.Params.CategorySlug))
-	categoryId, _ := strconv.ParseInt(c.Query(config.Params.CategoryId), 10, 64)
-	sortBy := utils.CopyString(c.Query(config.Params.SortBy, "dated"))
-	sortByViewsTimeframe := utils.CopyString(c.Query(config.Params.SortByViewsTimeframe))
+	modelId, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.ModelId), 10, 64)
+	modelSlug := r.URL.Query().Get(config.Params.ModelSlug)
+	categorySlug := r.URL.Query().Get(config.Params.CategorySlug)
+	categoryId, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.CategoryId), 10, 64)
+	sortBy := helpers.FirstNotEmpty(r.URL.Query().Get(config.Params.SortBy), "dated")
+	sortByViewsTimeframe := r.URL.Query().Get(config.Params.SortByViewsTimeframe)
 	if sortBy == config.Params.SortByDate {
 		sortBy = "dated"
 	} else if sortBy == config.Params.SortByDuration {
@@ -48,27 +49,28 @@ func Channel(c *fiber.Ctx) error {
 	} else {
 		sortBy = ""
 	}
-	channelId, _ := strconv.ParseInt(c.Params("id", c.Query(config.Params.ChannelId, "0")), 10, 64)
-	channelSlug := utils.CopyString(c.Params("slug", c.Query(config.Params.ChannelSlug)))
+	channelId, _ := strconv.ParseInt(helpers.FirstNotEmpty(chi.URLParam(r, "id"), r.URL.Query().Get(config.Params.ChannelId)), 10, 64)
+	channelSlug := helpers.FirstNotEmpty(chi.URLParam(r, "slug"), r.URL.Query().Get(config.Params.ChannelSlug))
 	if channelId == 0 && channelSlug == "" {
-		return Generate404(c, "channel not found")
+		Output404(w, r, "channel not found")
+		return
 	}
-	durationGte, _ := strconv.ParseInt(c.Query(config.Params.DurationGte, "0"), 10, 64)
-	durationLt, _ := strconv.ParseInt(c.Query(config.Params.DurationLt, "0"), 10, 64)
-	customContext := generateCustomContext(c, "channel")
+	durationGte, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.DurationGte), 10, 64)
+	durationLt, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.DurationLt), 10, 64)
+	customContext := generateCustomContext(w, r, "channel")
 	cacheKey := "channel:" + helpers.Md5Hash(
 		fmt.Sprintf("%s:%s:%d:%s:%s:%s:%d:%d:%s:%d:%d:%d:%s",
 			hostName, langId, page, sortBy, sortByViewsTimeframe, channelSlug, channelId,
 			modelId, modelSlug, durationGte, durationLt, categoryId, categorySlug),
 	)
 	cacheTtl := time.Minute * 15
-	ip := utils.CopyString(c.IP())
-	userAgent := utils.CopyString(c.Get("User-Agent"))
+	ip := r.Context().Value("ip").(string)
+	userAgent := r.Header.Get("User-Agent")
 	parsed, err := site.ParseTemplate("channel", path, config, customContext, nocache, cacheKey, cacheTtl,
 		func(ctx pongo2.Context) (pongo2.Context, error) {
 			// getting category information from cache or from api
 			channelInfoCacheKey := fmt.Sprintf("in:chinfo:%d:%s:%s", channelId, channelSlug, langId)
-			channelInfoCacheTtl := time.Hour * 24 + time.Duration(rand.Intn(3600*6))*time.Second
+			channelInfoCacheTtl := time.Hour*24 + time.Duration(rand.Intn(3600*6))*time.Second
 			channelInfoCached, err := db.GetCachedTimeout(channelInfoCacheKey, channelInfoCacheTtl, time.Hour*4, func() ([]byte, error) {
 				_, rawResponse, err := api.ChannelInfo(hostName, langId, channelId, channelSlug)
 				return rawResponse, err
@@ -111,13 +113,14 @@ func Channel(c *fiber.Ctx) error {
 			ctx["page"] = int64(results.Page)
 			ctx["pages"] = int64(results.Pages)
 			return ctx, nil
-		}, c)
+		}, w, r)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			return Generate404(c, err.Error())
+			Output404(w, r, err.Error())
+			return
 		}
-		return err
+		Output500(w, r, err)
+		return
 	}
-	c.Set("Content-Type", "text/html")
-	return c.Send(parsed)
-}
+	render.HTML(w, r, string(parsed))
+})

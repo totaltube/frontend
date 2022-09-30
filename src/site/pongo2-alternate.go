@@ -1,9 +1,11 @@
 package site
 
 import (
-	"github.com/flosch/pongo2/v4"
-	"sersh.com/totaltube/frontend/types"
 	"strings"
+
+	"github.com/flosch/pongo2/v4"
+
+	"sersh.com/totaltube/frontend/types"
 )
 
 type tagAlternateNode struct {
@@ -32,8 +34,8 @@ func (node *tagAlternateNode) Execute(ctx *pongo2.ExecutionContext, writer pongo
 	alternateLang := v.String()
 	if templateName, ok := context.Public["page_template"].(string); ok && templateName == "search" {
 		// Search page doesn't have alternate. Return link to the root
-		link := strings.ReplaceAll(config.Routes.LanguageTemplate, ":lang", alternateLang)
-		link = strings.ReplaceAll(link, ":route", "/")
+		link := strings.ReplaceAll(config.Routes.LanguageTemplate, "{lang}", alternateLang)
+		link = strings.ReplaceAll(link, "{route}", "/")
 		_, err := writer.WriteString(link)
 		if err != nil {
 			return &pongo2.Error{Sender: "tag:alternate", OrigError: err}

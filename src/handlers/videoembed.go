@@ -2,13 +2,14 @@ package handlers
 
 import (
 	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/flosch/pongo2/v4"
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/utils"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/render"
 	"github.com/pkg/errors"
 
 	"sersh.com/totaltube/frontend/api"
@@ -17,18 +18,19 @@ import (
 	"sersh.com/totaltube/frontend/types"
 )
 
-func VideoEmbed(c *fiber.Ctx) error {
-	path := c.Locals("path").(string)
-	config := c.Locals("config").(*site.Config)
-	hostName := c.Locals("hostName").(string)
-	nocache, _ := strconv.ParseBool(c.Query(config.Params.Nocache, "false"))
-	langId := c.Locals("lang").(string)
-	slug := utils.CopyString(c.Params("slug"))
-	id, _ := strconv.ParseInt(c.Params("id"), 10, 64)
+var VideoEmbed = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	path := r.Context().Value("path").(string)
+	config := r.Context().Value("config").(*site.Config)
+	hostName := r.Context().Value("hostName").(string)
+	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))
+	langId := r.Context().Value("lang").(string)
+	slug := chi.URLParam(r,"slug")
+	id, _ := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if id == 0 && slug == "" {
-		return Generate404(c, "content item not found")
+		Output404(w, r, "content item not found")
+		return
 	}
-	customContext := generateCustomContext(c, "video-embed")
+	customContext := generateCustomContext(w, r, "video-embed")
 	cacheKey := "video-embed:" + helpers.Md5Hash(
 		fmt.Sprintf("%s:%s:%d:%s", hostName, langId, id, slug),
 	)
@@ -51,17 +53,16 @@ func VideoEmbed(c *fiber.Ctx) error {
 			ctx["content_item"] = results
 			ctx["related"] = results.Related
 			return ctx, nil
-		}, c)
+		}, w, r)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			c.Set("Content-Type", "text/html")
-			c.Status(404)
-			return c.SendString("content not found")
-			//return Generate404(c, err.Error())
+			render.Status(r, 404)
+			render.HTML(w, r, "content not found")
+			return
 		}
-		return err
+		Output500(w, r, err)
+		return
 	}
-	c.Set("Content-Type", "text/html")
-	c.Set("X-Robots-Tag", "noindex")
-	return c.Send(parsed)
-}
+	w.Header().Set("X-Robots-Tag", "noindex")
+	render.HTML(w, r, string(parsed))
+})

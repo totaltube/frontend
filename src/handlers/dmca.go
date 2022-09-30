@@ -2,14 +2,14 @@ package handlers
 
 import (
 	"log"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/flosch/pongo2/v4"
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/utils"
-	"github.com/pkg/errors"
+	"github.com/go-chi/render"
+	"github.com/segmentio/encoding/json"
 
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/db"
@@ -19,31 +19,30 @@ import (
 	"sersh.com/totaltube/frontend/types"
 )
 
-var ErrNeedCaptcha = errors.New("need captcha")
-var ErrCaptchaError = errors.New("captcha error")
 
-func Dmca(c *fiber.Ctx) error {
-	path := c.Locals("path").(string)
-	config := c.Locals("config").(*site.Config)
-	hostName := c.Locals("hostName").(string)
-	nocache, _ := strconv.ParseBool(c.Query(config.Params.Nocache, "false"))
-	langId := c.Locals("lang").(string)
-	customContext := generateCustomContext(c, "dmca")
+var Dmca = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	path := r.Context().Value("path").(string)
+	config := r.Context().Value("config").(*site.Config)
+	hostName := r.Context().Value("hostName").(string)
+	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))
+	langId := r.Context().Value("lang").(string)
+	customContext := generateCustomContext(w,r, "dmca")
 	cacheTtl := time.Minute * 15
 	isOk := false
-	var ip = utils.CopyString(c.IP())
+	var ip = r.Context().Value("ip").(string)
 	session := db.GetSession(ip)
 	defer db.SaveSession(ip, session)
 	if session.LastDmca.IsZero() || session.LastDmca.Before(time.Now().Add(-time.Minute)) {
 		session.DmcaAmount = 0
 		session.LastDmca = time.Now()
 	}
-	if c.Method() == "POST" {
+	if r.Method == "POST" {
 		session.DmcaAmount++
 		params := types.DmcaParams{}
-		err := c.BodyParser(&params)
+		err := json.NewDecoder(r.Body).Decode(&params)
 		if err != nil {
-			return errors.Wrap(err, "wrong parameters")
+			render.JSON(w, r, M{"success": false, "value": "wrong parameters: "+err.Error()})
+			return
 		}
 		isWhitelisted := false
 		for _, e := range internal.Config.Frontend.CaptchaWhiteList {
@@ -54,7 +53,8 @@ func Dmca(c *fiber.Ctx) error {
 		}
 		if session.DmcaAmount > internal.Config.Frontend.MaxDmcaMinute && !isWhitelisted {
 			if params.CaptchaResponse == "" {
-				return ErrNeedCaptcha
+				render.JSON(w, r, M{"success": false, "value": "need captcha"})
+				return
 			}
 			response := helpers.Fetch("https://hcaptcha.com/siteverify").
 				WithFormData(M{
@@ -65,23 +65,26 @@ func Dmca(c *fiber.Ctx) error {
 			if success, ok := response["success"].(bool); ok && success {
 				if h, ok := response["hostname"].(string);
 					ok && strings.TrimPrefix(h, "www.") ==
-						strings.TrimPrefix(strings.Split(c.Hostname(), ":")[0], "www.") {
+						strings.TrimPrefix(strings.Split(r.URL.Hostname(), ":")[0], "www.") {
 					verifyOk = true
 				} else {
-					log.Println("wrong hostname for hCaptcha!", strings.Split(c.Hostname(), ":")[0], response["hostname"])
+					log.Println("wrong hostname for hCaptcha!", strings.Split(r.URL.Hostname(), ":")[0], response["hostname"])
 				}
 			}
 			if !verifyOk {
-				return ErrCaptchaError
+				render.JSON(w, r, M{"success": false, "value": "captcha error"})
+				return
 			}
 		}
 		err = api.Dmca(hostName, params)
 		if err != nil {
-			return err
+			render.JSON(w, r, M{"success": false, "value": err.Error()})
+			return
 		}
-		if c.Accepts("text/html") == "" &&
-			c.Accepts("application/json") != "" {
-			return c.JSON(M{"success": true})
+		accepted := render.GetAcceptedContentType(r)
+		if accepted == render.ContentTypeJSON {
+			render.JSON(w, r, M{"success": true})
+			return
 		} else {
 			isOk = true
 		}
@@ -94,10 +97,10 @@ func Dmca(c *fiber.Ctx) error {
 			ctx["ok"] = isOk
 			ctx["render_captcha"] = renderCaptcha
 			return ctx, nil
-		}, c)
+		}, w,r)
 	if err != nil {
-		return err
+		render.JSON(w, r, M{"success": false, "value": err.Error()})
+		return
 	}
-	c.Set("Content-Type", "text/html")
-	return c.Send(parsed)
-}
+	render.HTML(w, r, string(parsed))
+})

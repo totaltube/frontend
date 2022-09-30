@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"net/url"
 	"reflect"
 	"strconv"
@@ -11,8 +12,8 @@ import (
 	"time"
 
 	"github.com/flosch/pongo2/v4"
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/utils"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/render"
 
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/helpers"
@@ -21,17 +22,27 @@ import (
 	"sersh.com/totaltube/frontend/types"
 )
 
-func generateCustomContext(c *fiber.Ctx, templateName string) pongo2.Context {
-	config := c.Locals("config").(*site.Config)
-	hostName := c.Locals("hostName").(string)
-	langId := c.Locals("lang").(string)
-	page, _ := strconv.ParseInt(c.Params("page", c.Query(config.Params.Page), "1"), 10, 16)
+
+
+
+func generateCustomContext(w http.ResponseWriter, r *http.Request, templateName string) pongo2.Context {
+	config := r.Context().Value("config").(*site.Config)
+	hostName := r.Context().Value("hostName").(string)
+	langId := r.Context().Value("lang").(string)
+	page, _ := strconv.ParseInt(helpers.FirstNotEmpty(chi.URLParam(r, "page"), r.URL.Query().Get(config.Params.Page), "1"), 10, 16)
 	if page <= 0 {
 		page = 1
 	}
-	params := helpers.FiberAllParams(c)
-	query := helpers.FiberAllQuery(c)
-	userAgent := utils.CopyString(c.Get("User-Agent"))
+	var params = make(map[string]string)
+	urlParams := chi.RouteContext(r.Context()).URLParams
+	for k := range urlParams.Keys {
+		params[urlParams.Keys[k]] = urlParams.Values[k]
+	}
+	var query = make(map[string]string)
+	for k := range r.URL.Query() {
+		query[k] = r.URL.Query().Get(k)
+	}
+	userAgent := r.Header.Get("User-Agent")
 	var changedQuery = make(map[string]string)
 	for k, v := range query {
 		if k == config.Params.SortBy {
@@ -90,15 +101,15 @@ func generateCustomContext(c *fiber.Ctx, templateName string) pongo2.Context {
 	for k, v := range changedQuery {
 		query[k] = v
 	}
-	queryString := string(utils.CopyBytes(c.Context().QueryArgs().QueryString()))
-	headers := map[string]string{}
-	c.Request().Header.VisitAll(func(key, value []byte) {
-		headers[string(utils.CopyBytes(key))] = string(utils.CopyBytes(value))
-	})
-	cookies := map[string]string{}
-	c.Request().Header.VisitAllCookie(func(key, value []byte) {
-		cookies[string(utils.CopyBytes(key))] = string(utils.CopyBytes(value))
-	})
+	queryString := r.URL.RawQuery
+	headers := make(map[string]string)
+	for k := range r.Header {
+		headers[k] = r.Header.Get(k)
+	}
+	cookies := make(map[string]string)
+	for _, cookie := range r.Cookies() {
+		cookies[cookie.Name] = cookie.Value
+	}
 	canonicalQuery := url.Values{}
 	route := config.Routes.TopCategories
 	switch templateName {
@@ -129,8 +140,8 @@ func generateCustomContext(c *fiber.Ctx, templateName string) pongo2.Context {
 	case "video-embed":
 		route = config.Routes.VideoEmbed
 	default:
-		if r, ok := config.Custom[strings.TrimPrefix(templateName, "custom/")]; ok {
-			route = r
+		if rr, ok := config.Custom[strings.TrimPrefix(templateName, "custom/")]; ok {
+			route = rr
 		}
 	}
 	switch templateName {
@@ -225,9 +236,9 @@ func generateCustomContext(c *fiber.Ctx, templateName string) pongo2.Context {
 			}
 		}
 	}
-	nocache, _ := strconv.ParseBool(c.Query(config.Params.Nocache, "false"))
+	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))
 	var globals = make(map[string]interface{})
-	ip := utils.CopyString(c.IP())
+	ip := r.Context().Value("ip").(string)
 	customContext := pongo2.Context{
 		"page_template":       templateName,
 		"lang":                internal.GetLanguage(langId),
@@ -295,42 +306,44 @@ func generateCustomContext(c *fiber.Ctx, templateName string) pongo2.Context {
 	return customContext
 }
 
-func Generate404(c *fiber.Ctx, errMessage string) error {
-	path := c.Locals("path").(string)
-	config := c.Locals("config").(*site.Config)
-	nocache, _ := strconv.ParseBool(c.Query(config.Params.Nocache, "false"))
-	langId := c.Locals("lang").(string)
-	customContext := generateCustomContext(c, "404")
+func Output404(w http.ResponseWriter, r *http.Request, errMessage string) {
+	path := r.Context().Value("path").(string)
+	config := r.Context().Value("config").(*site.Config)
+	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))
+	langId := r.Context().Value("lang").(string)
+	customContext := generateCustomContext(w, r, "404")
 	customContext["error"] = errMessage
-	cacheKey := fmt.Sprintf("404:%s", langId)
-	cacheTtl := time.Minute * 5
+	cacheKey := fmt.Sprintf("404:%s:%s", langId, helpers.Md5Hash(errMessage))
+	cacheTtl := time.Minute*5
 	parsed, err := site.ParseTemplate("404", path, config, customContext, nocache, cacheKey, cacheTtl,
 		func(ctx pongo2.Context) (pongo2.Context, error) {
 			return ctx, nil
-		}, c)
+		}, w, r)
 	if err != nil {
-		return err
+		panic(err)
 	}
-	c.Set("Content-Type", "text/html")
-	return c.Status(fiber.StatusNotFound).Send(parsed)
+	render.Status(r, 404)
+	render.HTML(w, r, string(parsed))
 }
 
-func Generate500(c *fiber.Ctx, errMessage string) error {
-	path := c.Locals("path").(string)
-	config := c.Locals("config").(*site.Config)
-	nocache, _ := strconv.ParseBool(c.Query(config.Params.Nocache, "false"))
-	langId := c.Locals("lang").(string)
-	customContext := generateCustomContext(c, "500")
-	customContext["error"] = errMessage
-	cacheKey := fmt.Sprintf("500:%s:%s", langId, helpers.Md5Hash(errMessage))
-	cacheTtl := time.Minute
-	parsed, err := site.ParseTemplate("500", path, config, customContext, nocache, cacheKey, cacheTtl,
+func Output500(w http.ResponseWriter, r *http.Request, err error) {
+	path := r.Context().Value("path").(string)
+	config := r.Context().Value("config").(*site.Config)
+	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))
+	langId := r.Context().Value("lang").(string)
+	customContext := generateCustomContext(w, r, "404")
+	customContext["error"] = err.Error()
+	cacheKey := fmt.Sprintf("500:%s:%s", langId, helpers.Md5Hash(err.Error()))
+	cacheTtl := time.Minute*5
+	var parsed []byte
+	parsed, err = site.ParseTemplate("500", path, config, customContext, nocache, cacheKey, cacheTtl,
 		func(ctx pongo2.Context) (pongo2.Context, error) {
 			return ctx, nil
-		}, c)
+		}, w, r)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
+		panic(err)
 	}
-	c.Set("Content-Type", "text/html")
-	return c.Status(fiber.StatusInternalServerError).Send(parsed)
+	render.Status(r, 500)
+	render.HTML(w, r, string(parsed))
 }
+
