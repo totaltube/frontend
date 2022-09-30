@@ -1,20 +1,22 @@
 package handlers
 
 import (
+	"log"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/flosch/pongo2/v4"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/utils"
 	"github.com/pkg/errors"
-	"log"
+
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/db"
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/internal"
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
-	"strconv"
-	"strings"
-	"time"
 )
 
 var ErrNeedCaptcha = errors.New("need captcha")
@@ -29,7 +31,7 @@ func Dmca(c *fiber.Ctx) error {
 	customContext := generateCustomContext(c, "dmca")
 	cacheTtl := time.Minute * 15
 	isOk := false
-	var ip = utils.ImmutableString(c.IP())
+	var ip = utils.CopyString(c.IP())
 	session := db.GetSession(ip)
 	defer db.SaveSession(ip, session)
 	if session.LastDmca.IsZero() || session.LastDmca.Before(time.Now().Add(-time.Minute)) {
@@ -92,7 +94,7 @@ func Dmca(c *fiber.Ctx) error {
 			ctx["ok"] = isOk
 			ctx["render_captcha"] = renderCaptcha
 			return ctx, nil
-		})
+		}, c)
 	if err != nil {
 		return err
 	}

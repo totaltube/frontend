@@ -2,19 +2,21 @@ package handlers
 
 import (
 	"fmt"
+	"net"
+	"net/url"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/flosch/pongo2/v4"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/utils"
 	"github.com/pkg/errors"
-	"net"
-	"net/url"
+
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
-	"strconv"
-	"strings"
-	"time"
 )
 
 func Search(c *fiber.Ctx) error {
@@ -29,18 +31,18 @@ func Search(c *fiber.Ctx) error {
 	}
 	searchQuery, _ := url.PathUnescape(strings.ReplaceAll(c.Params("query"), "+", "%20"))
 	if searchQuery == "" {
-		searchQuery = utils.ImmutableString(c.Query(config.Params.SearchQuery))
+		searchQuery = utils.CopyString(c.Query(config.Params.SearchQuery))
 	}
 	if searchQuery == "" {
 		return errors.New("search query not set")
 	}
 	isNatural, _ := strconv.ParseBool(config.Params.SearchNatural)
 	modelId, _ := strconv.ParseInt(c.Query(config.Params.ModelId), 10, 64)
-	modelSlug := utils.ImmutableString(c.Query(config.Params.ModelSlug))
-	categorySlug := utils.ImmutableString(c.Query(config.Params.CategorySlug))
+	modelSlug := utils.CopyString(c.Query(config.Params.ModelSlug))
+	categorySlug := utils.CopyString(c.Query(config.Params.CategorySlug))
 	categoryId, _ := strconv.ParseInt(c.Query(config.Params.CategoryId), 10, 64)
-	sortBy := utils.ImmutableString(c.Query(config.Params.SortBy))
-	sortByTimeframe := utils.ImmutableString(c.Query(config.Params.SortByViewsTimeframe))
+	sortBy := utils.CopyString(c.Query(config.Params.SortBy))
+	sortByTimeframe := utils.CopyString(c.Query(config.Params.SortByViewsTimeframe))
 	if sortBy == config.Params.SortByDate {
 		sortBy = "dated"
 	} else if sortBy == config.Params.SortByDuration {
@@ -53,7 +55,7 @@ func Search(c *fiber.Ctx) error {
 		sortBy = ""
 	}
 	channelId, _ := strconv.ParseInt(c.Query(config.Params.ChannelId, "0"), 10, 64)
-	channelSlug := utils.ImmutableString(c.Query(config.Params.ChannelSlug))
+	channelSlug := utils.CopyString(c.Query(config.Params.ChannelSlug))
 	durationFrom, _ := strconv.ParseInt(c.Query(config.Params.DurationGte, "0"), 10, 64)
 	durationTo, _ := strconv.ParseInt(c.Query(config.Params.DurationLt, "0"), 10, 64)
 	customContext := generateCustomContext(c, "search")
@@ -62,8 +64,8 @@ func Search(c *fiber.Ctx) error {
 			hostName, langId, page, channelSlug, channelId,
 			modelId, modelSlug, durationFrom, durationTo, categoryId, categorySlug, sortBy, searchQuery),
 	)
-	ip := utils.ImmutableString(c.IP())
-	userAgent := utils.ImmutableString(c.Get("User-Agent"))
+	ip := utils.CopyString(c.IP())
+	userAgent := utils.CopyString(c.Get("User-Agent"))
 	cacheTtl := time.Minute * 15
 	parsed, err := site.ParseTemplate("search", path, config, customContext, nocache, cacheKey, cacheTtl,
 		func(ctx pongo2.Context) (pongo2.Context, error) {
@@ -98,7 +100,7 @@ func Search(c *fiber.Ctx) error {
 			ctx["page"] = int64(results.Page)
 			ctx["pages"] = int64(results.Pages)
 			return ctx, nil
-		})
+		}, c)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			return Generate404(c, err.Error())

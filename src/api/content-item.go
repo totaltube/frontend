@@ -1,11 +1,13 @@
 package api
 
 import (
-	"github.com/segmentio/encoding/json"
 	"log"
 	"net/url"
-	"sersh.com/totaltube/frontend/types"
 	"strconv"
+
+	"github.com/segmentio/encoding/json"
+
+	"sersh.com/totaltube/frontend/types"
 )
 
 func ContentItem(
@@ -21,6 +23,7 @@ func ContentItem(
 		"related": []string{strconv.FormatInt(relatedAmount, 10)},
 	})
 	if err != nil {
+		log.Println(err)
 		return
 	}
 	results = new(types.ContentItemResult)

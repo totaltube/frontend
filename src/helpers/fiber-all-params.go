@@ -8,7 +8,7 @@ import (
 func FiberAllParams(c *fiber.Ctx) map[string]string {
 	var res = make(map[string]string)
 	for _, key := range c.Route().Params {
-		res[key] = utils.ImmutableString(c.Params(key))
+		res[key] = utils.CopyString(c.Params(key))
 	}
 	return res
 }
@@ -16,8 +16,8 @@ func FiberAllParams(c *fiber.Ctx) map[string]string {
 func FiberAllQuery(c *fiber.Ctx) map[string]string {
 	var res = make(map[string]string)
 	c.Context().QueryArgs().VisitAll(func(key, value []byte) {
-		k := utils.ImmutableString(string(key))
-		v := utils.ImmutableString(string(value))
+		k := utils.CopyString(string(key))
+		v := utils.CopyString(string(value))
 		res[k] = v
 	})
 	return res

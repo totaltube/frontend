@@ -1,9 +1,10 @@
 package site
 
 import (
-	"github.com/flosch/pongo2/v4"
 	"html"
 	"regexp"
+
+	"github.com/flosch/pongo2/v4"
 )
 
 var replaceDynamicRegex = regexp.MustCompile(`<data class=["']?_dynamic["']? value=["']?([^"\\]*(?:\\.[^"\\]*)*)["']?></data>`)
@@ -22,5 +23,6 @@ func InsertDynamic(src []byte, userCtx pongo2.Context) (result []byte, err error
 		}
 		return result
 	})
+	userCtx["set_cookie"] = nil // unset dynamic function with fiber inside.
 	return
 }

@@ -1,10 +1,11 @@
 package handlers
 
 import (
-	"github.com/gofiber/fiber/v2"
-	"sersh.com/totaltube/frontend/site"
-	"sersh.com/totaltube/frontend/types"
 	"strconv"
+
+	"github.com/gofiber/fiber/v2"
+
+	"sersh.com/totaltube/frontend/site"
 )
 
 func Custom(c *fiber.Ctx) error {
@@ -20,8 +21,22 @@ func Custom(c *fiber.Ctx) error {
 	customContext["page"] = page
 	parsed, err := site.ParseCustomTemplate(templateName, path, config, customContext, nocache, c)
 	if err != nil {
-		if err == types.ErrResponseSent {
-			return nil
+		if err1, ok := err.(site.ErrSendResponse); ok {
+			if err1.Redirect != "" {
+				if err1.RedirectCode > 0 {
+					return c.Redirect(err1.Redirect, err1.RedirectCode)
+				} else {
+					return c.Redirect(err1.Redirect)
+				}
+			}
+			if err1.JSON != nil {
+				c.Set("Content-Type", "application/json")
+				return c.Send(err1.JSON)
+			}
+			if err1.Text != nil {
+				c.Set("Content-Type", "text/html")
+				return c.Send(err1.Text)
+			}
 		}
 		return err
 	}

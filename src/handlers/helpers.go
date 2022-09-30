@@ -2,21 +2,23 @@ package handlers
 
 import (
 	"fmt"
-	"github.com/flosch/pongo2/v4"
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/utils"
 	"log"
 	"net"
 	"net/url"
 	"reflect"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/flosch/pongo2/v4"
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/utils"
+
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/internal"
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
-	"strconv"
-	"strings"
-	"time"
 )
 
 func generateCustomContext(c *fiber.Ctx, templateName string) pongo2.Context {
@@ -29,7 +31,7 @@ func generateCustomContext(c *fiber.Ctx, templateName string) pongo2.Context {
 	}
 	params := helpers.FiberAllParams(c)
 	query := helpers.FiberAllQuery(c)
-	userAgent := utils.ImmutableString(c.Get("User-Agent"))
+	userAgent := utils.CopyString(c.Get("User-Agent"))
 	var changedQuery = make(map[string]string)
 	for k, v := range query {
 		if k == config.Params.SortBy {
@@ -88,14 +90,14 @@ func generateCustomContext(c *fiber.Ctx, templateName string) pongo2.Context {
 	for k, v := range changedQuery {
 		query[k] = v
 	}
-	queryString := string(c.Context().QueryArgs().QueryString())
+	queryString := string(utils.CopyBytes(c.Context().QueryArgs().QueryString()))
 	headers := map[string]string{}
 	c.Request().Header.VisitAll(func(key, value []byte) {
-		headers[utils.ImmutableString(string(key))] = utils.ImmutableString(string(value))
+		headers[string(utils.CopyBytes(key))] = string(utils.CopyBytes(value))
 	})
 	cookies := map[string]string{}
 	c.Request().Header.VisitAllCookie(func(key, value []byte) {
-		cookies[utils.ImmutableString(string(key))] = utils.ImmutableString(string(value))
+		cookies[string(utils.CopyBytes(key))] = string(utils.CopyBytes(value))
 	})
 	canonicalQuery := url.Values{}
 	route := config.Routes.TopCategories
@@ -124,6 +126,8 @@ func generateCustomContext(c *fiber.Ctx, templateName string) pongo2.Context {
 		route = config.Routes.ContentItem
 	case "fake-player":
 		route = config.Routes.FakePlayer
+	case "video-embed":
+		route = config.Routes.VideoEmbed
 	default:
 		if r, ok := config.Custom[strings.TrimPrefix(templateName, "custom/")]; ok {
 			route = r
@@ -223,7 +227,7 @@ func generateCustomContext(c *fiber.Ctx, templateName string) pongo2.Context {
 	}
 	nocache, _ := strconv.ParseBool(c.Query(config.Params.Nocache, "false"))
 	var globals = make(map[string]interface{})
-	ip := utils.ImmutableString(c.IP())
+	ip := utils.CopyString(c.IP())
 	customContext := pongo2.Context{
 		"page_template":       templateName,
 		"lang":                internal.GetLanguage(langId),
@@ -281,27 +285,6 @@ func generateCustomContext(c *fiber.Ctx, templateName string) pongo2.Context {
 			return dv2.Interface()
 		},
 	}
-	customContext["set_cookie"] = func(name string, value interface{}, expire interface{}) {
-		var expires = time.Now().Add(time.Minute * 60)
-		if e, ok := expire.(time.Time); ok {
-			expires = e
-		}
-		if e, ok := expire.(time.Duration); ok {
-			expires = time.Now().Add(e)
-		}
-		if e, ok := expire.(int64); ok {
-			expires = time.Now().Add(time.Hour * 24 * time.Duration(e))
-		}
-		if e, ok := expire.(int); ok {
-			expires = time.Now().Add(time.Hour * 24 * time.Duration(e))
-		}
-		var cookie = &fiber.Cookie{
-			Name:    name,
-			Value:   fmt.Sprintf("%v", value),
-			Expires: expires,
-		}
-		c.Cookie(cookie)
-	}
 	// Functions to set and get vars, which will be saved between calls.
 	customContext["set_var"] = func(name string, value interface{}) {
 		globals[name] = value
@@ -324,7 +307,7 @@ func Generate404(c *fiber.Ctx, errMessage string) error {
 	parsed, err := site.ParseTemplate("404", path, config, customContext, nocache, cacheKey, cacheTtl,
 		func(ctx pongo2.Context) (pongo2.Context, error) {
 			return ctx, nil
-		})
+		}, c)
 	if err != nil {
 		return err
 	}
@@ -344,7 +327,7 @@ func Generate500(c *fiber.Ctx, errMessage string) error {
 	parsed, err := site.ParseTemplate("500", path, config, customContext, nocache, cacheKey, cacheTtl,
 		func(ctx pongo2.Context) (pongo2.Context, error) {
 			return ctx, nil
-		})
+		}, c)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
 	}

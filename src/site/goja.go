@@ -1,17 +1,21 @@
 package site
 
 import (
+	"io/ioutil"
+	"log"
+	"net/url"
+	"os"
+	"sync"
+	"time"
+
+	"github.com/brianvoe/gofakeit/v6"
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/console"
 	"github.com/dop251/goja_nodejs/require"
-	"io/ioutil"
-	"log"
-	"os"
+
 	"sersh.com/totaltube/frontend/db"
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/types"
-	"sync"
-	"time"
 )
 
 var jsVMs = make(map[string]*goja.Runtime)
@@ -50,6 +54,8 @@ func getJsSource(path string) []byte {
 	return n.Source
 }
 
+var faker = gofakeit.NewCrypto()
+
 func getJsVM(name string) *goja.Runtime {
 	jsMutex.Lock()
 	defer jsMutex.Unlock()
@@ -76,6 +82,24 @@ func getJsVM(name string) *goja.Runtime {
 	if err != nil {
 		panic(err)
 	}
+	err = VM.Set("faker", faker)
+	if err != nil {
+		panic(err)
+	}
+	err = VM.Set("URL", func(call goja.ConstructorCall) *goja.Object {
+		u, _ := url.Parse(call.Argument(0).String())
+		if u == nil {
+			return nil
+		}
+		_ = call.This.Set("pathname", u.Path)
+		_ = call.This.Set("host", u.Host)
+		_ = call.This.Set("hostname", u.Hostname())
+		_ = call.This.Set("href", u.String())
+		_ = call.This.Set("port", u.Port())
+		_ = call.This.Set("protocol", u.Scheme+":")
+		_ = call.This.Set("search", u.RawQuery)
+		return nil
+	})
 	jsVMs[name] = VM
 	return VM
 }

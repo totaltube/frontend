@@ -2,17 +2,19 @@ package handlers
 
 import (
 	"fmt"
+	"log"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/flosch/pongo2/v4"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/utils"
-	"log"
+
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
-	"strconv"
-	"strings"
-	"time"
 )
 
 func Models(c *fiber.Ctx) error {
@@ -26,8 +28,8 @@ func Models(c *fiber.Ctx) error {
 		page = 1
 	}
 	// can be title, total, popular
-	sortBy := utils.ImmutableString(c.Params(":sort", c.Query(config.Params.SortBy, "title")))
-	query := utils.ImmutableString(c.Query(config.Params.SearchQuery))
+	sortBy := utils.CopyString(c.Params(":sort", c.Query(config.Params.SortBy, "title")))
+	query := utils.CopyString(c.Query(config.Params.SearchQuery))
 	amount := config.General.ModelsPerPage
 	customContext := generateCustomContext(c, "models")
 	cacheKey := "models:" + helpers.Md5Hash(
@@ -51,7 +53,7 @@ func Models(c *fiber.Ctx) error {
 			ctx["page"] = int64(results.Page)
 			ctx["pages"] = int64(results.Pages)
 			return ctx, nil
-		})
+		}, c)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			return Generate404(c, err.Error())

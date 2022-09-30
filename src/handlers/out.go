@@ -1,18 +1,20 @@
 package handlers
 
 import (
+	"log"
+	"strconv"
+	"strings"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/utils"
 	"github.com/logocomune/botdetector"
-	"log"
+
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/db"
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/internal"
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
-	"strconv"
-	"strings"
 )
 
 var botDetector = botdetector.New()
@@ -32,13 +34,13 @@ var countChannel = make(chan countInfo, 100)
 func Out(c *fiber.Ctx) error {
 	config := c.Locals("config").(*site.Config)
 	hostName := c.Locals("hostName").(string)
-	ip := utils.ImmutableString(c.IP())
+	ip := utils.CopyString(c.IP())
 	redirectUrl := c.Query(config.Params.CountRedirect)
 	encryptedRedirectUrl := c.Query("e" + config.Params.CountRedirect)
 	if redirectUrl == "" && encryptedRedirectUrl != "" {
 		redirectUrl = helpers.DecryptBase64(encryptedRedirectUrl)
 	}
-	countType := utils.ImmutableString(c.Query(config.Params.CountType))
+	countType := utils.CopyString(c.Query(config.Params.CountType))
 	countThumbId, _ := strconv.ParseInt(c.Query(config.Params.CountThumbId, "-1"), 10, 16)
 	returnFunc := func() error {
 		// Function which redirects or return json at the end.
@@ -56,8 +58,8 @@ func Out(c *fiber.Ctx) error {
 		return returnFunc()
 	}
 	// All calculations are done in background
-	categoryIdParam := utils.ImmutableString(c.Query(config.Params.CategoryId))
-	contentIdParam := utils.ImmutableString(c.Query(config.Params.ContentId))
+	categoryIdParam := utils.CopyString(c.Query(config.Params.CategoryId))
+	contentIdParam := utils.CopyString(c.Query(config.Params.ContentId))
 	info := countInfo{
 		hostName:     hostName,
 		config:       config,

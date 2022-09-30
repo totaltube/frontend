@@ -2,21 +2,23 @@ package handlers
 
 import (
 	"fmt"
+	"log"
+	"math/rand"
+	"net"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/flosch/pongo2/v4"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/utils"
 	"github.com/segmentio/encoding/json"
-	"log"
-	"math/rand"
-	"net"
+
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/db"
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
-	"strconv"
-	"strings"
-	"time"
 )
 
 func Category(c *fiber.Ctx) error {
@@ -29,12 +31,12 @@ func Category(c *fiber.Ctx) error {
 	if page <= 0 {
 		page = 1
 	}
-	categorySlug := utils.ImmutableString(c.Params("slug", c.Query(config.Params.CategorySlug)))
+	categorySlug := utils.CopyString(c.Params("slug", c.Query(config.Params.CategorySlug)))
 	categoryId, _ := strconv.ParseInt(c.Params("id", c.Query(config.Params.CategoryId)), 10, 64)
 	if categoryId == 0 && categorySlug == "" {
 		return Generate404(c, "category not found")
 	}
-	sortBy := utils.ImmutableString(c.Query(config.Params.SortBy))
+	sortBy := utils.CopyString(c.Query(config.Params.SortBy))
 	if sortBy == config.Params.SortByDate {
 		sortBy = "dated"
 	} else if sortBy == config.Params.SortByDuration {
@@ -46,11 +48,11 @@ func Category(c *fiber.Ctx) error {
 	} else {
 		sortBy = ""
 	}
-	sortByViewsTimeframe := utils.ImmutableString(c.Query(config.Params.SortByViewsTimeframe))
+	sortByViewsTimeframe := utils.CopyString(c.Query(config.Params.SortByViewsTimeframe))
 	channelId, _ := strconv.ParseInt(c.Query(config.Params.ChannelId, "0"), 10, 64)
-	channelSlug := utils.ImmutableString(c.Query(config.Params.ChannelSlug))
+	channelSlug := utils.CopyString(c.Query(config.Params.ChannelSlug))
 	modelId, _ := strconv.ParseInt(c.Query(config.Params.ModelId, "0"), 10, 64)
-	modelSlug := utils.ImmutableString(c.Query(config.Params.ModelSlug))
+	modelSlug := utils.CopyString(c.Query(config.Params.ModelSlug))
 	durationFrom, _ := strconv.ParseInt(c.Query(config.Params.DurationGte, "0"), 10, 64)
 	durationTo, _ := strconv.ParseInt(c.Query(config.Params.DurationLt, "0"), 10, 64)
 	customContext := generateCustomContext(c, "category")
@@ -65,7 +67,7 @@ func Category(c *fiber.Ctx) error {
 	if page > 1 || filtered {
 		cacheTtl = time.Minute * 5
 	}
-	ip := utils.ImmutableString(c.IP())
+	ip := utils.CopyString(c.IP())
 	userAgent := c.Get("User-Agent")
 	parsed, err := site.ParseTemplate("category", path, config, customContext, nocache, cacheKey, cacheTtl,
 		func(ctx pongo2.Context) (pongo2.Context, error) {
@@ -119,7 +121,7 @@ func Category(c *fiber.Ctx) error {
 			ctx["page"] = int64(results.Page)
 			ctx["pages"] = int64(results.Pages)
 			return ctx, nil
-		})
+		}, c)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			return Generate404(c, err.Error())

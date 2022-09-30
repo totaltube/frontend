@@ -26,6 +26,7 @@ type (
 		Out              string
 		Dmca             string
 		Maintenance      string
+		VideoEmbed       string            `toml:"video_embed"`
 		LanguageTemplate string            `toml:"language_template"`
 		Custom           map[string]string `toml:"custom"`
 	}

@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -10,6 +9,7 @@ import (
 	"github.com/flosch/pongo2/v4"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/utils"
+	"github.com/pkg/errors"
 
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/helpers"
@@ -17,7 +17,7 @@ import (
 	"sersh.com/totaltube/frontend/types"
 )
 
-func FakePlayer(c *fiber.Ctx) error {
+func VideoEmbed(c *fiber.Ctx) error {
 	path := c.Locals("path").(string)
 	config := c.Locals("config").(*site.Config)
 	hostName := c.Locals("hostName").(string)
@@ -28,24 +28,25 @@ func FakePlayer(c *fiber.Ctx) error {
 	if id == 0 && slug == "" {
 		return Generate404(c, "content item not found")
 	}
-	orfl := !config.General.FakeVideoPage
-	relatedAmount := config.General.ContentRelatedAmount
-	customContext := generateCustomContext(c, "fake-player")
-	cacheKey := "fake-player:" + helpers.Md5Hash(
-		fmt.Sprintf("%s:%s:%d:%s:%v:%d", hostName, langId, id, slug, orfl, relatedAmount),
+	customContext := generateCustomContext(c, "video-embed")
+	cacheKey := "video-embed:" + helpers.Md5Hash(
+		fmt.Sprintf("%s:%s:%d:%s", hostName, langId, id, slug),
 	)
 	cacheTtl := time.Minute * 30
-	parsed, err := site.ParseTemplate("fake-player", path, config, customContext, nocache, cacheKey, cacheTtl,
+	parsed, err := site.ParseTemplate("video-embed", path, config, customContext, nocache, cacheKey, cacheTtl,
 		func(ctx pongo2.Context) (pongo2.Context, error) {
 			// getting category information from cache or from api
 			var results *types.ContentItemResult
 			var err error
-			results, err = api.ContentItem(hostName, langId, slug, id, orfl, int64(relatedAmount))
+			results, err = api.ContentItem(hostName, langId, slug, id, true, 0)
 			if err != nil {
 				if strings.Contains(err.Error(), "not found") {
 					return ctx, errors.New("content item not found")
 				}
 				return ctx, err
+			}
+			if results.Type != "video" {
+				return ctx, errors.New("content item not found")
 			}
 			ctx["content_item"] = results
 			ctx["related"] = results.Related
@@ -53,7 +54,10 @@ func FakePlayer(c *fiber.Ctx) error {
 		}, c)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			return Generate404(c, err.Error())
+			c.Set("Content-Type", "text/html")
+			c.Status(404)
+			return c.SendString("content not found")
+			//return Generate404(c, err.Error())
 		}
 		return err
 	}

@@ -1,18 +1,20 @@
 package handlers
 
 import (
-	"github.com/gofiber/fiber/v2"
 	"net/url"
-	"sersh.com/totaltube/frontend/db"
-	"sersh.com/totaltube/frontend/internal"
-	"sersh.com/totaltube/frontend/site"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/gofiber/fiber/v2"
+
+	"sersh.com/totaltube/frontend/db"
+	"sersh.com/totaltube/frontend/internal"
+	"sersh.com/totaltube/frontend/site"
 )
 
 // LangHandlers Function creates language routes like /ru/someroute, /en/someroute etc.
-func LangHandlers(app *fiber.App, route string, siteConfig *site.Config, handler fiber.Handler) {
+func LangHandlers(app *fiber.App, route string, siteConfig *site.Config, handlers ...fiber.Handler) {
 	languages := internal.GetLanguages()
 	for _, l := range languages {
 		langId := l.Id
@@ -23,7 +25,7 @@ func LangHandlers(app *fiber.App, route string, siteConfig *site.Config, handler
 			r = strings.ReplaceAll(siteConfig.Routes.LanguageTemplate, ":lang", langId)
 			r = strings.ReplaceAll(r, ":route", route)
 		}
-		app.All(r, func(c *fiber.Ctx) error {
+		h := append([]fiber.Handler{func(c *fiber.Ctx) error {
 			c.Locals("lang", langId)
 			c.Cookie(&fiber.Cookie{
 				Name:     internal.Config.General.LangCookie,
@@ -32,7 +34,8 @@ func LangHandlers(app *fiber.App, route string, siteConfig *site.Config, handler
 				SameSite: "lax",
 			})
 			return c.Next()
-		}, handler)
+		}}, handlers...)
+		app.All(r, h...)
 	}
 	if !strings.Contains(route, ":lang") {
 		// And route to detect lang

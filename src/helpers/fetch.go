@@ -2,18 +2,21 @@ package helpers
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"fmt"
-	"github.com/pkg/errors"
-	"github.com/segmentio/encoding/json"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
-	"sersh.com/totaltube/frontend/internal"
 	"strings"
 	"time"
+
+	"github.com/pkg/errors"
+	"github.com/segmentio/encoding/json"
+
+	"sersh.com/totaltube/frontend/internal"
 )
 
 type fetchRequest struct {
@@ -107,9 +110,10 @@ func (f *fetchRequest) WithTimeout(timeout time.Duration) *fetchRequest {
 
 func (f *fetchRequest) Do() (response []byte, err error) {
 	client := http.Client{
-		Timeout:   f.timeout,
 		Transport: &http.Transport{DisableKeepAlives: true, TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), f.timeout)
+	defer cancel()
 	var body io.Reader
 	if f.data != nil {
 		switch d := f.data.(type) {
@@ -142,7 +146,7 @@ func (f *fetchRequest) Do() (response []byte, err error) {
 	}
 	requestUrl := f.url
 	var request *http.Request
-	request, err = http.NewRequest(f.method, requestUrl, body)
+	request, err = http.NewRequestWithContext(ctx, f.method, requestUrl, body)
 	if err != nil {
 		log.Println("error creating client request:", err)
 		return

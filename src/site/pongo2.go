@@ -2,12 +2,14 @@ package site
 
 import (
 	"fmt"
-	"github.com/flosch/pongo2/v4"
-	"github.com/pkg/errors"
 	"log"
 	"math"
-	"sersh.com/totaltube/frontend/types"
 	"strconv"
+
+	"github.com/flosch/pongo2/v4"
+	"github.com/pkg/errors"
+
+	"sersh.com/totaltube/frontend/types"
 )
 
 func InitPongo2() {
@@ -148,7 +150,7 @@ func InitPongo2() {
 				OrigError: errors.New("translate filter needs one param - language code to translate to"),
 			}
 		}
-		out = pongo2.AsValue(deferredTranslate("en", param.String(), in.String()))
+		out = pongo2.AsValue(deferredTranslate("en", param.String(), in.String(), "page-text"))
 		return
 	})
 	if err != nil {

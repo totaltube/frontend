@@ -2,17 +2,19 @@ package handlers
 
 import (
 	"fmt"
-	"github.com/flosch/pongo2/v4"
-	"github.com/gofiber/fiber/v2"
 	"log"
 	"net/url"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/flosch/pongo2/v4"
+	"github.com/gofiber/fiber/v2"
+
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/db"
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
-	"strconv"
-	"strings"
-	"time"
 )
 
 func TopCategories(c *fiber.Ctx) error {
@@ -70,7 +72,7 @@ func TopCategories(c *fiber.Ctx) error {
 			ctx["page"] = int64(results.Page)
 			ctx["pages"] = int64(results.Pages)
 			return ctx, nil
-		})
+		}, c)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			return Generate404(c, err.Error())

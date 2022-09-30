@@ -3,17 +3,19 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"log"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/flosch/pongo2/v4"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/utils"
-	"log"
+
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
-	"strconv"
-	"strings"
-	"time"
 )
 
 func ContentItem(c *fiber.Ctx) error {
@@ -22,7 +24,7 @@ func ContentItem(c *fiber.Ctx) error {
 	hostName := c.Locals("hostName").(string)
 	nocache, _ := strconv.ParseBool(c.Query(config.Params.Nocache, "false"))
 	langId := c.Locals("lang").(string)
-	slug := utils.ImmutableString(c.Params("slug"))
+	slug := utils.CopyString(c.Params("slug"))
 	id, _ := strconv.ParseInt(c.Params("id"), 10, 64)
 	if id == 0 && slug == "" {
 		return Generate404(c, "content item not found")
@@ -49,7 +51,7 @@ func ContentItem(c *fiber.Ctx) error {
 			ctx["content_item"] = results
 			ctx["related"] = results.Related
 			return ctx, nil
-		})
+		}, c)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			return Generate404(c, err.Error())

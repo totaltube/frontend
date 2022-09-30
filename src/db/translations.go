@@ -3,13 +3,16 @@ package db
 import (
 	"bytes"
 	"encoding/json"
+	"log"
+	"time"
+
 	"github.com/dgraph-io/badger/v3"
 	"github.com/pkg/errors"
-	"log"
+	"github.com/samber/lo"
+
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/types"
-	"time"
 )
 
 const (
@@ -22,6 +25,7 @@ type translationDoc struct {
 	From string `json:"from"`
 	To   string `json:"to"`
 	Text string `json:"text"`
+	Type string `json:"type"`
 }
 
 func GetTranslation(from, to, text string) (translation string) {
@@ -47,7 +51,7 @@ func SaveTranslation(from, to, text, translation string) {
 	})
 }
 
-func SaveDeferredTranslation(from, to, text string) {
+func SaveDeferredTranslation(from, to, text, Type string) {
 	var raceError = errors.New("key already exists")
 	now := time.Now().Format(time.RFC3339Nano)
 	key := []byte(translationsDeferredPrefix + now)
@@ -67,12 +71,13 @@ func SaveDeferredTranslation(from, to, text string) {
 			From: from,
 			To:   to,
 			Text: text,
+			Type: Type,
 		})).WithTTL(time.Minute * 60))
 		return nil
 	})
 	if err == raceError {
 		time.Sleep(time.Nanosecond)
-		SaveDeferredTranslation(from, to, text)
+		SaveDeferredTranslation(from, to, text, Type)
 		return
 	}
 	if err != nil {
@@ -122,12 +127,17 @@ func doTranslations() {
 					log.Println(err)
 					return err
 				}
+				Type := doc.Type
+				if !lo.Contains(types.TranslationTypes, Type){
+					Type = "page-text"
+				}
 				toTranslate = append(toTranslate, toTranslateT{
 					key: k,
 					translate: types.TranslateParams{
 						From: doc.From,
 						To:   doc.To,
 						Text: doc.Text,
+						Type: Type,
 					},
 				})
 			}

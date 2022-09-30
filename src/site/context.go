@@ -2,18 +2,20 @@ package site
 
 import (
 	"fmt"
-	"github.com/flosch/pongo2/v4"
-	"github.com/sersh88/timeago"
 	"log"
 	"math"
 	"os"
 	"path/filepath"
 	"regexp"
-	"sersh.com/totaltube/frontend/helpers"
-	"sersh.com/totaltube/frontend/types"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/flosch/pongo2/v4"
+	"github.com/sersh88/timeago"
+
+	"sersh.com/totaltube/frontend/helpers"
+	"sersh.com/totaltube/frontend/types"
 )
 
 type PaginationItemType string
@@ -71,7 +73,16 @@ func generateContext(name string, sitePath string, customContext pongo2.Context)
 		"time8601":     helpers.Time8601,
 		"duration8601": helpers.Duration8601,
 		"translate": func(text string) string {
-			return deferredTranslate("en", customContext["lang"].(*types.Language).Id, text)
+			return deferredTranslate("en", customContext["lang"].(*types.Language).Id, text, "page-text")
+		},
+		"translate_title": func(text string) string {
+			return deferredTranslate("en", customContext["lang"].(*types.Language).Id, text, "content-title")
+		},
+		"translate_description": func(text string) string {
+			return deferredTranslate("en", customContext["lang"].(*types.Language).Id, text, "content-description")
+		},
+		"translate_query": func(text string) string {
+			return deferredTranslate("en", customContext["lang"].(*types.Language).Id, text, "query")
 		},
 		"static": func(filePaths ...string) string {
 			filePath := strings.Join(filePaths, "")

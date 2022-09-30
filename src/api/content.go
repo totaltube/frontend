@@ -1,11 +1,13 @@
 package api
 
 import (
-	"github.com/segmentio/encoding/json"
 	"net"
 	"net/url"
-	"sersh.com/totaltube/frontend/types"
 	"strconv"
+
+	"github.com/segmentio/encoding/json"
+
+	"sersh.com/totaltube/frontend/types"
 )
 
 type SortBy string

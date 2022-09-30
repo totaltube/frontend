@@ -23,6 +23,7 @@ type ChannelResult struct {
 	ThumbsServer    string    `json:"thumbs_server"`
 	ThumbsPath      string    `json:"thumbs_path"`
 	ThumbFormat     string    `json:"thumb_format"`
+	ThumbType       string    `json:"thumb_type"`
 	BestThumb       *int16    `json:"best_thumb,omitempty"`
 	Total           int32     `json:"total"`
 	Views           int32     `json:"views" db:"views"`
@@ -39,7 +40,7 @@ type ChannelResults struct {
 }
 
 func (c ChannelResult) ThumbTemplate() string {
-	return c.ThumbsServer + c.ThumbsPath + "/thumb-" + c.ThumbFormat + ".%d.jpg"
+	return c.ThumbsServer + c.ThumbsPath + "/thumb-" + c.ThumbFormat + ".%d."+c.ThumbType
 }
 
 func (c *ChannelResult) Thumb() string {
@@ -48,7 +49,7 @@ func (c *ChannelResult) Thumb() string {
 
 func (c *ChannelResult) HiresThumb() string {
 	if c.ThumbRetina {
-		return fmt.Sprintf(strings.TrimSuffix(c.ThumbTemplate(), ".jpg")+"@2x.jpg", c.SelectedThumb())
+		return fmt.Sprintf(strings.TrimSuffix(c.ThumbTemplate(), "."+c.ThumbType)+"@2x."+c.ThumbType, c.SelectedThumb())
 	} else {
 		return c.Thumb()
 	}

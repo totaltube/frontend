@@ -1,18 +1,22 @@
 package main
 
 import (
-	"github.com/gofiber/fiber/v2"
-	recoverMiddleware "github.com/gofiber/fiber/v2/middleware/recover"
 	"log"
 	"os"
 	"path/filepath"
 	"runtime/debug"
+	"strings"
+	"time"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/gofiber/fiber/v2/middleware/pprof"
+	recoverMiddleware "github.com/gofiber/fiber/v2/middleware/recover"
+
 	"sersh.com/totaltube/frontend/handlers"
 	"sersh.com/totaltube/frontend/internal"
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
-	"strings"
-	"time"
 )
 
 type host struct {
@@ -31,6 +35,7 @@ func InitFiber() *fiber.App {
 		WriteBufferSize:       16384,
 		ReadTimeout:           time.Second * 30,
 		WriteTimeout:          time.Second * 30,
+		Concurrency:           256,
 		ErrorHandler: func(c *fiber.Ctx, err error) (result error) {
 			defer func() {
 				if r, ok := recover().(error); r != nil && ok {
@@ -51,7 +56,7 @@ func InitFiber() *fiber.App {
 				// response already sent
 				return nil
 			}
-			log.Println("error on page", "https://"+string(c.Request().Host())+string(c.Request().RequestURI()), ":", err)
+			log.Println("error on page", "https://"+string(c.Request().Host())+string(c.Request().RequestURI()), " ", c.Route().Path, ":", err)
 			if _, ok := c.Locals("path").(string); ok && c.Accepts("text/html") != "" {
 				return handlers.Generate500(c, err.Error())
 			}
@@ -91,6 +96,7 @@ func InitFiber() *fiber.App {
 		}
 		h.fiber = fiber.New(fiberConfig)
 		h.fiber.Use(recoverMiddleware.New())
+		h.fiber.Use(logger.New())
 		h.fiber.Use(func(c *fiber.Ctx) error {
 			c.Locals("config", site.GetConfig(h.configPath))
 			c.Locals("path", h.path)
@@ -198,6 +204,13 @@ func InitFiber() *fiber.App {
 				h.fiber.All(config.Routes.FakePlayer, handlers.FakePlayer)
 			}
 		}
+		if config.Routes.VideoEmbed != "" {
+			if config.General.MultiLanguage {
+				handlers.LangHandlers(h.fiber, config.Routes.VideoEmbed, config, handlers.VideoEmbed)
+			} else {
+				h.fiber.All(config.Routes.VideoEmbed, handlers.VideoEmbed)
+			}
+		}
 		if config.Routes.Dmca != "" {
 			if config.General.MultiLanguage {
 				handlers.LangHandlers(h.fiber, config.Routes.Dmca, config, handlers.Dmca)
@@ -211,8 +224,8 @@ func InitFiber() *fiber.App {
 				if config.General.MultiLanguage && strings.Contains(routePath, ":lang") {
 					handlers.LangHandlers(h.fiber, routePath, config, func(c *fiber.Ctx) error {
 						c.Locals("custom_template_name", tName)
-						return handlers.Custom(c)
-					})
+						return c.Next()
+					}, handlers.Custom)
 				} else {
 					h.fiber.All(routePath, func(c *fiber.Ctx) error {
 						c.Locals("custom_template_name", tName)
@@ -221,6 +234,7 @@ func InitFiber() *fiber.App {
 				}
 			}
 		}
+		h.fiber.Get("/*", handlers.Handle404)
 		hosts[hostName] = &h
 		if hostName == internal.Config.Frontend.DefaultSite {
 			defaultSiteOk = true
@@ -233,6 +247,7 @@ func InitFiber() *fiber.App {
 
 	app := fiber.New(fiberConfig)
 	app.Use(recoverMiddleware.New())
+	app.Use(pprof.New())
 	app.Use(func(c *fiber.Ctx) error {
 		hostName := strings.TrimPrefix(strings.ToLower(c.Hostname()), "www.")
 		host := hosts[hostName]
