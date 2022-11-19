@@ -25,6 +25,11 @@ var Custom = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	parsed, err := site.ParseCustomTemplate(templateName, path, config, customContext, nocache, w, r)
 	if err != nil {
 		if err1, ok := err.(site.ErrSendResponse); ok {
+			if err1.Headers != nil {
+				for key := range err1.Headers {
+					w.Header().Set(key, err1.Headers.Get(key))
+				}
+			}
 			if err1.Redirect != "" {
 				if err1.RedirectCode != 301 {
 					err1.RedirectCode = 302
@@ -36,8 +41,12 @@ var Custom = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				render.JSON(w, r, err1.JSON)
 				return
 			}
-			if err1.Text != nil {
-				render.HTML(w, r, string(err1.Text))
+			if err1.Text != "" {
+				render.HTML(w, r, err1.Text)
+				return
+			}
+			if err1.Data != nil {
+				_, _ = w.Write(err1.Data)
 				return
 			}
 		}

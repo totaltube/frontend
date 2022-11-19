@@ -18,8 +18,7 @@ func Timeout(timeout time.Duration) func(next http.Handler) http.Handler {
 					w.WriteHeader(http.StatusGatewayTimeout)
 				}
 			}()
-			r = r.WithContext(ctx)
-			next.ServeHTTP(w, r)
+			next.ServeHTTP(w, r.WithContext(ctx))
 		}
 		return http.HandlerFunc(fn)
 	}

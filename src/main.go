@@ -2,13 +2,15 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"os"
+	"runtime"
+
 	"github.com/alecthomas/kong"
 	"github.com/pkg/errors"
 	"github.com/posener/complete"
 	"github.com/willabides/kongplete"
-	"log"
-	"os"
-	"runtime"
+
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/internal"
 )
@@ -39,6 +41,7 @@ func main() {
 		if err != nil {
 			panic(errors.Wrap(err, "Can't get sites options"))
 		}
+		upgradeConfig()
 		startServer()
 	case "install":
 		Install()

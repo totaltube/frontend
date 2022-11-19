@@ -22,9 +22,6 @@ import (
 	"sersh.com/totaltube/frontend/types"
 )
 
-
-
-
 func generateCustomContext(w http.ResponseWriter, r *http.Request, templateName string) pongo2.Context {
 	config := r.Context().Value("config").(*site.Config)
 	hostName := r.Context().Value("hostName").(string)
@@ -42,6 +39,7 @@ func generateCustomContext(w http.ResponseWriter, r *http.Request, templateName 
 	for k := range r.URL.Query() {
 		query[k] = r.URL.Query().Get(k)
 	}
+	uri := r.URL.Path
 	userAgent := r.Header.Get("User-Agent")
 	var changedQuery = make(map[string]string)
 	for k, v := range query {
@@ -243,6 +241,7 @@ func generateCustomContext(w http.ResponseWriter, r *http.Request, templateName 
 		"page_template":       templateName,
 		"lang":                internal.GetLanguage(langId),
 		"ip":                  ip,
+		"uri":                 uri,
 		"user_agent":          userAgent,
 		"nocache":             nocache,
 		"languages":           internal.GetLanguages(),
@@ -314,7 +313,7 @@ func Output404(w http.ResponseWriter, r *http.Request, errMessage string) {
 	customContext := generateCustomContext(w, r, "404")
 	customContext["error"] = errMessage
 	cacheKey := fmt.Sprintf("404:%s:%s", langId, helpers.Md5Hash(errMessage))
-	cacheTtl := time.Minute*5
+	cacheTtl := time.Minute * 5
 	parsed, err := site.ParseTemplate("404", path, config, customContext, nocache, cacheKey, cacheTtl,
 		func(ctx pongo2.Context) (pongo2.Context, error) {
 			return ctx, nil
@@ -334,7 +333,7 @@ func Output500(w http.ResponseWriter, r *http.Request, err error) {
 	customContext := generateCustomContext(w, r, "404")
 	customContext["error"] = err.Error()
 	cacheKey := fmt.Sprintf("500:%s:%s", langId, helpers.Md5Hash(err.Error()))
-	cacheTtl := time.Minute*5
+	cacheTtl := time.Minute * 5
 	var parsed []byte
 	parsed, err = site.ParseTemplate("500", path, config, customContext, nocache, cacheKey, cacheTtl,
 		func(ctx pongo2.Context) (pongo2.Context, error) {
@@ -346,4 +345,3 @@ func Output500(w http.ResponseWriter, r *http.Request, err error) {
 	render.Status(r, 500)
 	render.HTML(w, r, string(parsed))
 }
-

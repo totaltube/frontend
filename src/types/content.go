@@ -3,6 +3,7 @@ package types
 import (
 	"database/sql/driver"
 	"fmt"
+	"log"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -60,6 +61,7 @@ type ContentGalleryInfo struct {
 	Items        []Size `json:"items"`
 	PreviewItems []Size `json:"preview_items"`
 	Type         string `json:"type"`
+	Name         string `json:"name"`
 }
 type ContentVideoInfo struct {
 	Name           string
@@ -88,81 +90,81 @@ type ContentResultUser struct {
 	Name  string `json:"name"`
 }
 type ContentItemResult struct {
-	Id              int64                         `json:"id"`
-	Slug            string                        `json:"slug"`
-	Title           string                        `json:"title"`
-	TitleTranslated bool                          `json:"title_translated,omitempty"`
-	Description     *string                       `json:"description,omitempty"`
-	Channel         *TaxonomyResult               `json:"channel,omitempty"`
-	Content         *string                       `json:"content,omitempty"`
-	Link            *string                       `json:"link,omitempty"`
-	CreatedAt       time.Time                     `json:"created_at"`
-	Dated           time.Time                     `json:"dated"`
-	Duration        ContentDuration               `json:"duration"`
-	Tags            []string                      `json:"tags"`
-	Keywords        []string                      `json:"keywords,omitempty"`
-	VideoServer     string                        `json:"video_server,omitempty"`
-	GalleryServer   string                        `json:"gallery_server,omitempty"`
-	VideoPath       string                        `json:"video_path,omitempty"`
-	GalleryPath     string                        `json:"gallery_path,omitempty"`
+	Id              int64                          `json:"id"`
+	Slug            string                         `json:"slug"`
+	Title           string                         `json:"title"`
+	TitleTranslated bool                           `json:"title_translated,omitempty"`
+	Description     *string                        `json:"description,omitempty"`
+	Channel         *TaxonomyResult                `json:"channel,omitempty"`
+	Content         *string                        `json:"content,omitempty"`
+	Link            *string                        `json:"link,omitempty"`
+	CreatedAt       time.Time                      `json:"created_at"`
+	Dated           time.Time                      `json:"dated"`
+	Duration        ContentDuration                `json:"duration"`
+	Tags            []string                       `json:"tags"`
+	Keywords        []string                       `json:"keywords,omitempty"`
+	VideoServer     string                         `json:"video_server,omitempty"`
+	GalleryServer   string                         `json:"gallery_server,omitempty"`
+	VideoPath       string                         `json:"video_path,omitempty"`
+	GalleryPath     string                         `json:"gallery_path,omitempty"`
 	GalleryItems    *map[string]ContentGalleryInfo `json:"gallery_items,omitempty"`
 	VideoSizes      *map[string]ContentVideoInfo   `json:"video_sizes,omitempty"`
-	ThumbsAmount    int32                         `json:"thumbs_amount"`
-	ThumbsWidth     int32                         `json:"thumb_width"`
-	ThumbsHeight    int32                         `json:"thumb_height"`
-	ThumbsServer    string                        `json:"thumbs_server"` // урл сервера, на котором тумбы
-	ThumbsPath      string                        `json:"thumbs_path"`   // шаблон пути к тумбам
-	ThumbRetina     bool                          `json:"thumb_retina"`  // индикатор, что есть версия @2x
-	ThumbFormat     string                        `json:"thumb_format"`
-	ThumbType       string                        `json:"thumb_type"`           // тип изображения тумбы
-	BestThumb       *int16                        `json:"best_thumb,omitempty"` // номер лучшей тумбы, нумерация с 0
-	Type            string                        `json:"type"`
-	Priority        int16                         `json:"priority,omitempty"`
-	User            ContentResultUser             `json:"user"`
-	Categories      TaxonomyResults               `json:"categories,omitempty"`
-	Models          TaxonomyResults               `json:"models,omitempty"`
-	Views           int32                         `json:"views"`
-	Related         []*ContentResult              `json:"related,omitempty"` // похожие на этот контент
+	ThumbsAmount    int32                          `json:"thumbs_amount"`
+	ThumbsWidth     int32                          `json:"thumb_width"`
+	ThumbsHeight    int32                          `json:"thumb_height"`
+	ThumbsServer    string                         `json:"thumbs_server"` // урл сервера, на котором тумбы
+	ThumbsPath      string                         `json:"thumbs_path"`   // шаблон пути к тумбам
+	ThumbRetina     bool                           `json:"thumb_retina"`  // индикатор, что есть версия @2x
+	ThumbFormat     string                         `json:"thumb_format"`
+	ThumbType       string                         `json:"thumb_type"`           // тип изображения тумбы
+	BestThumb       *int16                         `json:"best_thumb,omitempty"` // номер лучшей тумбы, нумерация с 0
+	Type            string                         `json:"type"`
+	Priority        int16                          `json:"priority,omitempty"`
+	User            ContentResultUser              `json:"user"`
+	Categories      TaxonomyResults                `json:"categories,omitempty"`
+	Models          TaxonomyResults                `json:"models,omitempty"`
+	Views           int32                          `json:"views"`
+	Related         []*ContentResult               `json:"related,omitempty"` // похожие на этот контент
 	selectedThumb   *int
 }
 
 type ContentResult struct {
-	Id              int64                         `json:"id"`
-	Slug            string                        `json:"slug"`
-	Title           string                        `json:"title"`
-	TitleTranslated bool                          `json:"title_translated,omitempty"`
-	Description     *string                       `json:"description,omitempty"`
-	Channel         *TaxonomyResult               `json:"channel,omitempty"`
-	Content         *string                       `json:"content,omitempty"`
-	Link            *string                       `json:"link,omitempty"`
-	CreatedAt       time.Time                     `json:"created_at"`
-	Dated           time.Time                     `json:"dated"`
-	Duration        ContentDuration               `json:"duration"`
-	Tags            []string                      `json:"tags"`
-	Keywords        []string                      `json:"keywords,omitempty"`
-	GalleryServer   string                        `json:"gallery_server"`
-	VideoServer     string                        `json:"video_server"`
-	GalleryPath     string                        `json:"gallery_path"`
-	VideoPath       string                        `json:"video_path"`
+	Id              int64                          `json:"id"`
+	Slug            string                         `json:"slug"`
+	Title           string                         `json:"title"`
+	TitleTranslated bool                           `json:"title_translated,omitempty"`
+	Description     *string                        `json:"description,omitempty"`
+	Channel         *TaxonomyResult                `json:"channel,omitempty"`
+	Content         *string                        `json:"content,omitempty"`
+	Link            *string                        `json:"link,omitempty"`
+	CreatedAt       time.Time                      `json:"created_at"`
+	Dated           time.Time                      `json:"dated"`
+	Duration        ContentDuration                `json:"duration"`
+	Tags            []string                       `json:"tags"`
+	Keywords        []string                       `json:"keywords,omitempty"`
+	GalleryServer   string                         `json:"gallery_server"`
+	VideoServer     string                         `json:"video_server"`
+	GalleryPath     string                         `json:"gallery_path"`
+	VideoPath       string                         `json:"video_path"`
 	GalleryItems    *map[string]ContentGalleryInfo `json:"gallery_items,omitempty"`
 	VideoSizes      *map[string]ContentVideoInfo   `json:"video_sizes,omitempty"`
-	ThumbsAmount    int32                         `json:"thumbs_amount"`
-	ThumbsWidth     int32                         `json:"thumb_width"`
-	ThumbsHeight    int32                         `json:"thumb_height"`
-	ThumbsServer    string                        `json:"thumbs_server"` // урл сервера, на котором тумбы
-	ThumbsPath      string                        `json:"thumbs_path"`   // шаблон пути к тумбам
-	ThumbRetina     bool                          `json:"thumb_retina"`  // индикатор, что есть версия @2x
-	ThumbFormat     string                        `json:"thumb_format"`
-	ThumbType       string                        `json:"thumb_type"`           // тип изображения тумбы
-	BestThumb       *int16                        `json:"best_thumb,omitempty"` // Лучшая тумба
-	Type            string                        `json:"type"`
-	Priority        int16                         `json:"priority,omitempty"`
-	User            ContentResultUser             `json:"user"`
-	Categories      TaxonomyResults               `json:"categories,omitempty"`
-	Models          TaxonomyResults               `json:"models,omitempty"`
-	RotationStatus  *CtrsStatus                   `json:"rotation_status,omitempty"`
-	Ctr             *float32                      `json:"ctr,omitempty"`
-	Views           int32                         `json:"views"`
+	ThumbsAmount    int32                          `json:"thumbs_amount"`
+	ThumbsWidth     int32                          `json:"thumb_width"`
+	ThumbsHeight    int32                          `json:"thumb_height"`
+	ThumbsServer    string                         `json:"thumbs_server"` // урл сервера, на котором тумбы
+	ThumbsPath      string                         `json:"thumbs_path"`   // шаблон пути к тумбам
+	ThumbRetina     bool                           `json:"thumb_retina"`  // индикатор, что есть версия @2x
+	ThumbFormat     string                         `json:"thumb_format"`
+	ThumbType       string                         `json:"thumb_type"`           // тип изображения тумбы
+	BestThumb       *int16                         `json:"best_thumb,omitempty"` // Лучшая тумба
+	Type            string                         `json:"type"`
+	Priority        int16                          `json:"priority,omitempty"`
+	User            ContentResultUser              `json:"user"`
+	Categories      TaxonomyResults                `json:"categories,omitempty"`
+	Models          TaxonomyResults                `json:"models,omitempty"`
+	RotationStatus  *CtrsStatus                    `json:"rotation_status,omitempty"`
+	Ctr             *float32                       `json:"ctr,omitempty"`
+	Views           int32                          `json:"views"`
 	selectedThumb   *int
 }
 
@@ -228,15 +230,65 @@ func (c *ContentItemResult) HiresThumb() string {
 	}
 }
 
+func (c ContentItemResult) GalleryInfo(formats ...string) ContentGalleryInfo {
+	log.Println(c.Content)
+	if c.GalleryItems == nil {
+		return ContentGalleryInfo{}
+	}
+	var galleryInfo ContentGalleryInfo
+	var ok bool
+	if len(formats) > 0 {
+		for _, f := range formats {
+			if galleryInfo, ok = (*c.GalleryItems)[f]; ok {
+				galleryInfo.Name = f
+				break
+			}
+		}
+	}
+	if !ok {
+		for name, info := range *c.GalleryItems {
+			galleryInfo = info
+			galleryInfo.Name = name
+			break
+		}
+	}
+	return galleryInfo
+}
+func (c ContentItemResult) GalleryFormats() []string {
+	if c.GalleryItems == nil {
+		return []string{}
+	}
+	return lo.Keys(*c.GalleryItems)
+}
+
+type GalleryImageInfo struct {
+	ImageUrl    string `json:"image_url"`
+	PreviewUrl  string `json:"preview_url"`
+	PreviewSize Size   `json:"preview_size"`
+	ImageSize   Size   `json:"image_size"`
+}
+
+func (c ContentItemResult) GalleryImages(formats ...string) (images []GalleryImageInfo) {
+	info := c.GalleryInfo(formats...)
+	images = make([]GalleryImageInfo, 0, len(info.PreviewItems))
+	for k, preview := range info.PreviewItems {
+		image := GalleryImageInfo{
+			ImageUrl:    fmt.Sprintf("%s%s/image-%s.%d.%s", c.GalleryServer, c.GalleryPath, info.Name, k, info.Type),
+			PreviewUrl:  fmt.Sprintf("%s%s/preview-%s.%d.%s", c.GalleryServer, c.GalleryPath, info.Name, k, info.Type),
+			PreviewSize: preview,
+			ImageSize:   info.Items[k],
+		}
+		images = append(images, image)
+	}
+	return
+}
+
 func (c ContentItemResult) VideoInfo(formats ...string) ContentVideoInfo {
 	if c.VideoSizes == nil {
 		return ContentVideoInfo{}
 	}
 	var videoInfo ContentVideoInfo
 	var ok bool
-	if c.VideoSizes == nil {
-		return videoInfo
-	}
 	if len(formats) > 0 {
 		for _, f := range formats {
 			if videoInfo, ok = (*c.VideoSizes)[f]; ok {
@@ -298,6 +350,17 @@ func (c *ContentItemResult) SelectedThumb() int {
 	return *c.selectedThumb
 }
 
+func (c ContentItemResult) MainCategorySlug(defaultName ...string) string {
+	def := "any"
+	if len(defaultName) > 0 {
+		def = defaultName[0]
+	}
+	if len(c.Categories) == 0 {
+		return def
+	}
+	return c.Categories[0].Slug
+}
+
 func (c ContentResult) ThumbTemplate() string {
 	return c.ThumbsServer + c.ThumbsPath + "/thumb-" + c.ThumbFormat + ".%d." + c.ThumbType
 }
@@ -326,4 +389,15 @@ func (c *ContentResult) SelectedThumb() int {
 		c.selectedThumb = &idx
 	}
 	return *c.selectedThumb
+}
+
+func (c ContentResult) MainCategorySlug(defaultName ...string) string {
+	def := "any"
+	if len(defaultName) > 0 {
+		def = defaultName[0]
+	}
+	if len(c.Categories) == 0 {
+		return def
+	}
+	return c.Categories[0].Slug
 }

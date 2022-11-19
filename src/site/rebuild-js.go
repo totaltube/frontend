@@ -3,12 +3,13 @@ package site
 import (
 	"errors"
 	"fmt"
-	"github.com/evanw/esbuild/pkg/api"
-	"github.com/segmentio/encoding/json"
 	"log"
 	"os"
 	"path/filepath"
 	"sync"
+
+	"github.com/evanw/esbuild/pkg/api"
+	"github.com/segmentio/encoding/json"
 )
 
 var rebuildJSMutex sync.Mutex
@@ -53,6 +54,17 @@ func RebuildJS(path string, config *Config) error {
 		MinifyWhitespace:  config.Javascript.Minify,
 		MinifyIdentifiers: config.Javascript.Minify,
 		MinifySyntax:      config.Javascript.Minify,
+		Loader: map[string]api.Loader{
+			".gif": api.LoaderFile,
+			".jpg": api.LoaderFile,
+			".jpeg": api.LoaderFile,
+			".webp": api.LoaderFile,
+			".png": api.LoaderFile,
+			".svg": api.LoaderText,
+			".woff2": api.LoaderFile,
+			".woff": api.LoaderFile,
+			".ttf": api.LoaderFile,
+		},
 	})
 	for _, m := range result.Errors {
 		if m.Location != nil {

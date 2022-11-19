@@ -32,6 +32,7 @@ func InitRouter() http.Handler {
 		log.Fatalln(err)
 	}
 	for _, m := range matches {
+		m := m
 		configPath := filepath.Join(m, "config.toml")
 		if _, err := os.Stat(configPath); err != nil {
 			continue
@@ -52,8 +53,9 @@ func InitRouter() http.Handler {
 		}
 		hr := chi.NewRouter()
 		hr.Use(middleware.Recoverer)
-		hr.Use(middleware.Timeout(10 * time.Second))
+		hr.Use(middleware.Timeout(8 * time.Second))
 		hr.Use(middleware.GetHead)
+		hr.Use(middleware.StripSlashes)
 		hr.Use(func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				ctx := context.WithValue(r.Context(), "config", config)
@@ -77,109 +79,108 @@ func InitRouter() http.Handler {
 				next.ServeHTTP(w, r)
 			})
 		})
-
-		if config.Routes.Autocomplete != "" {
+		if config.Routes.Autocomplete != "" && config.Routes.Autocomplete != "-" {
 			if config.General.MultiLanguage {
 				handlers.LangHandlers(hr, config.Routes.Autocomplete, config, handlers.Autocomplete)
 			} else {
 				hr.Handle(config.Routes.Autocomplete, handlers.Autocomplete)
 			}
 		}
-		if config.Routes.Search != "" {
+		if config.Routes.Search != "" && config.Routes.Search != "-" {
 			if config.General.MultiLanguage {
 				handlers.LangHandlers(hr, config.Routes.Search, config, handlers.Search)
 			} else {
 				hr.Handle(config.Routes.Search, handlers.Search)
 			}
 		}
-		if config.Routes.Category != "" {
+		if config.Routes.Category != "" && config.Routes.Category != "-" {
 			if config.General.MultiLanguage {
 				handlers.LangHandlers(hr, config.Routes.Category, config, handlers.Category)
 			} else {
 				hr.Handle(config.Routes.Category, handlers.Category)
 			}
 		}
-		if config.Routes.TopCategories != "" {
+		if config.Routes.TopCategories != "" && config.Routes.TopCategories != "-" {
 			if config.General.MultiLanguage {
 				handlers.LangHandlers(hr, config.Routes.TopCategories, config, handlers.TopCategories)
 			} else {
 				hr.Handle(config.Routes.TopCategories, handlers.TopCategories)
 			}
 		}
-		if config.Routes.TopContent != "" {
+		if config.Routes.TopContent != "" && config.Routes.TopContent != "-" {
 			if config.General.MultiLanguage {
 				handlers.LangHandlers(hr, config.Routes.TopContent, config, handlers.TopContent)
 			} else {
 				hr.Handle(config.Routes.TopContent, handlers.TopContent)
 			}
 		}
-		if config.Routes.Model != "" {
+		if config.Routes.Model != "" && config.Routes.Model != "-" {
 			if config.General.MultiLanguage {
 				handlers.LangHandlers(hr, config.Routes.Model, config, handlers.Model)
 			} else {
 				hr.Handle(config.Routes.Model, handlers.Model)
 			}
 		}
-		if config.Routes.Channel != "" {
+		if config.Routes.Channel != "" && config.Routes.Channel != "-" {
 			if config.General.MultiLanguage {
 				handlers.LangHandlers(hr, config.Routes.Channel, config, handlers.Channel)
 			} else {
 				hr.Handle(config.Routes.Channel, handlers.Channel)
 			}
 		}
-		if config.Routes.ContentItem != "" {
+		if config.Routes.ContentItem != "" && config.Routes.ContentItem != "-" {
 			if config.General.MultiLanguage {
 				handlers.LangHandlers(hr, config.Routes.ContentItem, config, handlers.ContentItem)
 			} else {
 				hr.Handle(config.Routes.ContentItem, handlers.ContentItem)
 			}
 		}
-		if config.Routes.New != "" {
+		if config.Routes.New != "" && config.Routes.New != "-" {
 			if config.General.MultiLanguage {
 				handlers.LangHandlers(hr, config.Routes.New, config, handlers.New)
 			} else {
 				hr.Handle(config.Routes.New, handlers.New)
 			}
 		}
-		if config.Routes.Long != "" {
+		if config.Routes.Long != "" && config.Routes.Long != "-" {
 			if config.General.MultiLanguage {
 				handlers.LangHandlers(hr, config.Routes.Long, config, handlers.Long)
 			} else {
 				hr.Handle(config.Routes.Long, handlers.Long)
 			}
 		}
-		if config.Routes.Popular != "" {
+		if config.Routes.Popular != "" && config.Routes.Popular != "-" {
 			if config.General.MultiLanguage {
 				handlers.LangHandlers(hr, config.Routes.Popular, config, handlers.Popular)
 			} else {
 				hr.Handle(config.Routes.Popular, handlers.Popular)
 			}
 		}
-		if config.Routes.Models != "" {
+		if config.Routes.Models != "" && config.Routes.Models != "-" {
 			if config.General.MultiLanguage {
 				handlers.LangHandlers(hr, config.Routes.Models, config, handlers.Models)
 			} else {
 				hr.Handle(config.Routes.Models, handlers.Models)
 			}
 		}
-		if config.Routes.Out != "" {
+		if config.Routes.Out != "" && config.Routes.Out != "-" {
 			hr.Handle(config.Routes.Out, handlers.Out)
 		}
-		if config.Routes.FakePlayer != "" {
+		if config.Routes.FakePlayer != "" && config.Routes.FakePlayer != "-" {
 			if config.General.MultiLanguage {
 				handlers.LangHandlers(hr, config.Routes.FakePlayer, config, handlers.FakePlayer)
 			} else {
 				hr.Handle(config.Routes.FakePlayer, handlers.FakePlayer)
 			}
 		}
-		if config.Routes.VideoEmbed != "" {
+		if config.Routes.VideoEmbed != "" && config.Routes.VideoEmbed != "-" {
 			if config.General.MultiLanguage {
 				handlers.LangHandlers(hr, config.Routes.VideoEmbed, config, handlers.VideoEmbed)
 			} else {
 				hr.Handle(config.Routes.VideoEmbed, handlers.VideoEmbed)
 			}
 		}
-		if config.Routes.Dmca != "" {
+		if config.Routes.Dmca != "" && config.Routes.Dmca != "-" {
 			if config.General.MultiLanguage {
 				handlers.LangHandlers(hr, config.Routes.Dmca, config, handlers.Dmca)
 			} else {
@@ -215,11 +216,13 @@ func InitRouter() http.Handler {
 			"not present in", internal.Config.Frontend.SitesPath)
 	}
 	r := chi.NewRouter()
-	r.Use(middleware.Logger)
+	if internal.Config.General.Development {
+		r.Use(middleware.Logger)
+	}
 	r.Use(middleware.Recoverer)
 	r.Use(middlewares.Timeout(10 * time.Second))
 	r.Mount("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		hostName := strings.TrimPrefix(strings.ToLower(r.URL.Hostname()), "www.")
+		hostName := strings.TrimPrefix(strings.ToLower(r.Host), "www.")
 		host := hosts[hostName]
 		if host == nil {
 			host = hosts[internal.Config.Frontend.DefaultSite]

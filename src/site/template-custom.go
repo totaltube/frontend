@@ -35,14 +35,14 @@ type ErrSendResponse struct {
 	Redirect     string
 	RedirectCode int
 	JSON         interface{}
-	Text         []byte
+	Text         string
+	Data         []byte
+	Headers      http.Header
 }
 
 func (e ErrSendResponse) Error() string {
 	return "custom response"
 }
-
-
 
 func ParseCustomTemplate(name, path string, config *Config,
 	customContext pongo2.Context, nocache bool, w http.ResponseWriter, r *http.Request) (parsed []byte, err error) {
@@ -133,6 +133,16 @@ func ParseCustomTemplate(name, path string, config *Config,
 	}
 	// Adding custom functions to context
 	var addCustomFunctions = func(c pongo2.Context) {
+		c["add_header"] = func(name, value string) {
+			if h, ok := c["_headers"].(http.Header); ok {
+				h.Add(name, value)
+				c["_headers"] = h
+			} else {
+				h := http.Header{}
+				h.Add(name, value)
+				c["_headers"] = h
+			}
+		}
 		matches, _ := filepath.Glob(filepath.Join(path, "extensions/function-*.js"))
 		for _, m := range matches {
 			baseName := filepath.Base(m)
@@ -210,22 +220,38 @@ func ParseCustomTemplate(name, path string, config *Config,
 		}
 		if ret, ok := v.Export().(map[string]interface{}); ok {
 			// if render() returns object - output it as json
-			err = ErrSendResponse{JSON: ret}
+			e := ErrSendResponse{JSON: ret}
+			if h, ok := ctx["_headers"].(http.Header); ok {
+				e.Headers = h
+			}
+			err = e
 			return
 		}
 		if ret, ok := v.Export().(string); ok {
 			// if render() returns string - output it as is
 			parsed = []byte(ret)
-			err = ErrSendResponse{Text: []byte(ret)}
+			e := ErrSendResponse{Text: ret}
+			if h, ok := ctx["_headers"].(http.Header); ok {
+				e.Headers = h
+			}
+			err = e
 			return
 		}
 		if ret, ok := v.Export().([]byte); ok {
 			parsed = ret
-			err = ErrSendResponse{Text: ret}
+			e := ErrSendResponse{Data: ret}
+			if h, ok := ctx["_headers"].(http.Header); ok {
+				e.Headers = h
+			}
+			err = e
 			return
 		}
 		if ret, ok := v.Export().(redirectRet); ok {
-			err = ErrSendResponse{Redirect: ret.url, RedirectCode: ret.code}
+			e := ErrSendResponse{Redirect: ret.url, RedirectCode: ret.code}
+			if h, ok := ctx["_headers"].(http.Header); ok {
+				e.Headers = h
+			}
+			err = e
 			return
 		}
 		var template *pongo2.Template

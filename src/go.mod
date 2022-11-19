@@ -11,7 +11,7 @@ require (
 	github.com/dlclark/regexp2 v1.7.0
 	github.com/dop251/goja v0.0.0-20220927172339-ea66e911853d
 	github.com/dop251/goja_nodejs v0.0.0-20220905124449-678b33ca5009
-	github.com/evanw/esbuild v0.15.5
+	github.com/evanw/esbuild v0.15.13
 	github.com/flosch/pongo2/v4 v4.0.2
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/go-chi/render v1.0.2
@@ -30,7 +30,7 @@ require (
 	github.com/wellington/go-libsass v0.9.2
 	github.com/willabides/kongplete v0.1.0
 	golang.org/x/crypto v0.0.0-20220214200702-86341886e292
-	golang.org/x/text v0.3.7
+	golang.org/x/text v0.4.0
 )
 
 require (
@@ -59,7 +59,7 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	go.opencensus.io v0.22.5 // indirect
 	golang.org/x/exp v0.0.0-20220927162542-c76eaa363f9d // indirect
-	golang.org/x/net v0.0.0-20220225172249-27dd8689420f // indirect
-	golang.org/x/sys v0.0.0-20220928140112-f11e5e49a4ec // indirect
-	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
+	golang.org/x/net v0.2.0 // indirect
+	golang.org/x/sys v0.2.0 // indirect
+	golang.org/x/term v0.2.0 // indirect
 )

@@ -20,6 +20,7 @@ import (
 )
 
 var ContentItem = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
 	path := r.Context().Value("path").(string)
 	config := r.Context().Value("config").(*site.Config)
 	hostName := r.Context().Value("hostName").(string)

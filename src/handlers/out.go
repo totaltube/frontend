@@ -21,11 +21,10 @@ var botDetector = botdetector.New()
 
 type countInfo struct {
 	hostName     string
-	config       *site.Config
-	categoryId   string
-	contentId    string
+	categoryId   int64
+	contentId    int64
 	ip           string
-	countType    string
+	countType    types.CountType
 	countThumbId int64
 }
 
@@ -40,7 +39,7 @@ var Out = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	if redirectUrl == "" && encryptedRedirectUrl != "" {
 		redirectUrl = helpers.DecryptBase64(encryptedRedirectUrl)
 	}
-	countType := r.URL.Query().Get(config.Params.CountType)
+	countTypeParam := r.URL.Query().Get(config.Params.CountType)
 	countThumbId, _ := strconv.ParseInt(helpers.FirstNotEmpty(r.URL.Query().Get(config.Params.CountThumbId), "-1"), 10, 16)
 	returnFunc := func() {
 		// Function which redirects or return json at the end.
@@ -61,13 +60,20 @@ var Out = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// All calculations are done in background
-	categoryIdParam := r.URL.Query().Get(config.Params.CategoryId)
-	contentIdParam := r.URL.Query().Get(config.Params.ContentId)
+	categoryId, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.CategoryId), 10, 32)
+	contentId, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.ContentId), 10, 64)
+	countType := types.CountTypeNone
+	if countTypeParam == config.Params.CountTypeCategory {
+		countType = types.CountTypeCategory
+	} else if countTypeParam == config.Params.CountTypeTopCategories {
+		countType = types.CountTypeTopCategories
+	} else if countTypeParam == config.Params.CountTypeTopContent {
+		countType = types.CountTypeTopContent
+	}
 	info := countInfo{
 		hostName:     hostName,
-		config:       config,
-		categoryId:   categoryIdParam,
-		contentId:    contentIdParam,
+		categoryId:   categoryId,
+		contentId:    contentId,
 		ip:           ip,
 		countType:    countType,
 		countThumbId: countThumbId,
@@ -92,15 +98,15 @@ func doCount() {
 			defer db.SaveSession(ip, sess)
 			var countId int64
 			switch info.countType {
-			case info.config.Params.CountTypeTopCategories:
-				countId, _ = strconv.ParseInt(info.categoryId, 10, 64)
-			case info.config.Params.CountTypeCategory, info.config.Params.CountTypeTopContent:
-				countId, _ = strconv.ParseInt(info.contentId, 10, 64)
-				if sess.LastViewType == info.countType && sess.LastViewId == countId {
+			case types.CountTypeTopCategories:
+				countId = info.categoryId
+			default:
+				countId = info.contentId
+				if sess.LastViewType == info.countType.String() && sess.LastViewId == countId {
 					// no need to count view or click of this content
 					return
 				}
-				sess.LastViewType = info.countType
+				sess.LastViewType = info.countType.String()
 				sess.LastViewId = countId
 				// Let's count view of this content
 				err := api.CountView(info.hostName, types.CountViewParams{
@@ -113,17 +119,14 @@ func doCount() {
 					log.Println("error counting view:", err)
 					return
 				}
-			default:
-				log.Println("wrong count type - " + info.countType)
-				return
 			}
 			// now let's count click
 			switch info.countType {
-			case info.config.Params.CountTypeTopCategories:
-				if sess.LastClickType == info.countType && sess.LastClickId == countId {
+			case types.CountTypeTopCategories:
+				if sess.LastClickType == info.countType.String() && sess.LastClickId == countId {
 					return
 				}
-				sess.LastClickType = info.countType
+				sess.LastClickType = info.countType.String()
 				sess.LastClickId = countId
 				err := api.TopCategoriesClick(info.hostName, types.CountClickParams{
 					Ip: info.ip,
@@ -133,11 +136,11 @@ func doCount() {
 					log.Println("top categories click api error:", err)
 				}
 				return
-			case info.config.Params.CountTypeTopContent:
-				if sess.LastClickType == info.countType && sess.LastClickId == countId {
+			case types.CountTypeTopContent:
+				if sess.LastClickType == info.countType.String() && sess.LastClickId == countId {
 					return
 				}
-				sess.LastClickType = info.countType
+				sess.LastClickType = info.countType.String()
 				sess.LastClickId = countId
 				err := api.TopContentClick(info.hostName, types.CountClickParams{
 					Ip: info.ip,
@@ -147,19 +150,18 @@ func doCount() {
 					log.Println("top content click api error:", err)
 				}
 				return
-			case info.config.Params.CountTypeCategory:
-				if sess.LastClickType == info.countType && sess.LastClickId == countId {
+			case types.CountTypeCategory:
+				if sess.LastClickType == info.countType.String() && sess.LastClickId == countId {
 					return
 				}
-				sess.LastClickType = info.countType
+				sess.LastClickType = info.countType.String()
 				sess.LastClickId = countId
-				categoryId, _ := strconv.ParseInt(info.categoryId, 10, 32)
-				err := api.CategoryClick(info.hostName, categoryId, types.CountClickParams{
+				err := api.CategoryClick(info.hostName, info.categoryId, types.CountClickParams{
 					Ip: info.ip,
 					Id: countId,
 				})
 				if err != nil {
-					log.Println("category click api error: ", err, info.hostName, categoryId, info.ip, countId)
+					log.Println("category click api error: ", err, info.hostName, info.categoryId, info.ip, countId)
 				}
 				return
 			}

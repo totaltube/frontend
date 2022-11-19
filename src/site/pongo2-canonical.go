@@ -37,7 +37,7 @@ func getCanonical(ctx pongo2.Context, langId string, page int64, q ...url.Values
 	}
 	if params, ok := ctx["params"].(map[string]string); ok {
 		for paramKey, paramValue := range params {
-			route = strings.ReplaceAll(route, ":"+paramKey, paramValue)
+			route = strings.ReplaceAll(route, "{"+paramKey+"}", paramValue)
 		}
 	}
 	if config.General.MultiLanguage {

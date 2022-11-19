@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/dlclark/regexp2"
 	"github.com/flosch/pongo2/v4"
 
 	"sersh.com/totaltube/frontend/helpers"
@@ -18,6 +19,8 @@ import (
 )
 
 var httpRegex = regexp.MustCompile(`(?i)^(https?://|//)`)
+//language=Regexp
+var paramRegex = regexp2.MustCompile(`\{([\w_]+)\}`, regexp2.None)
 
 type tagLinkNode struct {
 	what pongo2.IEvaluator
@@ -53,6 +56,15 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 		if lang == "" {
 			lang = "en"
 		}
+	}
+	var as string
+	if asA, ok := node.args["as"]; ok {
+		asAv, err := asA.Evaluate(linkContext)
+		if err != nil {
+			return err
+		}
+		as = asAv.String()
+		delete(copyArgs, "as")
 	}
 	link := ""
 	slug := ""
@@ -184,6 +196,7 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 		link = strings.ReplaceAll(link, "{slug}", url.PathEscape(slug))
 		link = strings.ReplaceAll(link, "{id}", url.PathEscape(id))
 	default:
+		what = strings.TrimPrefix(what, "custom.")
 		if r, ok := config.Routes.Custom[what]; ok {
 			link = r
 		} else {
@@ -193,6 +206,18 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 		if config.General.MultiLanguage  {
 			link = strings.ReplaceAll(link, "{lang}", lang)
 		}
+		link, _ = paramRegex.ReplaceFunc(link, func(match regexp2.Match) string {
+			if l, ok := node.args[match.Groups()[1].String()]; ok {
+				delete(copyArgs, match.Groups()[1].String())
+				lv, err := l.Evaluate(linkContext)
+				if err != nil {
+					log.Println(err)
+					return match.String()
+				}
+				return url.PathEscape(lv.String())
+			}
+			return match.String()
+		}, -1, -1)
 	}
 	if config.General.MultiLanguage && !httpRegex.MatchString(link) && !isCustomRoute {
 		link = strings.ReplaceAll(config.Routes.LanguageTemplate, "{route}", link)
@@ -382,9 +407,13 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 		link = strings.ReplaceAll(link, "{{encoded_url}}",
 			strings.ReplaceAll(config.General.TradeUrlTemplate, "{{url}}", link))
 	}
-	_, err1 := writer.WriteString(template.HTMLEscapeString(link))
-	if err1 != nil {
-		return &pongo2.Error{Sender: "tag:link", OrigError: err1}
+	if as != "" {
+		linkContext.Public[as] = link
+	} else {
+		_, err1 := writer.WriteString(template.HTMLEscapeString(link))
+		if err1 != nil {
+			return &pongo2.Error{Sender: "tag:link", OrigError: err1}
+		}
 	}
 	return nil
 }

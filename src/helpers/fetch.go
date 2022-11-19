@@ -159,7 +159,12 @@ func (f *fetchRequest) Do() (response []byte, err error) {
 	}
 	request.URL.RawQuery = requestQuery.Encode()
 	for name, val := range f.headers {
-		request.Header.Set(name, val)
+		if strings.ToLower(name) == "host" {
+			// for Host header we have special case
+			request.Host = val
+		} else {
+			request.Header.Set(name, val)
+		}
 	}
 	var resp *http.Response
 	resp, err = client.Do(request)

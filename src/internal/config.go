@@ -1,10 +1,12 @@
 package internal
 
 import (
-	"github.com/BurntSushi/toml"
 	"log"
 	"path/filepath"
 	"runtime"
+
+	"github.com/BurntSushi/toml"
+
 	"sersh.com/totaltube/frontend/types"
 )
 

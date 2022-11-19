@@ -50,6 +50,7 @@ func (ts *templates) get(name string) (*pongo2.Template, error) {
 			return template, nil
 		}
 	}
+	log.Println(name, "template not found")
 	return nil, ErrTemplateNotFound
 }
 
@@ -241,10 +242,12 @@ func ParseTemplate(name, path string, config *Config, customContext pongo2.Conte
 		var template *pongo2.Template
 		template, err = GetTemplate(name, path)
 		if err != nil {
+			log.Println(err)
 			return
 		}
 		result, err = template.ExecuteBytes(c)
 		if err != nil {
+			log.Println(err)
 			return
 		}
 		if config.General.MinifyHtml {

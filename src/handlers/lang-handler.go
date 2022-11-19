@@ -27,6 +27,9 @@ func LangHandlers(hr *chi.Mux, route string, siteConfig *site.Config, handler ht
 			preparedRoute = strings.ReplaceAll(siteConfig.Routes.LanguageTemplate, "{lang}", langId)
 			preparedRoute = strings.ReplaceAll(preparedRoute, "{route}", route)
 		}
+		if len(preparedRoute) > 1  {
+			preparedRoute = strings.TrimSuffix(preparedRoute, "/")
+		}
 		hr.Handle(preparedRoute, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := context.WithValue(r.Context(), "lang", langId)
 			r.AddCookie(&http.Cookie{
