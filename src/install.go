@@ -2,9 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/AlecAivazis/survey/v2"
-	"github.com/BurntSushi/toml"
-	"github.com/pkg/errors"
 	"io/ioutil"
 	"log"
 	"net"
@@ -14,13 +11,18 @@ import (
 	"os/user"
 	"path/filepath"
 	"runtime"
-	"sersh.com/totaltube/frontend/helpers"
-	"sersh.com/totaltube/frontend/internal"
-	"sersh.com/totaltube/frontend/types"
 	"strconv"
 	"strings"
 	"text/template"
 	"time"
+
+	"github.com/AlecAivazis/survey/v2"
+	"github.com/BurntSushi/toml"
+	"github.com/pkg/errors"
+
+	"sersh.com/totaltube/frontend/helpers"
+	"sersh.com/totaltube/frontend/internal"
+	"sersh.com/totaltube/frontend/types"
 )
 
 func Install() {
@@ -66,7 +68,7 @@ func Install() {
 		},
 		Database: internal.Database{Path: filepath.Join(mainPath, "database")},
 	}
-	_, _ = toml.DecodeFile(filepath.Join(mainPath, "config.toml"), &config)
+	_, _ = toml.DecodeFile(filepath.Join(mainPath, "global-config.toml"), &config)
 	// Asking for port
 	err = survey.AskOne(&survey.Input{
 		Message: "Port to listen on: ",
@@ -165,7 +167,7 @@ func Install() {
 		log.Fatalln(err)
 	}
 	var cFile *os.File
-	if cFile, err = os.Create(filepath.Join(mainPath, "config.toml")); err != nil {
+	if cFile, err = os.Create(filepath.Join(mainPath, "global-config.toml")); err != nil {
 		fmt.Println("can't create config file: ", err)
 		return
 	}
@@ -197,7 +199,7 @@ func Install() {
 
 
 func FreeBSDInstall(path string) error {
-	configPath := filepath.Join(path, "config.toml")
+	configPath := filepath.Join(path, "global-config.toml")
 	cmd := exec.Command("pw", "user", "add", "totaltube", "-d", path,
 		"-s", "/usr/sbin/nologin")
 	_ = cmd.Run()
@@ -255,7 +257,7 @@ func FreeBSDInstall(path string) error {
 
 
 func SystemdInstall(path string) error {
-	configPath := filepath.Join(path, "config.toml")
+	configPath := filepath.Join(path, "global-config.toml")
 	// Создаем юзера
 	cmd := exec.Command("useradd", "-d", path, "-s", "/usr/sbin/nologin", "totaltube")
 	_ = cmd.Run()

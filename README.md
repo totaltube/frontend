@@ -21,7 +21,7 @@ root
 │       └───scss
 │       └───templates
 └───database
-│   config.toml
+│   global-config.toml
 ```
 Where `totaltube-frontend` is this script binary (for windows `totaltube-frontend.exe`). 
 
@@ -29,7 +29,7 @@ Where `totaltube-frontend` is this script binary (for windows `totaltube-fronten
 [Windows binary](https://totaltraffictrader.com/latest/windows/totaltube-frontend.zip)
 
 Example site templates can be downloaded [here](https://totaltraffictrader.com/totaltube-download/example-site.zip).
-The `config.toml` - is main config file for Totaltube Frontend. It should look like this:
+The `global-config.toml` - is main config file for Totaltube Frontend. It should look like this:
 ```toml
 [general]
 port = 8380 # port script will be running on
@@ -54,7 +54,7 @@ path = "./database" # path to database
 ```
 To start Totaltube Frontend, run from this path:
 ```shell
-./totaltube-frontend -c config.toml start
+./totaltube-frontend -c global-config.toml start
 ```
 Also, you can install Totaltube Frontend as a service on `linux` or `freebsd` by copying `totaltube-frontend` to `/usr/local/bin` and running 
 ```shell
