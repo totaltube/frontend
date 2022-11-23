@@ -1,0 +1,47 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="run totaltube-frontend" type="docker-deploy" factoryName="docker-image" server-name="Docker">
+    <deployment type="docker-image">
+      <settings>
+        <option name="imageTag" value="sersh/golang-builder" />
+        <option name="command" value="make run" />
+        <option name="containerName" value="totaltube-frontend" />
+        <option name="entrypoint" value="" />
+        <option name="portBindings">
+          <list>
+            <DockerPortBindingImpl>
+              <option name="containerPort" value="8380" />
+              <option name="hostIp" value="127.0.0.1" />
+              <option name="hostPort" value="8380" />
+            </DockerPortBindingImpl>
+          </list>
+        </option>
+        <option name="commandLineOptions" value="--rm -t" />
+        <option name="volumeBindings">
+          <list>
+            <DockerVolumeBindingImpl>
+              <option name="containerPath" value="/src" />
+              <option name="hostPath" value="C:\Users\to\projects\fasttube\totaltube-frontend" />
+            </DockerVolumeBindingImpl>
+            <DockerVolumeBindingImpl>
+              <option name="containerPath" value="/go/bin" />
+              <option name="hostPath" value="C:\Users\to\go\docker\bin" />
+            </DockerVolumeBindingImpl>
+            <DockerVolumeBindingImpl>
+              <option name="containerPath" value="/go/pkg" />
+              <option name="hostPath" value="C:\Users\to\go\docker\pkg" />
+            </DockerVolumeBindingImpl>
+            <DockerVolumeBindingImpl>
+              <option name="containerPath" value="/go/src" />
+              <option name="hostPath" value="C:\Users\to\go\docker\src" />
+            </DockerVolumeBindingImpl>
+            <DockerVolumeBindingImpl>
+              <option name="containerPath" value="/root/.cache" />
+              <option name="hostPath" value="C:\Users\to\go\docker\.cache" />
+            </DockerVolumeBindingImpl>
+          </list>
+        </option>
+      </settings>
+    </deployment>
+    <method v="2" />
+  </configuration>
+</component>
