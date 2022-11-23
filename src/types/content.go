@@ -3,7 +3,6 @@ package types
 import (
 	"database/sql/driver"
 	"fmt"
-	"log"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -20,7 +19,7 @@ const (
 	ContentTypeVideo      = "video"
 	ContentTypeGallery    = "gallery"
 	ContentTypeLink       = "link"
-	ContentTypeContent    = "content" // Обобщенно все виды контента, а не таксономий
+	ContentTypeContent    = "content" // All types of content, not taxonomies
 	ContentTypeCategory   = "category"
 	ContentTypeChannel    = "channel"
 	ContentTypeModel      = "model"
@@ -112,19 +111,19 @@ type ContentItemResult struct {
 	ThumbsAmount    int32                          `json:"thumbs_amount"`
 	ThumbsWidth     int32                          `json:"thumb_width"`
 	ThumbsHeight    int32                          `json:"thumb_height"`
-	ThumbsServer    string                         `json:"thumbs_server"` // урл сервера, на котором тумбы
-	ThumbsPath      string                         `json:"thumbs_path"`   // шаблон пути к тумбам
-	ThumbRetina     bool                           `json:"thumb_retina"`  // индикатор, что есть версия @2x
+	ThumbsServer    string                         `json:"thumbs_server"` // thumb server url
+	ThumbsPath      string                         `json:"thumbs_path"`   // path to thumbs on thumb server
+	ThumbRetina     bool                           `json:"thumb_retina"`  // there is @2x version of thumb
 	ThumbFormat     string                         `json:"thumb_format"`
-	ThumbType       string                         `json:"thumb_type"`           // тип изображения тумбы
-	BestThumb       *int16                         `json:"best_thumb,omitempty"` // номер лучшей тумбы, нумерация с 0
+	ThumbType       string                         `json:"thumb_type"`           // image type ( jpg, webp, png )
+	BestThumb       *int16                         `json:"best_thumb,omitempty"` // best thumb indexed from 0
 	Type            string                         `json:"type"`
 	Priority        int16                          `json:"priority,omitempty"`
 	User            ContentResultUser              `json:"user"`
 	Categories      TaxonomyResults                `json:"categories,omitempty"`
 	Models          TaxonomyResults                `json:"models,omitempty"`
 	Views           int32                          `json:"views"`
-	Related         []*ContentResult               `json:"related,omitempty"` // похожие на этот контент
+	Related         []*ContentResult               `json:"related,omitempty"` // similar content
 	selectedThumb   *int
 }
 
@@ -151,12 +150,12 @@ type ContentResult struct {
 	ThumbsAmount    int32                          `json:"thumbs_amount"`
 	ThumbsWidth     int32                          `json:"thumb_width"`
 	ThumbsHeight    int32                          `json:"thumb_height"`
-	ThumbsServer    string                         `json:"thumbs_server"` // урл сервера, на котором тумбы
-	ThumbsPath      string                         `json:"thumbs_path"`   // шаблон пути к тумбам
-	ThumbRetina     bool                           `json:"thumb_retina"`  // индикатор, что есть версия @2x
+	ThumbsServer    string                         `json:"thumbs_server"` // thumb server url
+	ThumbsPath      string                         `json:"thumbs_path"`   // path to thumbs on thumb server
+	ThumbRetina     bool                           `json:"thumb_retina"`  // there is @2x version of thumb
 	ThumbFormat     string                         `json:"thumb_format"`
-	ThumbType       string                         `json:"thumb_type"`           // тип изображения тумбы
-	BestThumb       *int16                         `json:"best_thumb,omitempty"` // Лучшая тумба
+	ThumbType       string                         `json:"thumb_type"`           // image type ( jpg, webp, png )
+	BestThumb       *int16                         `json:"best_thumb,omitempty"` // best thumb indexed from 0
 	Type            string                         `json:"type"`
 	Priority        int16                          `json:"priority,omitempty"`
 	User            ContentResultUser              `json:"user"`
@@ -169,14 +168,14 @@ type ContentResult struct {
 }
 
 type ContentResults struct {
-	Total   int64            `json:"total"` // Всего контента
-	From    int              `json:"from"`  // с какого элемента показываются результаты
-	To      int              `json:"to"`    // до какого элемента показываются результаты
+	Total   int64            `json:"total"`
+	From    int              `json:"from"`
+	To      int              `json:"to"`
 	Page    int              `json:"page"`
 	Pages   int              `json:"pages"`
-	Items   []*ContentResult `json:"items"`             // выбранные результаты
-	Title   string           `json:"title,omitempty"`   // заголовок результата
-	Related []RelatedItem    `json:"related,omitempty"` // Похожие на текущий запрос запросы, категории, модели и тд.
+	Items   []*ContentResult `json:"items"`
+	Title   string           `json:"title,omitempty"`
+	Related []RelatedItem    `json:"related,omitempty"`
 }
 
 func (cd ContentDuration) Format() string {
@@ -231,7 +230,6 @@ func (c *ContentItemResult) HiresThumb() string {
 }
 
 func (c ContentItemResult) GalleryInfo(formats ...string) ContentGalleryInfo {
-	log.Println(c.Content)
 	if c.GalleryItems == nil {
 		return ContentGalleryInfo{}
 	}

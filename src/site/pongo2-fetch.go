@@ -28,7 +28,7 @@ type tagFetchNode struct {
 	timeout pongo2.IEvaluator
 	method  pongo2.IEvaluator
 	cache   pongo2.IEvaluator
-	raw     pongo2.IEvaluator // получить ли "сырой" ответ в виде строки, без маршалинга в json?
+	raw     pongo2.IEvaluator // get raw response as string, no marshalling to json?
 }
 
 var headerRegex = regexp.MustCompile(`^\s*([^:]+)\s*:\s*(.*?)\s*$`)
@@ -84,7 +84,7 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 				log.Println("wrong header", hh.String(), ". Must be in format [HeaderKey]:[HeaderValue]")
 				continue
 			}
-			if matches[2] == "application/x-www-form-urlencoded;charset=UTF-8" {
+			if strings.HasPrefix(matches[2], "application/x-www-form-urlencoded") {
 				isForm = true
 			}
 			f.WithHeader(matches[1], matches[2])
@@ -203,13 +203,6 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 			return err
 		}
 		sort = api.SortBy(sv.String())
-		if sort != api.SortPopular && sort != api.SortRand && sort != api.SortDuration &&
-			sort != api.SortDated && sort != api.SortViews && sort != api.SortTitle && sort != api.SortRandNoPaging {
-			return &pongo2.Error{
-				Sender:    "tag:fetch",
-				OrigError: errors.New("invalid sort param"),
-			}
-		}
 	}
 	searchQuery := ""
 	if s, ok := node.args["search_query"]; ok {
@@ -234,6 +227,13 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 	}
 	switch node.what {
 	case "content":
+		if sort != api.SortPopular && sort != api.SortRand && sort != api.SortDuration &&
+			sort != api.SortDated && sort != api.SortViews && sort != api.SortTitle && sort != api.SortRandNoPaging {
+			return &pongo2.Error{
+				Sender:    "tag:fetch",
+				OrigError: errors.New("invalid sort param"),
+			}
+		}
 		categorySlug := ""
 		categoryId := int64(0)
 		if s, ok := node.args["category_slug"]; ok {
@@ -384,6 +384,12 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 			fetchContext.Private["fetched_content"] = results
 		}
 	case "categories":
+		if sort != api.SortTitle && sort != api.SortTotal && sort != api.SortPopular {
+			return &pongo2.Error{
+				Sender:    "tag:fetch",
+				OrigError: errors.New("invalid sort param"),
+			}
+		}
 		if cacheTimeout > 0 {
 			cached, err := db.GetCachedTimeout(cacheKey, cacheTimeout, cacheTimeout, func() ([]byte, error) {
 				_, rawResponse, err := api.CategoriesList(host, lang, int64(page), sort, int64(amount))
@@ -409,6 +415,12 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 			fetchContext.Private["categories"] = results
 		}
 	case "models":
+		if sort != api.SortTitle && sort != api.SortTotal && sort != api.SortPopular {
+			return &pongo2.Error{
+				Sender:    "tag:fetch",
+				OrigError: errors.New("invalid sort param"),
+			}
+		}
 		if cacheTimeout > 0 {
 			cached, err := db.GetCachedTimeout(cacheKey, cacheTimeout, cacheTimeout, func() ([]byte, error) {
 				_, rawResponse, err := api.ModelsList(host, lang, int64(page), sort, int64(amount), searchQuery)
@@ -434,6 +446,12 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 			fetchContext.Private["models"] = results
 		}
 	case "channels":
+		if sort != api.SortTitle && sort != api.SortTotal && sort != api.SortPopular {
+			return &pongo2.Error{
+				Sender:    "tag:fetch",
+				OrigError: errors.New("invalid sort param"),
+			}
+		}
 		if cacheTimeout > 0 {
 			cached, err := db.GetCachedTimeout(cacheKey, cacheTimeout, cacheTimeout, func() ([]byte, error) {
 				_, rawResponse, err := api.ChannelsList(host, lang, int64(page), sort, int64(amount))
@@ -509,7 +527,7 @@ func pongo2Fetch(doc *pongo2.Parser, _ *pongo2.Token, arguments *pongo2.Parser) 
 	var err *pongo2.Error
 	whatToken := arguments.MatchType(pongo2.TokenString)
 	if whatToken == nil {
-		return nil, arguments.Error("Expected string - one of: categories, channels, searches, models or url", nil)
+		return nil, arguments.Error("Expected string - one of: categories, channels, searches, models, content or url", nil)
 	}
 	tagFetch.what = whatToken.Val
 	tagFetch.args = make(map[string]pongo2.IEvaluator)

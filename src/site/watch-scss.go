@@ -1,11 +1,12 @@
 package site
 
 import (
-	"github.com/rjeczalik/notify"
 	"log"
 	"runtime"
 	"sync"
 	"time"
+
+	"github.com/rjeczalik/notify"
 )
 
 func WatchScss(path string, configPath string) {
@@ -28,7 +29,7 @@ func WatchScss(path string, configPath string) {
 					log.Panicln(err)
 				}
 				defer notify.Stop(c)
-				// ждем сигнала при изменении файлов шаблонов
+				// waiting the signal after changing scss files
 				ei := <-c
 				mu.Lock()
 				lastChange = time.Now()

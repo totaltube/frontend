@@ -111,6 +111,7 @@ func (f *fetchRequest) WithTimeout(timeout time.Duration) *fetchRequest {
 func (f *fetchRequest) Do() (response []byte, err error) {
 	client := http.Client{
 		Transport: &http.Transport{DisableKeepAlives: true, TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
+		Timeout: f.timeout,
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), f.timeout)
 	defer cancel()

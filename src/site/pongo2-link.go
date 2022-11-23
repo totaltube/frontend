@@ -76,9 +76,9 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 	isCustomRoute := false
 	what := w.String()
 	switch what {
-	case "top_categories":
+	case "top_categories", "top-categories":
 		link = config.Routes.TopCategories
-	case "top_content":
+	case "top_content", "top-content":
 		link = config.Routes.TopContent
 	case "autocomplete":
 		link = config.Routes.Autocomplete
@@ -106,7 +106,7 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 		}
 		link = strings.ReplaceAll(config.Routes.Search, "{query}",
 			strings.ReplaceAll(url.PathEscape(searchQuery), "%20", "+"))
-	case "fake_player":
+	case "fake_player", "fake-player":
 		link = config.Routes.FakePlayer
 		if s, ok := node.args["slug"]; ok {
 			ss, err := s.Evaluate(linkContext)

@@ -28,12 +28,12 @@ func InstallBashCompletions() {
 	completeString := fmt.Sprintf("complete -C %s totaltube-frontend", binPath)
 	for _, rc := range bashConfFiles {
 		if _, err := os.Stat(filepath.Join(home, rc)); err == nil {
-			// конфиг есть. Проверяем, стоит ли там complete
+			// config file exists. Checking if there is complete
 			f, _ := os.Open(filepath.Join(home, rc))
 			bt, _ := ioutil.ReadAll(f)
 			f.Close()
 			if !bytes.Contains(bt, []byte(completeString)) {
-				// нет еще, добавляем
+				// not yet, adding
 				f, err = os.OpenFile(filepath.Join(home, rc), os.O_APPEND|os.O_WRONLY, os.ModeAppend)
 				if err != nil {
 					log.Println("can't open file", filepath.Join(home, rc), "for writing:", err)

@@ -1,14 +1,14 @@
 package site
 
 import (
-	"github.com/flosch/pongo2/v4"
-	"github.com/pkg/errors"
 	"log"
 	"math"
 	"math/rand"
+
+	"github.com/flosch/pongo2/v4"
+	"github.com/pkg/errors"
 )
 
-// repeat tag repeats any value in array given amount of times and saves it in given variable name.
 
 type tagDiluteNode struct {
 	what pongo2.IEvaluator // what array to dilute

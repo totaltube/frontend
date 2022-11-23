@@ -111,9 +111,9 @@ func doTranslations() {
 				return err
 			} else if t.After(now) {
 				log.Println(t, now)
-				break // Это мы переведем в будущем
+				break // This will be translated in future
 			} else {
-				// переводим
+				// translating
 				var doc translationDoc
 				err = item.Value(func(val []byte) error {
 					err = json.Unmarshal(val, &doc)

@@ -31,16 +31,16 @@ type ChannelResult struct {
 }
 
 type ChannelResults struct {
-	Total int              `json:"total"` // Всего категорий
-	From  int              `json:"from"`  // с какого элемента показываются результаты
-	To    int              `json:"to"`    // до какого элемента показываются результаты
+	Total int              `json:"total"`
+	From  int              `json:"from"`
+	To    int              `json:"to"`
 	Page  int              `json:"page"`
 	Pages int              `json:"pages"`
-	Items []*ChannelResult `json:"items"` // выбранные результаты
+	Items []*ChannelResult `json:"items"`
 }
 
 func (c ChannelResult) ThumbTemplate() string {
-	return c.ThumbsServer + c.ThumbsPath + "/thumb-" + c.ThumbFormat + ".%d."+c.ThumbType
+	return c.ThumbsServer + c.ThumbsPath + "/thumb-" + c.ThumbFormat + ".%d." + c.ThumbType
 }
 
 func (c *ChannelResult) Thumb() string {

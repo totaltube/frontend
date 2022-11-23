@@ -40,16 +40,16 @@ type CategoryResult struct {
 	selectedThumb   *int
 }
 type CategoryResults struct {
-	Total int               `json:"total"` // Всего категорий
-	From  int               `json:"from"`  // с какого элемента показываются результаты
-	To    int               `json:"to"`    // до какого элемента показываются результаты
-	Page  int               `json:"page"`  // номер страницы
-	Pages int               `json:"pages"` // всего страниц
-	Items []*CategoryResult `json:"items"` // выбранные результаты
+	Total int               `json:"total"`
+	From  int               `json:"from"`
+	To    int               `json:"to"`
+	Page  int               `json:"page"`
+	Pages int               `json:"pages"` // total pages
+	Items []*CategoryResult `json:"items"`
 }
 
 func (c CategoryResult) ThumbTemplate() string {
-	return c.ThumbsServer + c.ThumbsPath + "/thumb-" + c.ThumbFormat + ".%d."+c.ThumbType
+	return c.ThumbsServer + c.ThumbsPath + "/thumb-" + c.ThumbFormat + ".%d." + c.ThumbType
 }
 
 func (c *CategoryResult) Thumb() string {

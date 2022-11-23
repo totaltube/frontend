@@ -3,22 +3,22 @@ package helpers
 import (
 	"bytes"
 	"encoding/base64"
+	"io/ioutil"
+	"log"
+
 	"github.com/klauspost/compress/flate"
 	"github.com/klauspost/compress/gzip"
 	"github.com/klauspost/compress/zlib"
-
-	"io/ioutil"
-	"log"
 )
 
 func Base64(data []byte) string {
 	return base64.StdEncoding.EncodeToString(data)
 }
 
-func Flate(data string) []byte {
+func Flate(data []byte) []byte {
 	var b bytes.Buffer
 	zw, _ := flate.NewWriter(&b, flate.DefaultCompression)
-	_, err := zw.Write([]byte(data))
+	_, err := zw.Write(data)
 	if err != nil {
 		log.Println(err)
 		return nil

@@ -50,11 +50,17 @@ func server(state overseer.State) {
 	if err := ioutil.WriteFile(pidFile, []byte(strconv.FormatInt(int64(pid), 10)), 0640); err != nil {
 		log.Fatalln("Can't save pid file:", err)
 	}
+	log.Println("Initializing database...")
 	db.InitDB()
+	log.Println("Initializing languages...")
 	initLanguages()
+	log.Println("Initializing pongo templates...")
 	site.InitPongo2()
+	log.Println("Initializing backgrounds...")
 	handlers.InitBackgrounds()
+	log.Println("Initializing minifier...")
 	helpers.InitMinifier()
+	log.Println("Initializing router...")
 	app := InitRouter()
 	go func() {
 		log.Println("Running totaltube-frontend on port", internal.Config.General.Port)

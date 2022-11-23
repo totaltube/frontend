@@ -25,11 +25,17 @@ func startServer() {
 	})
 }
 func server(_ overseer.State) {
+	log.Println("Initializing database...")
 	db.InitDB()
+	log.Println("Initializing languages...")
 	initLanguages()
+	log.Println("Initializing pongo templates...")
 	site.InitPongo2()
+	log.Println("Initializing backgrounds...")
 	handlers.InitBackgrounds()
+	log.Println("Initializing minifier...")
 	helpers.InitMinifier()
+	log.Println("Initializing router...")
 	app := InitRouter()
 	go func() {
 		log.Println("Running totaltube-frontend on port", internal.Config.General.Port)

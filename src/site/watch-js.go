@@ -1,13 +1,14 @@
 package site
 
 import (
-	"github.com/rjeczalik/notify"
 	"log"
 	"os"
 	"path/filepath"
 	"runtime"
 	"sync"
 	"time"
+
+	"github.com/rjeczalik/notify"
 )
 
 func WatchJS(path string, configPath string) {
@@ -46,7 +47,7 @@ func WatchJS(path string, configPath string) {
 					}
 				}
 				defer notify.Stop(c)
-				// ждем сигнала при изменении файлов шаблонов
+				// waiting the signal after changing template files
 				ei := <-c
 				mu.Lock()
 				lastChange = time.Now()

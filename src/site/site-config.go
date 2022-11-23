@@ -25,7 +25,6 @@ type (
 		FakePlayer       string `toml:"fake_player"`
 		Out              string
 		Dmca             string
-		Maintenance      string
 		VideoEmbed       string            `toml:"video_embed"`
 		LanguageTemplate string            `toml:"language_template"`
 		Custom           map[string]string `toml:"custom"`
@@ -101,7 +100,6 @@ func NewConfig() *Config {
 			FakePlayer:       "/player/{data}/{hash}",
 			Dmca:             "/dmca",
 			Out:              "/c",
-			Maintenance:      "/maintenance",
 			LanguageTemplate: "/{lang}{route}",
 		},
 		General: ConfigGeneral{
