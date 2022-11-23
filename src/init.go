@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/internal"
 )
@@ -13,3 +14,4 @@ func initLanguages() {
 	}
 	internal.InitLanguages(languages)
 }
+
