@@ -51,7 +51,7 @@ func server(_ overseer.State) {
 	signal.Notify(c, syscall.SIGABRT)
 	signal.Notify(c, syscall.SIGKILL)
 	<-c
-	// Здесь мы после завершения программы
+	// The program is going to finish
 	log.Println("Making some cleanup before exit...")
 	db.BeforeClose()
 }
