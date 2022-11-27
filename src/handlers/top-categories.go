@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -16,12 +17,13 @@ import (
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/db"
 	"sersh.com/totaltube/frontend/helpers"
+	"sersh.com/totaltube/frontend/internal"
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
 )
 
 
-func getTopCategoriesFunc(hostName string, langId string) func(args ...interface{}) *types.CategoryResults {
+func getTopCategoriesFunc(hostName string, langId string, groupId int64) func(args ...interface{}) *types.CategoryResults {
 	return func(args ...interface{}) *types.CategoryResults {
 		parsingName := true
 		var page int64
@@ -38,10 +40,12 @@ func getTopCategoriesFunc(hostName string, langId string) func(args ...interface
 			case "lang":
 				langId = val
 			case "page":
-				page, _ = strconv.ParseInt(val, 10, 64)
+				page, _ = strconv.ParseInt(val, 10, 32)
+			case "group_id":
+				groupId, _ = strconv.ParseInt(val, 10, 32)
 			}
 		}
-		results, err := api.TopCategories(hostName, langId, page)
+		results, err := api.TopCategories(hostName, langId, page, groupId)
 		if err != nil {
 			log.Println("can't get top content:", err)
 			return nil
@@ -55,12 +59,14 @@ var TopCategories = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	config := r.Context().Value("config").(*site.Config)
 	hostName := r.Context().Value("hostName").(string)
 	langId := r.Context().Value("lang").(string)
+	ip := r.Context().Value("ip").(string)
+	groupId := internal.DetectCountryGroup(net.ParseIP(ip)).Id
 	if ref := r.Header.Get("Referer"); ref != "" && !config.General.DisableCategoriesRedirect {
 		if u, err := url.Parse(ref); err == nil &&
 			strings.TrimPrefix(strings.ToLower(u.Hostname()), "www.") != hostName &&
 			!botDetector.IsBot(r.Header.Get("User-Agent")) {
 			var s = strings.ToLower(u.Path + " " + u.RawQuery)
-			if categories, err := db.GetCachedTopCategories(hostName); err == nil {
+			if categories, err := db.GetCachedTopCategories(hostName, groupId); err == nil {
 				for _, cat := range categories.Items {
 					for _, t := range cat.Tags {
 						if strings.Contains(s, t) {
@@ -88,14 +94,14 @@ var TopCategories = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 		page = 1
 	}
 	customContext := generateCustomContext(w, r, "top-categories")
-	cacheKey := fmt.Sprintf("top-categories:%s:%s:%d", hostName, langId, page)
+	cacheKey := fmt.Sprintf("top-categories:%s:%s:%d:%d", hostName, langId, page, groupId)
 	cacheTtl := time.Second * 5
 	if page > 1 {
 		cacheTtl = time.Minute * 5
 	}
 	parsed, err := site.ParseTemplate("top-categories", path, config, customContext, nocache, cacheKey, cacheTtl,
 		func(ctx pongo2.Context) (pongo2.Context, error) {
-			results, err := api.TopCategories(hostName, langId, page)
+			results, err := api.TopCategories(hostName, langId, page, groupId)
 			if err != nil {
 				return ctx, err
 			}

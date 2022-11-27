@@ -18,6 +18,7 @@ import (
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/db"
 	"sersh.com/totaltube/frontend/helpers"
+	"sersh.com/totaltube/frontend/internal"
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
 )
@@ -77,6 +78,7 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cacheTtl = time.Minute * 5
 	}
 	ip := r.Context().Value("ip").(string)
+	groupId := internal.DetectCountryGroup(net.ParseIP(ip)).Id
 	userAgent := r.Header.Get("User-Agent")
 	parsed, err := site.ParseTemplate("category", path, config, customContext, nocache, cacheKey, cacheTtl,
 		func(ctx pongo2.Context) (pongo2.Context, error) {
@@ -117,7 +119,7 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				})
 			} else {
 				ctx["count"] = true
-				results, err = api.Category(hostName, langId, categoryId, categorySlug, page)
+				results, err = api.Category(hostName, langId, categoryId, categorySlug, page, groupId)
 			}
 			if err != nil {
 				return ctx, err
@@ -142,7 +144,7 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	render.HTML(w, r, string(parsed))
 })
 
-func getCategoryTopFunc(hostName string, langId string) func(args ...interface{}) *types.ContentResults {
+func getCategoryTopFunc(hostName string, langId string, groupId int64) func(args ...interface{}) *types.ContentResults {
 	return func(args ...interface{}) *types.ContentResults {
 		parsingName := true
 		var categoryId int64
@@ -166,13 +168,15 @@ func getCategoryTopFunc(hostName string, langId string) func(args ...interface{}
 				categoryId, _ = strconv.ParseInt(val, 10, 32)
 			case "category_slug", "slug":
 				categorySlug = val
+			case "group_id":
+				groupId, _ = strconv.ParseInt(val, 10, 32)
 			}
 		}
 		if categoryId == 0 && categorySlug == "" {
 			log.Println("error getting top category content - need to set category_id or category_slug param")
 			return nil
 		}
-		if results, err := api.Category(hostName, langId, categoryId, categorySlug, page); err != nil {
+		if results, err := api.Category(hostName, langId, categoryId, categorySlug, page, groupId); err != nil {
 			log.Println("error getting category top content: ", err)
 			return nil
 		} else {

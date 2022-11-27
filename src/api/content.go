@@ -50,6 +50,7 @@ type ContentParams struct {
 	SearchQuery    string
 	IsNatural      bool   // true, если поисковый запрос создан самим пользователем, а не выбран в автокомплите
 	UserAgent      string // UserAgent текущего клиента
+	GroupId        int64
 }
 
 func Content(siteDomain string, params ContentParams) (results *types.ContentResults, rawResponse json.RawMessage, err error) {

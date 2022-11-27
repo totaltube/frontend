@@ -15,3 +15,11 @@ func initLanguages() {
 	internal.InitLanguages(languages)
 }
 
+func initCountryGroups() {
+	countryGroups, err := api.CountryGroups()
+	if err != nil {
+		log.Println("Can't get country group info from api:", err)
+		return
+	}
+	internal.InitCountryGroups(countryGroups)
+}

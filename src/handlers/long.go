@@ -14,6 +14,7 @@ import (
 
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/helpers"
+	"sersh.com/totaltube/frontend/internal"
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
 )
@@ -24,7 +25,7 @@ var Long = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	hostName := r.Context().Value("hostName").(string)
 	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))
 	langId := r.Context().Value("lang").(string)
-	page, _ := strconv.ParseInt(helpers.FirstNotEmpty(chi.URLParam(r,"page"), r.URL.Query().Get(config.Params.Page), "1"), 10, 16)
+	page, _ := strconv.ParseInt(helpers.FirstNotEmpty(chi.URLParam(r, "page"), r.URL.Query().Get(config.Params.Page), "1"), 10, 16)
 	if page <= 0 {
 		page = 1
 	}
@@ -37,13 +38,14 @@ var Long = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	channelSlug := r.URL.Query().Get(config.Params.ChannelSlug)
 	durationFrom, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.DurationGte), 10, 64)
 	durationTo, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.DurationLt), 10, 64)
+	ip := r.Context().Value("ip").(string)
+	groupId := internal.DetectCountryGroup(net.ParseIP(ip)).Id
 	customContext := generateCustomContext(w, r, "long")
 	cacheKey := "long:" + helpers.Md5Hash(
-		fmt.Sprintf("%s:%s:%d:%s:%d:%d:%s:%d:%d:%d:%s",
+		fmt.Sprintf("%s:%s:%d:%s:%d:%d:%s:%d:%d:%d:%s:%d",
 			hostName, langId, page, channelSlug, channelId,
-			modelId, modelSlug, durationFrom, durationTo, categoryId, categorySlug),
+			modelId, modelSlug, durationFrom, durationTo, categoryId, categorySlug, groupId),
 	)
-	ip := r.Context().Value("ip").(string)
 	userAgent := r.Header.Get("User-Agent")
 	cacheTtl := time.Minute * 15
 	parsed, err := site.ParseTemplate("long", path, config, customContext, nocache, cacheKey, cacheTtl,
@@ -64,6 +66,7 @@ var Long = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				DurationGte:  durationFrom,
 				DurationLt:   durationTo,
 				UserAgent:    userAgent,
+				GroupId:      groupId,
 			})
 			if err != nil {
 				return ctx, err
@@ -75,7 +78,7 @@ var Long = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx["page"] = int64(results.Page)
 			ctx["pages"] = int64(results.Pages)
 			return ctx, nil
-		},w, r)
+		}, w, r)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			Output404(w, r, err.Error())

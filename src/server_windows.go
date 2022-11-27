@@ -13,6 +13,7 @@ import (
 	"github.com/jpillora/overseer"
 
 	"sersh.com/totaltube/frontend/db"
+	"sersh.com/totaltube/frontend/geoip"
 	"sersh.com/totaltube/frontend/handlers"
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/internal"
@@ -35,6 +36,10 @@ func server(_ overseer.State) {
 	handlers.InitBackgrounds()
 	log.Println("Initializing minifier...")
 	helpers.InitMinifier()
+	log.Println("Initializing country groups...")
+	initCountryGroups()
+	log.Println("Initializing GeoIP...")
+	geoip.InitGeoIP(internal.Config.Database.Path, internal.Config.General.GeoipUrl)
 	log.Println("Initializing router...")
 	app := InitRouter()
 	go func() {
@@ -54,4 +59,5 @@ func server(_ overseer.State) {
 	// The program is going to finish
 	log.Println("Making some cleanup before exit...")
 	db.BeforeClose()
+	geoip.ExitCleanup()
 }

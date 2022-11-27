@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -50,13 +51,14 @@ func LangHandlers(hr *chi.Mux, route string, siteConfig *site.Config, handler ht
 					if langCookie != nil {
 						langValue = langCookie.Value
 					}
-
+					ip := r.Context().Value("ip").(string)
+					groupId := internal.DetectCountryGroup(net.ParseIP(ip)).Id
 					if ref := r.Header.Get("Referer"); ref != "" {
 						if u, err := url.Parse(ref); err == nil &&
 							strings.TrimPrefix(strings.ToLower(u.Hostname()), "www.") != hostName &&
 							!botDetector.IsBot(r.Header.Get("User-Agent")) {
 							var s = strings.ToLower(u.Path + " " + u.RawQuery)
-							if categories, err := db.GetCachedTopCategories(hostName); err == nil {
+							if categories, err := db.GetCachedTopCategories(hostName, groupId); err == nil {
 								for _, cat := range categories.Items {
 									for _, t := range cat.Tags {
 										if strings.Contains(s, t) {

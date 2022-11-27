@@ -220,10 +220,11 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 		}
 		minSearches = cv.Integer()
 	}
+	group, _ := ctx.Public["country_group"].(types.CountryGroup)
 	cacheKey := ""
 	if cacheTimeout > 0 {
-		cacheKey = "in:fetch:" + host + ":" + helpers.Md5Hash(fmt.Sprintf("%s|%d|%d|%v|%s|%s|%v|%d", node.what, amount, page, sort,
-			searchQuery, lang, cacheTimeout, minSearches))
+		cacheKey = "in:fetch:" + host + ":" + helpers.Md5Hash(fmt.Sprintf("%s|%d|%d|%v|%s|%s|%v|%d|%d", node.what, amount, page, sort,
+			searchQuery, lang, cacheTimeout, minSearches, group.Id))
 	}
 	switch node.what {
 	case "content":
@@ -343,6 +344,7 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 					DurationLt:   durationLt,
 					SearchQuery:  searchQuery,
 					UserAgent:    userAgent,
+					GroupId:      group.Id,
 				})
 				return rawResponse, err
 			}, nocache)
@@ -376,6 +378,7 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 				DurationLt:   durationLt,
 				SearchQuery:  searchQuery,
 				UserAgent:    userAgent,
+				GroupId:      group.Id,
 			})
 			if err != nil {
 				log.Println(err)
@@ -392,7 +395,7 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 		}
 		if cacheTimeout > 0 {
 			cached, err := db.GetCachedTimeout(cacheKey, cacheTimeout, cacheTimeout, func() ([]byte, error) {
-				_, rawResponse, err := api.CategoriesList(host, lang, int64(page), sort, int64(amount))
+				_, rawResponse, err := api.CategoriesList(host, lang, int64(page), sort, int64(amount), group.Id)
 				return rawResponse, err
 			}, nocache)
 			if err != nil {
@@ -407,7 +410,7 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 				fetchContext.Private["categories"] = results
 			}
 		} else {
-			results, _, err := api.CategoriesList(host, lang, int64(page), sort, int64(amount))
+			results, _, err := api.CategoriesList(host, lang, int64(page), sort, int64(amount), group.Id)
 			if err != nil {
 				log.Println(err)
 				return &pongo2.Error{Sender: "tag:fetch", OrigError: err}
@@ -423,7 +426,7 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 		}
 		if cacheTimeout > 0 {
 			cached, err := db.GetCachedTimeout(cacheKey, cacheTimeout, cacheTimeout, func() ([]byte, error) {
-				_, rawResponse, err := api.ModelsList(host, lang, int64(page), sort, int64(amount), searchQuery)
+				_, rawResponse, err := api.ModelsList(host, lang, int64(page), sort, int64(amount), searchQuery, group.Id)
 				return rawResponse, err
 			}, nocache)
 			if err != nil {
@@ -438,7 +441,7 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 				fetchContext.Private["models"] = results
 			}
 		} else {
-			results, _, err := api.ModelsList(host, lang, int64(page), sort, int64(amount), searchQuery)
+			results, _, err := api.ModelsList(host, lang, int64(page), sort, int64(amount), searchQuery, group.Id)
 			if err != nil {
 				log.Println(err)
 				return &pongo2.Error{Sender: "tag:fetch", OrigError: err}
@@ -454,7 +457,7 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 		}
 		if cacheTimeout > 0 {
 			cached, err := db.GetCachedTimeout(cacheKey, cacheTimeout, cacheTimeout, func() ([]byte, error) {
-				_, rawResponse, err := api.ChannelsList(host, lang, int64(page), sort, int64(amount))
+				_, rawResponse, err := api.ChannelsList(host, lang, int64(page), sort, int64(amount), group.Id)
 				return rawResponse, err
 			}, nocache)
 			if err != nil {
@@ -469,7 +472,7 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 				fetchContext.Private["channels"] = results
 			}
 		} else {
-			results, _, err := api.ChannelsList(host, lang, int64(page), sort, int64(amount))
+			results, _, err := api.ChannelsList(host, lang, int64(page), sort, int64(amount), group.Id)
 			if err != nil {
 				log.Println(err)
 				return &pongo2.Error{Sender: "tag:fetch", OrigError: err}

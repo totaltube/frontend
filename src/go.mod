@@ -54,6 +54,8 @@ require (
 	github.com/mattn/go-colorable v0.1.2 // indirect
 	github.com/mattn/go-isatty v0.0.8 // indirect
 	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b // indirect
+	github.com/oschwald/geoip2-golang v1.8.0 // indirect
+	github.com/oschwald/maxminddb-golang v1.10.0 // indirect
 	github.com/segmentio/asm v1.1.3 // indirect
 	github.com/tdewolff/parse/v2 v2.5.5 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect

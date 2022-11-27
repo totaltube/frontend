@@ -1,14 +1,16 @@
 package api
 
 import (
+	"log"
+	"net/url"
+	"time"
+
 	"github.com/pkg/errors"
 	"github.com/segmentio/encoding/json"
 	"github.com/valyala/fasthttp"
-	"log"
-	"net/url"
+
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/internal"
-	"time"
 )
 
 type Data map[string]interface{}
@@ -51,6 +53,7 @@ const (
 	uriTopContentClick    ApiUri = "count-click/top-content"
 	uriTranslate          ApiUri = "translate"
 	uriLanguages          ApiUri = "languages"
+	uriCountryGroups      ApiUri = "country-groups"
 )
 
 func ApiRequest(siteDomain string, method Method, uri ApiUri, data interface{}) (response json.RawMessage, err error) {

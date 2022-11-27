@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"log"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -96,6 +97,7 @@ func doCount() {
 			var ip = info.ip
 			sess := db.GetSession(ip)
 			defer db.SaveSession(ip, sess)
+			groupId := internal.DetectCountryGroup(net.ParseIP(ip)).Id
 			var countId int64
 			switch info.countType {
 			case types.CountTypeTopCategories:
@@ -129,8 +131,9 @@ func doCount() {
 				sess.LastClickType = info.countType.String()
 				sess.LastClickId = countId
 				err := api.TopCategoriesClick(info.hostName, types.CountClickParams{
-					Ip: info.ip,
-					Id: countId,
+					Ip:      info.ip,
+					Id:      countId,
+					GroupId: groupId,
 				})
 				if err != nil {
 					log.Println("top categories click api error:", err)
@@ -143,8 +146,9 @@ func doCount() {
 				sess.LastClickType = info.countType.String()
 				sess.LastClickId = countId
 				err := api.TopContentClick(info.hostName, types.CountClickParams{
-					Ip: info.ip,
-					Id: countId,
+					Ip:      info.ip,
+					Id:      countId,
+					GroupId: groupId,
 				})
 				if err != nil {
 					log.Println("top content click api error:", err)
@@ -157,8 +161,9 @@ func doCount() {
 				sess.LastClickType = info.countType.String()
 				sess.LastClickId = countId
 				err := api.CategoryClick(info.hostName, info.categoryId, types.CountClickParams{
-					Ip: info.ip,
-					Id: countId,
+					Ip:      info.ip,
+					Id:      countId,
+					GroupId: groupId,
 				})
 				if err != nil {
 					log.Println("category click api error: ", err, info.hostName, info.categoryId, info.ip, countId)

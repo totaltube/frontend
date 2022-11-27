@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -14,6 +15,7 @@ import (
 
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/helpers"
+	"sersh.com/totaltube/frontend/internal"
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
 )
@@ -22,6 +24,7 @@ var TopContent = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	path := r.Context().Value("path").(string)
 	config := r.Context().Value("config").(*site.Config)
 	hostName := r.Context().Value("hostName").(string)
+	ip := r.Context().Value("ip").(string)
 	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))
 	langId := r.Context().Value("lang").(string)
 	page, _ := strconv.ParseInt(helpers.FirstNotEmpty(chi.URLParam(r, "page"), r.URL.Query().Get(config.Params.Page), "1"), 10, 16)
@@ -29,7 +32,8 @@ var TopContent = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		page = 1
 	}
 	customContext := generateCustomContext(w, r, "top-content")
-	cacheKey := fmt.Sprintf("top-content:%s:%s:%d", hostName, langId, page)
+	var groupId = internal.DetectCountryGroup(net.ParseIP(ip)).Id
+	cacheKey := fmt.Sprintf("top-content:%s:%s:%d:%d", hostName, langId, page, groupId)
 	cacheTtl := time.Second * 5
 	if page > 1 {
 		cacheTtl = time.Minute * 5
@@ -38,7 +42,7 @@ var TopContent = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		func(ctx pongo2.Context) (pongo2.Context, error) {
 			var results *types.ContentResults
 			var err error
-			results, err = api.TopContent(hostName, langId, page)
+			results, err = api.TopContent(hostName, langId, page, groupId)
 			if err != nil {
 				log.Println(err)
 				return ctx, err
@@ -65,7 +69,7 @@ var TopContent = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	render.HTML(w, r, string(parsed))
 })
 
-func getTopContentFunc(hostName string, langId string) func(args ...interface{}) *types.ContentResults {
+func getTopContentFunc(hostName string, langId string, groupId int64) func(args ...interface{}) *types.ContentResults {
 	return func(args ...interface{}) *types.ContentResults {
 		parsingName := true
 		var page int64
@@ -82,10 +86,12 @@ func getTopContentFunc(hostName string, langId string) func(args ...interface{})
 			case "lang":
 				langId = val
 			case "page":
-				page, _ = strconv.ParseInt(val, 10, 64)
+				page, _ = strconv.ParseInt(val, 10, 32)
+			case "group_id":
+				groupId, _ = strconv.ParseInt(val, 10, 32)
 			}
 		}
-		results, err := api.TopContent(hostName, langId, page)
+		results, err := api.TopContent(hostName, langId, page, groupId)
 		if err != nil {
 			log.Println("can't get top content:", err)
 			return nil

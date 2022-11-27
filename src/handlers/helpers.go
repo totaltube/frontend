@@ -237,6 +237,8 @@ func generateCustomContext(w http.ResponseWriter, r *http.Request, templateName 
 	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))
 	var globals = make(map[string]interface{})
 	ip := r.Context().Value("ip").(string)
+	var countryGroup = internal.DetectCountryGroup(net.ParseIP(ip))
+	groupId := countryGroup.Id
 	customContext := pongo2.Context{
 		"page_template":       templateName,
 		"lang":                internal.GetLanguage(langId),
@@ -256,14 +258,16 @@ func generateCustomContext(w http.ResponseWriter, r *http.Request, templateName 
 		"config":              config,
 		"global_config":       internal.Config,
 		"route":               route,
-		"get_content":         getContentFunc(hostName, langId, userAgent, ip),
-		"get_top_content":     getTopContentFunc(hostName, langId),
-		"get_top_categories":  getTopCategoriesFunc(hostName, langId),
-		"get_content_item":    getContentItemFunc(hostName, langId),
-		"get_models_list":     getModelsListFunc(hostName, langId, int64(config.General.ModelsPerPage)),
-		"get_categories_list": getCategoriesListFunc(hostName, langId, 100),
-		"get_channels_list":   getChannelsListFunc(hostName, langId, 100),
-		"get_category_top":    getCategoryTopFunc(hostName, langId),
+		"country_group":       countryGroup,
+		"group_id":            countryGroup.Id,
+		"get_content":         getContentFunc(hostName, langId, userAgent, ip, groupId),
+		"get_top_content":     getTopContentFunc(hostName, langId, groupId),
+		"get_top_categories":  getTopCategoriesFunc(hostName, langId, groupId),
+		"get_content_item":    getContentItemFunc(hostName, langId, groupId),
+		"get_models_list":     getModelsListFunc(hostName, langId, int64(config.General.ModelsPerPage), groupId),
+		"get_categories_list": getCategoriesListFunc(hostName, langId, 100, groupId),
+		"get_channels_list":   getChannelsListFunc(hostName, langId, 100, groupId),
+		"get_category_top":    getCategoryTopFunc(hostName, langId, groupId),
 		"add_random_content": func(items []*types.ContentResult, amount ...interface{}) []*types.ContentResult {
 			var amt int64 = 0
 			if len(amount) > 0 {
