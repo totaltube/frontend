@@ -214,3 +214,10 @@ The type has the following fields:
 * `Native` string - native language name like English, Deutsch, Italiano
 * `Direction` string - language direction: "ltr" (left to right) or "rtl" (right to left)
 * `Country` string - country code associated with language like us, de, it
+
+### CountryGroup
+The type has the following fields:
+* `Id` integer - country group id
+* `Name` string - name of country group
+* `Countries` array of strings - array of country codes included in this group
+* `Ignore` boolean - if true, script must ignore clicks from this group
