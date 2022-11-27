@@ -16,11 +16,10 @@ import (
 
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/helpers"
+	"sersh.com/totaltube/frontend/internal"
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
 )
-
-
 
 var Search = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	path := r.Context().Value("path").(string)
@@ -68,6 +67,7 @@ var Search = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			modelId, modelSlug, durationFrom, durationTo, categoryId, categorySlug, sortBy, searchQuery),
 	)
 	ip := r.Context().Value("ip").(string)
+	groupId := internal.DetectCountryGroup(net.ParseIP(ip)).Id
 	userAgent := r.Header.Get("User-Agent")
 	cacheTtl := time.Minute * 15
 	parsed, err := site.ParseTemplate("search", path, config, customContext, nocache, cacheKey, cacheTtl,
@@ -91,6 +91,7 @@ var Search = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				DurationGte:  durationFrom,
 				DurationLt:   durationTo,
 				UserAgent:    userAgent,
+				GroupId:      groupId,
 			})
 			if err != nil {
 				return ctx, err

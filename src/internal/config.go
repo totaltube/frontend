@@ -29,7 +29,8 @@ type (
 		ApiSecret      string         `toml:"api_secret"`
 		ApiTimeout     types.Duration `toml:"api_timeout"`
 		LangCookie     string         `toml:"lang_cookie"`
-		Development    bool
+		GeoipUrl       string         `toml:"geoip_url"`
+		Development    bool           `toml:"development"`
 	}
 	Frontend struct {
 		SitesPath        string   `toml:"sites_path"`
@@ -50,6 +51,7 @@ func InitConfig(configPath string) {
 		General: General{
 			Nginx:       true,
 			Development: runtime.GOOS == "windows",
+			GeoipUrl:    "https://totaltraffictrader.com/geo/country.tar.gz",
 		},
 		Frontend: Frontend{
 			MaxDmcaMinute: 5,

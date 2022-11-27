@@ -14,6 +14,7 @@ import (
 
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/helpers"
+	"sersh.com/totaltube/frontend/internal"
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
 )
@@ -37,13 +38,14 @@ var Popular = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	channelSlug := r.URL.Query().Get(config.Params.ChannelSlug)
 	durationFrom, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.DurationGte), 10, 64)
 	durationTo, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.DurationLt), 10, 64)
+	ip := r.Context().Value("ip").(string)
+	groupId := internal.DetectCountryGroup(net.ParseIP(ip)).Id
 	customContext := generateCustomContext(w, r, "popular")
 	cacheKey := "popular:" + helpers.Md5Hash(
-		fmt.Sprintf("%s:%s:%d:%s:%d:%d:%s:%d:%d:%d:%s",
+		fmt.Sprintf("%s:%s:%d:%s:%d:%d:%s:%d:%d:%d:%s:%d",
 			hostName, langId, page, channelSlug, channelId,
-			modelId, modelSlug, durationFrom, durationTo, categoryId, categorySlug),
+			modelId, modelSlug, durationFrom, durationTo, categoryId, categorySlug, groupId),
 	)
-	ip := r.Context().Value("ip").(string)
 	userAgent := r.Header.Get("User-Agent")
 	cacheTtl := time.Minute * 15
 	parsed, err := site.ParseTemplate("popular", path, config, customContext, nocache, cacheKey, cacheTtl,
@@ -64,6 +66,7 @@ var Popular = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				DurationGte:  durationFrom,
 				DurationLt:   durationTo,
 				UserAgent:    userAgent,
+				GroupId:      groupId,
 			})
 			if err != nil {
 				return ctx, err

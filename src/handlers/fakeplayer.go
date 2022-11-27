@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -14,6 +15,7 @@ import (
 
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/helpers"
+	"sersh.com/totaltube/frontend/internal"
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
 )
@@ -33,8 +35,10 @@ var FakePlayer = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	orfl := !config.General.FakeVideoPage
 	relatedAmount := config.General.ContentRelatedAmount
 	customContext := generateCustomContext(w, r, "fake-player")
+	ip := r.Context().Value("ip").(string)
+	groupId := internal.DetectCountryGroup(net.ParseIP(ip)).Id
 	cacheKey := "fake-player:" + helpers.Md5Hash(
-		fmt.Sprintf("%s:%s:%d:%s:%v:%d", hostName, langId, id, slug, orfl, relatedAmount),
+		fmt.Sprintf("%s:%s:%d:%s:%v:%d:%d", hostName, langId, id, slug, orfl, relatedAmount, groupId),
 	)
 	cacheTtl := time.Minute * 30
 	parsed, err := site.ParseTemplate("fake-player", path, config, customContext, nocache, cacheKey, cacheTtl,
@@ -42,7 +46,7 @@ var FakePlayer = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// getting category information from cache or from api
 			var results *types.ContentItemResult
 			var err error
-			results, err = api.ContentItem(hostName, langId, slug, id, orfl, int64(relatedAmount))
+			results, err = api.ContentItem(hostName, langId, slug, id, orfl, int64(relatedAmount), groupId)
 			if err != nil {
 				if strings.Contains(err.Error(), "not found") {
 					return ctx, errors.New("content item not found")

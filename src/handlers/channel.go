@@ -18,6 +18,7 @@ import (
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/db"
 	"sersh.com/totaltube/frontend/helpers"
+	"sersh.com/totaltube/frontend/internal"
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
 )
@@ -57,14 +58,15 @@ var Channel = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	}
 	durationGte, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.DurationGte), 10, 64)
 	durationLt, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.DurationLt), 10, 64)
+	ip := r.Context().Value("ip").(string)
+	groupId := internal.DetectCountryGroup(net.ParseIP(ip)).Id
 	customContext := generateCustomContext(w, r, "channel")
 	cacheKey := "channel:" + helpers.Md5Hash(
-		fmt.Sprintf("%s:%s:%d:%s:%s:%s:%d:%d:%s:%d:%d:%d:%s",
+		fmt.Sprintf("%s:%s:%d:%s:%s:%s:%d:%d:%s:%d:%d:%d:%s:%d",
 			hostName, langId, page, sortBy, sortByViewsTimeframe, channelSlug, channelId,
-			modelId, modelSlug, durationGte, durationLt, categoryId, categorySlug),
+			modelId, modelSlug, durationGte, durationLt, categoryId, categorySlug, groupId),
 	)
 	cacheTtl := time.Minute * 15
-	ip := r.Context().Value("ip").(string)
 	userAgent := r.Header.Get("User-Agent")
 	parsed, err := site.ParseTemplate("channel", path, config, customContext, nocache, cacheKey, cacheTtl,
 		func(ctx pongo2.Context) (pongo2.Context, error) {
@@ -101,6 +103,7 @@ var Channel = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				DurationGte:  durationGte,
 				DurationLt:   durationLt,
 				UserAgent:    userAgent,
+				GroupId:      groupId,
 			})
 			if err != nil {
 				return ctx, err

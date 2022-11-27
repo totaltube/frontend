@@ -3,12 +3,13 @@ package handlers
 import (
 	"fmt"
 	"log"
+	"strconv"
+
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/types"
-	"strconv"
 )
 
-func getCategoriesListFunc(hostName string, langId string, defaultAmount int64) func(args ...interface{}) *types.CategoryResults {
+func getCategoriesListFunc(hostName string, langId string, defaultAmount int64, groupId int64) func(args ...interface{}) *types.CategoryResults {
 	return func(args ...interface{}) *types.CategoryResults {
 		parsingName := true
 		var amount = defaultAmount
@@ -34,7 +35,7 @@ func getCategoriesListFunc(hostName string, langId string, defaultAmount int64) 
 				amount, _ = strconv.ParseInt(val, 10, 64)
 			}
 		}
-		results, _, err := api.CategoriesList(hostName, langId, page, sortBy, amount)
+		results, _, err := api.CategoriesList(hostName, langId, page, sortBy, amount, groupId)
 		if err != nil {
 			log.Println("can't get categories list:", err)
 			return nil

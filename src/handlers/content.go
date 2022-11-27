@@ -4,18 +4,20 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"strconv"
+
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/types"
-	"strconv"
 )
 
-func getContentFunc(hostName string, langId string, userAgent string, ip string) func(args ...interface{}) *types.ContentResults {
+func getContentFunc(hostName string, langId string, userAgent string, ip string, groupId int64) func(args ...interface{}) *types.ContentResults {
 	return func(args ...interface{}) *types.ContentResults {
 		parsingName := true
 		params := api.ContentParams{
 			Ip:        net.ParseIP(ip),
 			Lang:      langId,
 			UserAgent: userAgent,
+			GroupId:   groupId,
 		}
 		curName := ""
 		for k := range args {
@@ -61,6 +63,8 @@ func getContentFunc(hostName string, langId string, userAgent string, ip string)
 				params.SearchQuery = val
 			case "is_natural":
 				params.IsNatural, _ = strconv.ParseBool(val)
+			case "group_id":
+				params.GroupId, _ = strconv.ParseInt(val, 10, 32)
 			}
 		}
 		if results, _, err := api.Content(hostName, params); err != nil {

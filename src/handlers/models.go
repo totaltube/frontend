@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -14,6 +15,7 @@ import (
 
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/helpers"
+	"sersh.com/totaltube/frontend/internal"
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
 )
@@ -32,10 +34,12 @@ var Models = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	sortBy := helpers.FirstNotEmpty(chi.URLParam(r, "sort"), r.URL.Query().Get(config.Params.SortBy), "title")
 	query := r.URL.Query().Get(config.Params.SearchQuery)
 	amount := config.General.ModelsPerPage
+	ip := r.Context().Value("ip").(string)
+	groupId := internal.DetectCountryGroup(net.ParseIP(ip)).Id
 	customContext := generateCustomContext(w, r, "models")
 	cacheKey := "models:" + helpers.Md5Hash(
-		fmt.Sprintf("%s:%s:%d:%s:%s:%d",
-			hostName, langId, page, sortBy, query, amount),
+		fmt.Sprintf("%s:%s:%d:%s:%s:%d:%d",
+			hostName, langId, page, sortBy, query, amount, groupId),
 	)
 	cacheTtl := time.Minute * 15
 	parsed, err := site.ParseTemplate("models", path, config, customContext, nocache, cacheKey, cacheTtl,
@@ -43,7 +47,7 @@ var Models = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// getting category information from cache or from api
 			var results *types.ModelResults
 			var err error
-			results, _, err = api.ModelsList(hostName, langId, page, api.SortBy(sortBy), int64(amount), query)
+			results, _, err = api.ModelsList(hostName, langId, page, api.SortBy(sortBy), int64(amount), query, groupId)
 			if err != nil {
 				return ctx, err
 			}
@@ -66,7 +70,7 @@ var Models = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	render.HTML(w, r, string(parsed))
 })
 
-func getModelsListFunc(hostName string, langId string, defaultAmount int64) func(args ...interface{}) *types.ModelResults {
+func getModelsListFunc(hostName string, langId string, defaultAmount int64, groupId int64) func(args ...interface{}) *types.ModelResults {
 	return func(args ...interface{}) *types.ModelResults {
 		parsingName := true
 		var amount = defaultAmount
@@ -95,7 +99,7 @@ func getModelsListFunc(hostName string, langId string, defaultAmount int64) func
 				searchQuery = val
 			}
 		}
-		results, _, err := api.ModelsList(hostName, langId, page, sortBy, amount, searchQuery)
+		results, _, err := api.ModelsList(hostName, langId, page, sortBy, amount, searchQuery, groupId)
 		if err != nil {
 			log.Println("can't get models list:", err)
 			return nil
