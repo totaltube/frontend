@@ -89,82 +89,86 @@ type ContentResultUser struct {
 	Name  string `json:"name"`
 }
 type ContentItemResult struct {
-	Id              int64                          `json:"id"`
-	Slug            string                         `json:"slug"`
-	Title           string                         `json:"title"`
-	TitleTranslated bool                           `json:"title_translated,omitempty"`
-	Description     *string                        `json:"description,omitempty"`
-	Channel         *TaxonomyResult                `json:"channel,omitempty"`
-	Content         *string                        `json:"content,omitempty"`
-	Link            *string                        `json:"link,omitempty"`
-	CreatedAt       time.Time                      `json:"created_at"`
-	Dated           time.Time                      `json:"dated"`
-	Duration        ContentDuration                `json:"duration"`
-	Tags            []string                       `json:"tags"`
-	Keywords        []string                       `json:"keywords,omitempty"`
-	VideoServer     string                         `json:"video_server,omitempty"`
-	GalleryServer   string                         `json:"gallery_server,omitempty"`
-	VideoPath       string                         `json:"video_path,omitempty"`
-	GalleryPath     string                         `json:"gallery_path,omitempty"`
-	GalleryItems    *map[string]ContentGalleryInfo `json:"gallery_items,omitempty"`
-	VideoSizes      *map[string]ContentVideoInfo   `json:"video_sizes,omitempty"`
-	ThumbsAmount    int32                          `json:"thumbs_amount"`
-	ThumbsWidth     int32                          `json:"thumb_width"`
-	ThumbsHeight    int32                          `json:"thumb_height"`
-	ThumbsServer    string                         `json:"thumbs_server"` // thumb server url
-	ThumbsPath      string                         `json:"thumbs_path"`   // path to thumbs on thumb server
-	ThumbRetina     bool                           `json:"thumb_retina"`  // there is @2x version of thumb
-	ThumbFormat     string                         `json:"thumb_format"`
-	ThumbType       string                         `json:"thumb_type"`           // image type ( jpg, webp, png )
-	BestThumb       *int16                         `json:"best_thumb,omitempty"` // best thumb indexed from 0
-	Type            string                         `json:"type"`
-	Priority        int16                          `json:"priority,omitempty"`
-	User            ContentResultUser              `json:"user"`
-	Categories      TaxonomyResults                `json:"categories,omitempty"`
-	Models          TaxonomyResults                `json:"models,omitempty"`
-	Views           int32                          `json:"views"`
-	Related         []*ContentResult               `json:"related,omitempty"` // similar content
-	selectedThumb   *int
+	Id                 int64                          `json:"id"`
+	Slug               string                         `json:"slug"`
+	Title              string                         `json:"title"`
+	TitleTranslated    bool                           `json:"title_translated,omitempty"`
+	Description        *string                        `json:"description,omitempty"`
+	Channel            *TaxonomyResult                `json:"channel,omitempty"`
+	Content            *string                        `json:"content,omitempty"`
+	Link               *string                        `json:"link,omitempty"`
+	CreatedAt          time.Time                      `json:"created_at"`
+	Dated              time.Time                      `json:"dated"`
+	Duration           ContentDuration                `json:"duration"`
+	Tags               []string                       `json:"tags"`
+	Keywords           []string                       `json:"keywords,omitempty"`
+	VideoServer        string                         `json:"video_server,omitempty"`
+	GalleryServer      string                         `json:"gallery_server,omitempty"`
+	VideoPath          string                         `json:"video_path,omitempty"`
+	GalleryPath        string                         `json:"gallery_path,omitempty"`
+	GalleryItems       *map[string]ContentGalleryInfo `json:"gallery_items,omitempty"`
+	VideoSizes         *map[string]ContentVideoInfo   `json:"video_sizes,omitempty"`
+	ThumbsAmount       int32                          `json:"thumbs_amount"`
+	ThumbsWidth        int32                          `json:"thumb_width"`
+	ThumbsHeight       int32                          `json:"thumb_height"`
+	ThumbsServer       string                         `json:"thumbs_server"` // thumb server url
+	ThumbsPath         string                         `json:"thumbs_path"`   // path to thumbs on thumb server
+	ThumbRetina        bool                           `json:"thumb_retina"`  // there is @2x version of thumb
+	ThumbFormat        string                         `json:"thumb_format"`
+	ThumbType          string                         `json:"thumb_type"`           // image type ( jpg, webp, png )
+	BestThumb          *int16                         `json:"best_thumb,omitempty"` // best thumb indexed from 0
+	Type               string                         `json:"type"`
+	Priority           int16                          `json:"priority,omitempty"`
+	User               ContentResultUser              `json:"user"`
+	Categories         TaxonomyResults                `json:"categories,omitempty"`
+	Models             TaxonomyResults                `json:"models,omitempty"`
+	Views              int32                          `json:"views"`
+	Related            []*ContentResult               `json:"related,omitempty"` // similar content
+	SourceSiteId       string                         `json:"source_site_id"`
+	SourceSiteUniqueId string                         `json:"source_site_unique_id"`
+	selectedThumb      *int
 }
 
 type ContentResult struct {
-	Id              int64                          `json:"id"`
-	Slug            string                         `json:"slug"`
-	Title           string                         `json:"title"`
-	TitleTranslated bool                           `json:"title_translated,omitempty"`
-	Description     *string                        `json:"description,omitempty"`
-	Channel         *TaxonomyResult                `json:"channel,omitempty"`
-	Content         *string                        `json:"content,omitempty"`
-	Link            *string                        `json:"link,omitempty"`
-	CreatedAt       time.Time                      `json:"created_at"`
-	Dated           time.Time                      `json:"dated"`
-	Duration        ContentDuration                `json:"duration"`
-	Tags            []string                       `json:"tags"`
-	Keywords        []string                       `json:"keywords,omitempty"`
-	GalleryServer   string                         `json:"gallery_server"`
-	VideoServer     string                         `json:"video_server"`
-	GalleryPath     string                         `json:"gallery_path"`
-	VideoPath       string                         `json:"video_path"`
-	GalleryItems    *map[string]ContentGalleryInfo `json:"gallery_items,omitempty"`
-	VideoSizes      *map[string]ContentVideoInfo   `json:"video_sizes,omitempty"`
-	ThumbsAmount    int32                          `json:"thumbs_amount"`
-	ThumbsWidth     int32                          `json:"thumb_width"`
-	ThumbsHeight    int32                          `json:"thumb_height"`
-	ThumbsServer    string                         `json:"thumbs_server"` // thumb server url
-	ThumbsPath      string                         `json:"thumbs_path"`   // path to thumbs on thumb server
-	ThumbRetina     bool                           `json:"thumb_retina"`  // there is @2x version of thumb
-	ThumbFormat     string                         `json:"thumb_format"`
-	ThumbType       string                         `json:"thumb_type"`           // image type ( jpg, webp, png )
-	BestThumb       *int16                         `json:"best_thumb,omitempty"` // best thumb indexed from 0
-	Type            string                         `json:"type"`
-	Priority        int16                          `json:"priority,omitempty"`
-	User            ContentResultUser              `json:"user"`
-	Categories      TaxonomyResults                `json:"categories,omitempty"`
-	Models          TaxonomyResults                `json:"models,omitempty"`
-	RotationStatus  *CtrsStatus                    `json:"rotation_status,omitempty"`
-	Ctr             *float32                       `json:"ctr,omitempty"`
-	Views           int32                          `json:"views"`
-	selectedThumb   *int
+	Id                 int64                          `json:"id"`
+	Slug               string                         `json:"slug"`
+	Title              string                         `json:"title"`
+	TitleTranslated    bool                           `json:"title_translated,omitempty"`
+	Description        *string                        `json:"description,omitempty"`
+	Channel            *TaxonomyResult                `json:"channel,omitempty"`
+	Content            *string                        `json:"content,omitempty"`
+	Link               *string                        `json:"link,omitempty"`
+	CreatedAt          time.Time                      `json:"created_at"`
+	Dated              time.Time                      `json:"dated"`
+	Duration           ContentDuration                `json:"duration"`
+	Tags               []string                       `json:"tags"`
+	Keywords           []string                       `json:"keywords,omitempty"`
+	GalleryServer      string                         `json:"gallery_server"`
+	VideoServer        string                         `json:"video_server"`
+	GalleryPath        string                         `json:"gallery_path"`
+	VideoPath          string                         `json:"video_path"`
+	GalleryItems       *map[string]ContentGalleryInfo `json:"gallery_items,omitempty"`
+	VideoSizes         *map[string]ContentVideoInfo   `json:"video_sizes,omitempty"`
+	ThumbsAmount       int32                          `json:"thumbs_amount"`
+	ThumbsWidth        int32                          `json:"thumb_width"`
+	ThumbsHeight       int32                          `json:"thumb_height"`
+	ThumbsServer       string                         `json:"thumbs_server"` // thumb server url
+	ThumbsPath         string                         `json:"thumbs_path"`   // path to thumbs on thumb server
+	ThumbRetina        bool                           `json:"thumb_retina"`  // there is @2x version of thumb
+	ThumbFormat        string                         `json:"thumb_format"`
+	ThumbType          string                         `json:"thumb_type"`           // image type ( jpg, webp, png )
+	BestThumb          *int16                         `json:"best_thumb,omitempty"` // best thumb indexed from 0
+	Type               string                         `json:"type"`
+	Priority           int16                          `json:"priority,omitempty"`
+	User               ContentResultUser              `json:"user"`
+	Categories         TaxonomyResults                `json:"categories,omitempty"`
+	Models             TaxonomyResults                `json:"models,omitempty"`
+	RotationStatus     *CtrsStatus                    `json:"rotation_status,omitempty"`
+	Ctr                *float32                       `json:"ctr,omitempty"`
+	Views              int32                          `json:"views"`
+	SourceSiteId       string                         `json:"source_site_id"`
+	SourceSiteUniqueId string                         `json:"source_site_unique_id"`
+	selectedThumb      *int
 }
 
 type ContentResults struct {

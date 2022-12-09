@@ -182,7 +182,6 @@ First argument can be not URL, but special word to fetch some data from Totaltub
   * `page` - page number to fetch from 1. Default 1.
   * `lang` - language to fetch content for. Default - current requested page language or "en".
   * `sort` - sort order. Can be `"popular"` (by ctrs desc), `"views"` (by views desc), `"dated"` (by content date desc), `"duration"` (by duration desc), `"rand"` (random), `"rand1"` (random without supporting pagination - more fast).
-  * `group_id` - country group id for ctr rotation.
   * `timeframe` - timeframe для сортировки по `"views"` ("all", "hour" или "month"). По умолчанию "month". 
   
   result content will be in variable `fetched_content`. The type of variable is [ContentResults](Types.md#contentresults). Example of `fetch` tag to fetch content:
@@ -199,7 +198,6 @@ First argument can be not URL, but special word to fetch some data from Totaltub
   * `amount` - amount of categories to fetch (on one page), default 100.
   * `page` - page number to fetch from 1. Default 1.
   * `sort` - sort order. Can be `"popular"` (by ctrs desc), `"title"` (by title asc), `"total"` (by total content in category desc)
-  * `group_id` - country group id for ctr rotation.
   
   result data will be in variable `categories`. The type of variable is [CategoryResults](Types.md#categoryresults). Example of `fetch` tag to fetch categories: 
   ```django
@@ -504,7 +502,6 @@ It's deferred translate, so if the text is not translated yet, it will show untr
 * `config` - site configuration options. Field names are the same as in `config.toml`, but CamelCased except custom route names and custom variable names.
 * `global_config` - global configuration options (in root `config.toml`). Field names are the same as in `config.toml`, but CamelCased.
 * `route` - current route value
-* `country_group` - information about [country group](Types.md#countrygroup) for current request.
 
 ## Special variables, available in different template files.
 

@@ -37,6 +37,8 @@ Type fields:
 * `RotationStatus` string - for 1 page of category top or top content page it will be `"casting"` o `"normal"` indicating if the content is in casting state or already got CTR counted.
 * `Ctr` float - current content CTR (for category top or top content page).
 * `Views` integer - content views (by default for last month).
+* `SourceSiteId` string - id of source site if grabbed using content sources.
+* `SourceSiteUniqueId` string - unique ID of this content on source site if grabbed using content sources.
 * `ThumbTemplate()` string - function return thumb template URL with %d on the place of thumb number.
 * `Thumb()` string - function return thumb URL.
 * `HiresThumb()` string - function return hires thumb or ordinary thumb if no hires thumb available.
@@ -214,10 +216,3 @@ The type has the following fields:
 * `Native` string - native language name like English, Deutsch, Italiano
 * `Direction` string - language direction: "ltr" (left to right) or "rtl" (right to left)
 * `Country` string - country code associated with language like us, de, it
-
-### CountryGroup
-The type has the following fields:
-* `Id` integer - country group id
-* `Name` string - name of country group
-* `Countries` array of strings - array of country codes included in this group
-* `Ignore` boolean - if true, script must ignore clicks from this group
