@@ -24,11 +24,6 @@ Type fields:
 * `Duration` [ContentDuration](#contentduration) - content duration in seconds
 * `Tags` array of strings - content tags
 * `Keywords` array of strings - content keywords
-* `ThumbsAmount` integer - amount of thumbs for content
-* `ThumbsWidth` integer - width of thumbs
-* `ThumbsHeight` integer - height of thumbs
-* `ThumbRetina` boolean - if true, hires thumb is available (@2x resolution).
-* `ThumbType` string - thumb type (`"jpg"`, `"webp"`, `"png"`)
 * `Type` string - type of content. One of (`"video-embed"`, `"video-link"`, `"video"`, `"gallery"`)
 * `Priority` integer - priority for content creation and rotation.
 * `User` [ContentResultUser](#contentresultuser) - content creator
@@ -39,12 +34,21 @@ Type fields:
 * `Views` integer - content views (by default for last month).
 * `SourceSiteId` string - id of source site if grabbed using content sources.
 * `SourceSiteUniqueId` string - unique ID of this content on source site if grabbed using content sources.
-* `ThumbTemplate()` string - function return thumb template URL with %d on the place of thumb number.
-* `Thumb()` string - function return thumb URL.
-* `HiresThumb()` string - function return hires thumb or ordinary thumb if no hires thumb available.
-* `SelectedThumb()` integer - returns the index of currently selected thumb to show if content has several thumbs.
+* `GetThumbFormat(formatName? string)` [ThumbFormat](#thumbformat) - function returns [ThumbFormat](#thumbformat) with name in optional argument or first available format.
+* `ThumbTemplate(formatName? string)` string - function return thumb template URL with %d on the place of thumb number.
+* `Thumb(formatName? string)` string - function return thumb URL.
+* `HiresThumb(formatName? string)` string - function return hires thumb or ordinary thumb if no hires thumb available.
+* `SelectedThumb(formatName? string)` integer - returns the index of currently selected thumb to show if content has several thumbs.
 * `MainCategorySlug(defaultName string)` string - returns the slug of content category or `defaultName` if content not in any category. Useful to generate links to content with gallery slug in link.
 
+### ThumbFormat
+This type holds some information about thumb format
+* `Name` string - the name of format
+* `Amount` integer - amount of thumbs of this format
+* `Width` integer - width of thumb
+* `Height` integer - height of thumb
+* `Type` string - thumb type (`png`, `jpg`, `webp`)
+* `Retina` boolean - if true, thumb has highres "retina" version.
 
 ### ContentItemResult
 This type has the same fields as in [ContentResult](#contentresult), with this additional fields:
@@ -126,19 +130,15 @@ The type has the following fields:
 * `Dated` time.Time - category dated time
 * `CreatedAt` time.Time - category actual creation time
 * `AliasCategoryId` integer - if category has alias - here is the alias category ID
-* `ThumbRetina` boolean - if true, category has hires thumb
-* `ThumbWidth` integer - category thumb width
-* `ThumbHeight` integer - category thumb height
-* `ThumbsAmount` integer - category thumbs amount
-* `ThumbType` string - category thumb type (`"jpg"`, `"webp"`, `"png"`)
 * `RotationStatus` string - category rotation status for top categories page. Can be `"casting"` or `"normal"`.
 * `Total` integer - total amount of content in category.
 * `Ctr` float - category CTR.
 * `Views` integer - category views for last month.
-* `ThumbTemplate()` string - function returns thumb URL template with `%d` on place of thumb number.
-* `Thumb()` string - function returns ordinary thumb URL for category.
-* `HiresThumb()` string - function returns hires thumb URL if available or ordinary thumb URL.
-* `SelectedThumb()` integer - function returns currently selected thumb index if category has several thumbs.
+* `GetThumbFormat(formatName? string)` [ThumbFormat](#thumbformat) - function returns [ThumbFormat](#thumbformat) with name in optional argument or first available format.
+* `ThumbTemplate(formatName? string)` string - function return thumb template URL with %d on the place of thumb number.
+* `Thumb(formatName? string)` string - function return thumb URL.
+* `HiresThumb(formatName? string)` string - function return hires thumb or ordinary thumb if no hires thumb available.
+* `SelectedThumb(formatName? string)` integer - returns the index of currently selected thumb to show if category has several thumbs.
 
 ### ModelResults
 This type is returned on fetching models. The type has the following fields:
@@ -159,17 +159,13 @@ The type has the following fields:
 * `Tags` array of strings - model tags
 * `Dated` time.Time - model dated time
 * `CreatedAt` time.Time - model actual creation time
-* `ThumbRetina` boolean - if true, model has hires thumb
-* `ThumbWidth` integer - model thumb width
-* `ThumbHeight` integer - model thumb height
-* `ThumbsAmount` integer - model thumbs amount
-* `ThumbType` string - model thumb type (`"jpg"`, `"webp"`, `"png"`)
 * `Total` integer - total amount of content with this model.
 * `Views` integer - model views for last month.
-* `ThumbTemplate()` string - function returns thumb URL template with `%d` on place of thumb number.
-* `Thumb()` string - function returns ordinary thumb URL for model.
-* `HiresThumb()` string - function returns hires thumb URL if available or ordinary thumb URL.
-* `SelectedThumb()` integer - function returns currently selected thumb index if model has several thumbs.
+* `GetThumbFormat(formatName? string)` [ThumbFormat](#thumbformat) - function returns [ThumbFormat](#thumbformat) with name in optional argument or first available format.
+* `ThumbTemplate(formatName? string)` string - function return thumb template URL with %d on the place of thumb number.
+* `Thumb(formatName? string)` string - function return thumb URL.
+* `HiresThumb(formatName? string)` string - function return hires thumb or ordinary thumb if no hires thumb available.
+* `SelectedThumb(formatName? string)` integer - returns the index of currently selected thumb to show if model has several thumbs.
 
 
 ### ChannelResults
@@ -191,17 +187,13 @@ The type has the following fields:
 * `Tags` array of strings - channel tags
 * `Dated` time.Time - channel dated time
 * `CreatedAt` time.Time - channel actual creation time
-* `ThumbRetina` boolean - if true, channel has hires thumb
-* `ThumbWidth` integer - channel thumb width
-* `ThumbHeight` integer - channel thumb height
-* `ThumbsAmount` integer - channel thumbs amount
-* `ThumbType` string - channel thumb type (`"jpg"`, `"webp"`, `"png"`)
 * `Total` integer - total amount of content in this channel.
 * `Views` integer - channel views for last month.
-* `ThumbTemplate()` string - function returns thumb URL template with `%d` on place of thumb number.
-* `Thumb()` string - function returns ordinary thumb URL for channel.
-* `HiresThumb()` string - function returns hires thumb URL if available or ordinary thumb URL.
-* `SelectedThumb()` integer - function returns currently selected thumb index if channel has several thumbs.
+* `GetThumbFormat(formatName? string)` [ThumbFormat](#thumbformat) - function returns [ThumbFormat](#thumbformat) with name in optional argument or first available format.
+* `ThumbTemplate(formatName? string)` string - function return thumb template URL with %d on the place of thumb number.
+* `Thumb(formatName? string)` string - function return thumb URL.
+* `HiresThumb(formatName? string)` string - function return hires thumb or ordinary thumb if no hires thumb available.
+* `SelectedThumb(formatName? string)` integer - returns the index of currently selected thumb to show if model has several thumbs.
 
 ### TopSearch
 The type has the following fields:

@@ -3,6 +3,7 @@ package internal
 import (
 	"log"
 	"path/filepath"
+	"regexp"
 	"runtime"
 
 	"github.com/BurntSushi/toml"
@@ -45,7 +46,7 @@ type (
 		Path string `toml:"path"`
 	}
 )
-
+var apiVersionRegex = regexp.MustCompile(`^(.*)/v\d+/?$`)
 func InitConfig(configPath string) {
 	Config = &ConfigT{
 		General: General{
@@ -60,5 +61,10 @@ func InitConfig(configPath string) {
 	if _, err := toml.DecodeFile(configPath, Config); err != nil {
 		log.Fatalln(configPath, ":", err)
 	}
+	matches := apiVersionRegex.FindStringSubmatch(Config.General.ApiUrl)
+	if matches != nil {
+		Config.General.ApiUrl = matches[1]+"/"
+	}
+
 	Config.MainPath = filepath.Dir(configPath)
 }
