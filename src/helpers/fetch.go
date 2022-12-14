@@ -34,7 +34,7 @@ func newFetchRequest(u string) *fetchRequest {
 	}
 	parsed, err := url.Parse(u)
 	if err != nil || (parsed.Host == "" && parsed.Scheme == "") {
-		u = internal.Config.General.ApiUrl + u
+		u = internal.Config.General.ApiUrl + "v1/" + u
 		headers["Authorization"] = internal.Config.General.ApiSecret
 	}
 	n := fetchRequest{

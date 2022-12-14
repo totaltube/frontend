@@ -56,6 +56,14 @@ func (s *Size) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+type ThumbFormat struct {
+	Name   string `json:"name"`
+	Width  int64  `json:"width"`
+	Height int64  `json:"height"`
+	Amount int64  `json:"amount"`
+	Type   string `json:"type"`
+	Retina bool   `json:"retina"`
+}
 type ContentGalleryInfo struct {
 	Items        []Size `json:"items"`
 	PreviewItems []Size `json:"preview_items"`
@@ -108,14 +116,15 @@ type ContentItemResult struct {
 	GalleryPath        string                         `json:"gallery_path,omitempty"`
 	GalleryItems       *map[string]ContentGalleryInfo `json:"gallery_items,omitempty"`
 	VideoSizes         *map[string]ContentVideoInfo   `json:"video_sizes,omitempty"`
-	ThumbsAmount       int32                          `json:"thumbs_amount"`
-	ThumbsWidth        int32                          `json:"thumb_width"`
-	ThumbsHeight       int32                          `json:"thumb_height"`
-	ThumbsServer       string                         `json:"thumbs_server"` // thumb server url
-	ThumbsPath         string                         `json:"thumbs_path"`   // path to thumbs on thumb server
-	ThumbRetina        bool                           `json:"thumb_retina"`  // there is @2x version of thumb
-	ThumbFormat        string                         `json:"thumb_format"`
-	ThumbType          string                         `json:"thumb_type"`           // image type ( jpg, webp, png )
+	ThumbFormats       []ThumbFormat                  `json:"thumb_formats"`
+	ThumbsServer       string                         `json:"thumbs_server"`        // thumb server url
+	ThumbsPath         string                         `json:"thumbs_path"`          // path to thumbs on thumb server
+	ThumbRetina        bool                           `json:"thumb_retina"`         // deprecated
+	ThumbWidth         int32                          `json:"thumb_width"`          // deprecated
+	ThumbHeight        int32                          `json:"thumb_height"`         // deprecated
+	ThumbsAmount       int32                          `json:"thumbs_amount"`        // deprecated
+	ThumbFormat        string                         `json:"thumb_format"`         // deprecated
+	ThumbType          string                         `json:"thumb_type"`           // deprecated
 	BestThumb          *int16                         `json:"best_thumb,omitempty"` // best thumb indexed from 0
 	Type               string                         `json:"type"`
 	Priority           int16                          `json:"priority,omitempty"`
@@ -149,14 +158,15 @@ type ContentResult struct {
 	VideoPath          string                         `json:"video_path"`
 	GalleryItems       *map[string]ContentGalleryInfo `json:"gallery_items,omitempty"`
 	VideoSizes         *map[string]ContentVideoInfo   `json:"video_sizes,omitempty"`
-	ThumbsAmount       int32                          `json:"thumbs_amount"`
-	ThumbsWidth        int32                          `json:"thumb_width"`
-	ThumbsHeight       int32                          `json:"thumb_height"`
 	ThumbsServer       string                         `json:"thumbs_server"` // thumb server url
 	ThumbsPath         string                         `json:"thumbs_path"`   // path to thumbs on thumb server
-	ThumbRetina        bool                           `json:"thumb_retina"`  // there is @2x version of thumb
-	ThumbFormat        string                         `json:"thumb_format"`
-	ThumbType          string                         `json:"thumb_type"`           // image type ( jpg, webp, png )
+	ThumbFormats       []ThumbFormat                  `json:"thumb_formats"`
+	ThumbRetina        bool                           `json:"thumb_retina"`         // deprecated
+	ThumbWidth         int32                          `json:"thumb_width"`          // deprecated
+	ThumbHeight        int32                          `json:"thumb_height"`         // deprecated
+	ThumbsAmount       int32                          `json:"thumbs_amount"`        // deprecated
+	ThumbFormat        string                         `json:"thumb_format"`         // deprecated
+	ThumbType          string                         `json:"thumb_type"`           // deprecated
 	BestThumb          *int16                         `json:"best_thumb,omitempty"` // best thumb indexed from 0
 	Type               string                         `json:"type"`
 	Priority           int16                          `json:"priority,omitempty"`
@@ -217,19 +227,36 @@ func (c ContentResultUser) Value() (driver.Value, error) {
 	return json.Marshal(c)
 }
 
-func (c ContentItemResult) ThumbTemplate() string {
-	return c.ThumbsServer + c.ThumbsPath + "/thumb-" + c.ThumbFormat + ".%d." + c.ThumbType
+func (c ContentItemResult) GetThumbFormat(thumbFormatName ...string) (res ThumbFormat) {
+	if len(c.ThumbFormats) == 0 {
+		return
+	}
+	res = c.ThumbFormats[0]
+	if len(thumbFormatName) > 0 {
+		for _, name := range thumbFormatName {
+			if f, ok := lo.Find(c.ThumbFormats, func(tf ThumbFormat) bool { return tf.Name == name }); ok {
+				return f
+			}
+		}
+	}
+	return
 }
 
-func (c *ContentItemResult) Thumb() string {
-	return fmt.Sprintf(c.ThumbTemplate(), c.SelectedThumb())
+func (c ContentItemResult) ThumbTemplate(thumbFormatName ...string) string {
+	format := c.GetThumbFormat(thumbFormatName...)
+	return c.ThumbsServer + c.ThumbsPath + "/thumb-" + format.Name + ".%d." + format.Type
 }
 
-func (c *ContentItemResult) HiresThumb() string {
-	if c.ThumbRetina {
-		return fmt.Sprintf(strings.TrimSuffix(c.ThumbTemplate(), "."+c.ThumbType)+"@2x."+c.ThumbType, c.SelectedThumb())
+func (c *ContentItemResult) Thumb(thumbFormatName ...string) string {
+	return fmt.Sprintf(c.ThumbTemplate(thumbFormatName...), c.SelectedThumb(thumbFormatName...))
+}
+
+func (c *ContentItemResult) HiresThumb(thumbFormatName ...string) string {
+	format := c.GetThumbFormat(thumbFormatName...)
+	if format.Retina {
+		return fmt.Sprintf(strings.TrimSuffix(c.ThumbTemplate(thumbFormatName...), "."+format.Type)+"@2x."+format.Type, c.SelectedThumb(thumbFormatName...))
 	} else {
-		return c.Thumb()
+		return c.Thumb(thumbFormatName...)
 	}
 }
 
@@ -338,7 +365,7 @@ func (c ContentItemResult) VideoSize(formats ...string) Size {
 	return info.Size
 }
 
-func (c *ContentItemResult) SelectedThumb() int {
+func (c *ContentItemResult) SelectedThumb(thumbFormatName ...string) int {
 	if c.selectedThumb != nil {
 		return *c.selectedThumb
 	}
@@ -346,7 +373,8 @@ func (c *ContentItemResult) SelectedThumb() int {
 		idx := int(*c.BestThumb)
 		c.selectedThumb = &idx
 	} else {
-		idx := rand.Intn(int(c.ThumbsAmount))
+		format := c.GetThumbFormat(thumbFormatName...)
+		idx := rand.Intn(int(format.Amount))
 		c.selectedThumb = &idx
 	}
 	return *c.selectedThumb
@@ -363,23 +391,40 @@ func (c ContentItemResult) MainCategorySlug(defaultName ...string) string {
 	return c.Categories[0].Slug
 }
 
-func (c ContentResult) ThumbTemplate() string {
-	return c.ThumbsServer + c.ThumbsPath + "/thumb-" + c.ThumbFormat + ".%d." + c.ThumbType
+func (c ContentResult) GetThumbFormat(thumbFormatName ...string) (res ThumbFormat) {
+	if len(c.ThumbFormats) == 0 {
+		return
+	}
+	res = c.ThumbFormats[0]
+	if len(thumbFormatName) > 0 {
+		for _, name := range thumbFormatName {
+			if f, ok := lo.Find(c.ThumbFormats, func(tf ThumbFormat) bool { return tf.Name == name }); ok {
+				return f
+			}
+		}
+	}
+	return
 }
 
-func (c *ContentResult) Thumb() string {
-	return fmt.Sprintf(c.ThumbTemplate(), c.SelectedThumb())
+func (c ContentResult) ThumbTemplate(thumbFormatName ...string) string {
+	format := c.GetThumbFormat(thumbFormatName...)
+	return c.ThumbsServer + c.ThumbsPath + "/thumb-" + format.Name + ".%d." + format.Type
 }
 
-func (c *ContentResult) HiresThumb() string {
-	if c.ThumbRetina {
-		return fmt.Sprintf(strings.TrimSuffix(c.ThumbTemplate(), "."+c.ThumbType)+"@2x."+c.ThumbType, c.SelectedThumb())
+func (c *ContentResult) Thumb(thumbFormatName ...string) string {
+	return fmt.Sprintf(c.ThumbTemplate(thumbFormatName...), c.SelectedThumb(thumbFormatName...))
+}
+
+func (c *ContentResult) HiresThumb(thumbFormatName ...string) string {
+	format := c.GetThumbFormat(thumbFormatName...)
+	if format.Retina {
+		return fmt.Sprintf(strings.TrimSuffix(c.ThumbTemplate(thumbFormatName...), "."+format.Type)+"@2x."+format.Type, c.SelectedThumb(thumbFormatName...))
 	} else {
-		return c.Thumb()
+		return c.Thumb(thumbFormatName...)
 	}
 }
 
-func (c *ContentResult) SelectedThumb() int {
+func (c *ContentResult) SelectedThumb(thumbFormatName ...string) int {
 	if c.selectedThumb != nil {
 		return *c.selectedThumb
 	}
@@ -387,7 +432,8 @@ func (c *ContentResult) SelectedThumb() int {
 		idx := int(*c.BestThumb)
 		c.selectedThumb = &idx
 	} else {
-		idx := rand.Intn(int(c.ThumbsAmount))
+		format := c.GetThumbFormat(thumbFormatName...)
+		idx := rand.Intn(int(format.Amount))
 		c.selectedThumb = &idx
 	}
 	return *c.selectedThumb

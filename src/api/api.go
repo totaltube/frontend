@@ -57,7 +57,7 @@ const (
 )
 
 func ApiRequest(siteDomain string, method Method, uri ApiUri, data interface{}) (response json.RawMessage, err error) {
-	f := helpers.Fetch(internal.Config.General.ApiUrl + string(uri))
+	f := helpers.Fetch(internal.Config.General.ApiUrl + "v1/" + string(uri))
 	f.WithHeader(fasthttp.HeaderAuthorization, internal.Config.General.ApiSecret)
 	f.WithHeader("Totaltube-Site", siteDomain)
 	f.WithHeader(fasthttp.HeaderAccept, "application/json")
