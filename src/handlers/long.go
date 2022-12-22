@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"github.com/go-chi/render"
 
 	"sersh.com/totaltube/frontend/api"
+	"sersh.com/totaltube/frontend/db"
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/internal"
 	"sersh.com/totaltube/frontend/site"
@@ -49,25 +51,33 @@ var Long = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	userAgent := r.Header.Get("User-Agent")
 	cacheTtl := time.Minute * 15
 	parsed, err := site.ParseTemplate("long", path, config, customContext, nocache, cacheKey, cacheTtl,
-		func(ctx pongo2.Context) (pongo2.Context, error) {
-			var results *types.ContentResults
+		func() (pongo2.Context, error) {
+			ctx := pongo2.Context{}
+			var results = new(types.ContentResults)
 			var err error
-			results, _, err = api.Content(hostName, api.ContentParams{
-				Ip:           net.ParseIP(ip),
-				Lang:         langId,
-				Page:         page,
-				CategoryId:   categoryId,
-				CategorySlug: categorySlug,
-				ChannelId:    channelId,
-				ChannelSlug:  channelSlug,
-				ModelId:      modelId,
-				ModelSlug:    modelSlug,
-				Sort:         api.SortBy(sortBy),
-				DurationGte:  durationFrom,
-				DurationLt:   durationTo,
-				UserAgent:    userAgent,
-				GroupId:      groupId,
-			})
+			var response json.RawMessage
+			response, err = db.GetCachedTimeout(cacheKey+":data", cacheTtl, cacheTtl, func() ([]byte, error) {
+				return api.ContentRaw(hostName, api.ContentParams{
+					Ip:           net.ParseIP(ip),
+					Lang:         langId,
+					Page:         page,
+					CategoryId:   categoryId,
+					CategorySlug: categorySlug,
+					ChannelId:    channelId,
+					ChannelSlug:  channelSlug,
+					ModelId:      modelId,
+					ModelSlug:    modelSlug,
+					Sort:         api.SortBy(sortBy),
+					DurationGte:  durationFrom,
+					DurationLt:   durationTo,
+					UserAgent:    userAgent,
+					GroupId:      groupId,
+				})
+			}, nocache)
+			if err != nil {
+				return ctx, err
+			}
+			err = json.Unmarshal(response, results)
 			if err != nil {
 				return ctx, err
 			}

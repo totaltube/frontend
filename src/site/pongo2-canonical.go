@@ -62,11 +62,18 @@ type tagCanonicalNode struct {
 func (node *tagCanonicalNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.TemplateWriter) *pongo2.Error {
 	context := pongo2.NewChildExecutionContext(ctx)
 	langId := context.Public["lang"].(*types.Language).Id
+	config := context.Public["config"].(*Config)
+	hostName := context.Public["host"].(string)
 	var page int64 = 1
 	if p, ok := context.Public["page"]; ok {
 		page = p.(int64)
 	}
 	route := getCanonical(context.Public, langId, page)
+	if config.General.CanonicalUrl != "" {
+		route = strings.TrimSuffix(config.General.CanonicalUrl, "/")+route
+	} else {
+		route = "https://"+hostName+route
+	}
 	_, err := writer.WriteString(fmt.Sprintf(`<link rel="canonical" href="%s">`, route))
 	if err != nil {
 		return &pongo2.Error{Sender: "tag:canonical", OrigError: err}

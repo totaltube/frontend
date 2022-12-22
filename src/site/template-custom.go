@@ -276,13 +276,13 @@ func ParseCustomTemplate(name, path string, config *Config,
 		c := generateContext(name, path, customContext)
 		addCustomFunctions(c)
 		addDynamicFunctions(c)
-		parsed, err = InsertDynamic(parsed, c)
+		parsed, err = InsertDynamic(parsed, path, c)
 		return
 	}
 	if parsed, err = recreate(); err != nil {
 		return
 	}
 	addDynamicFunctions(ctx)
-	parsed, err = InsertDynamic(parsed, ctx)
+	parsed, err = InsertDynamic(parsed, path, ctx)
 	return
 }

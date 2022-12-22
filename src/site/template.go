@@ -144,12 +144,10 @@ func GetTemplate(name, path string) (*pongo2.Template, error) {
 	return siteTemplates.get(name, path)
 }
 
-
 func ParseTemplate(name, path string, config *Config, customContext pongo2.Context,
 	nocache bool, cacheKey string, cacheTtl time.Duration,
-	uncachedPrepare func(ctx pongo2.Context) (pongo2.Context, error),
+	prepare func() (pongo2.Context, error),
 	w http.ResponseWriter, r *http.Request) (parsed []byte, err error) {
-	var c pongo2.Context
 	var addDynamicFunctions = func(ctx pongo2.Context) {
 		ctx["set_cookie"] = func(name string, value interface{}, expire interface{}) {
 			var expires = time.Now().Add(time.Minute * 60)
@@ -229,15 +227,17 @@ func ParseTemplate(name, path string, config *Config, customContext pongo2.Conte
 			}
 		}
 	}
+	var extendedTtl = time.Duration(math.Max(float64(time.Minute*5), float64(cacheTtl)))
+	var dataCtx pongo2.Context
+	dataCtx, err = prepare()
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	customContext.Update(dataCtx)
 	var cached []byte
-	cached, err = db.GetCachedTimeout(cacheKey, cacheTtl, time.Duration(math.Max(float64(time.Minute*10), float64(cacheTtl))), func() (result []byte, err error) {
-		var c pongo2.Context
-		c, err = uncachedPrepare(customContext)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-		c = generateContext(name, path, c)
+	cached, err = db.GetCachedTimeout(cacheKey, cacheTtl, extendedTtl, func() (result []byte, err error) {
+		c := generateContext(name, path, customContext)
 		addCustomFunctions(c)
 		var template *pongo2.Template
 		template, err = GetTemplate(name, path)
@@ -261,9 +261,9 @@ func ParseTemplate(name, path string, config *Config, customContext pongo2.Conte
 		}
 		return
 	}
-	c = generateContext(name, path, customContext)
+	c := generateContext(name, path, customContext)
 	addCustomFunctions(c)
 	addDynamicFunctions(c)
-	parsed, err = InsertDynamic(cached, c)
+	parsed, err = InsertDynamic(cached, path, c)
 	return
 }

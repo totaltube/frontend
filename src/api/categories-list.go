@@ -9,9 +9,8 @@ import (
 	"sersh.com/totaltube/frontend/types"
 )
 
-func CategoriesList(
-	siteDomain, lang string, page int64, sort SortBy, amount int64, groupId int64,
-) (results *types.CategoryResults, rawResponse json.RawMessage, err error) {
+func CategoriesList(siteDomain, lang string, page int64, sort SortBy, amount int64, groupId int64) (
+	results *types.CategoryResults, rawResponse json.RawMessage, err error) {
 	rawResponse, err = ApiRequest(siteDomain, methodGet, uriCategoriesList, url.Values{
 		"lang":     []string{lang},
 		"sort":     []string{string(sort)},

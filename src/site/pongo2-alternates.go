@@ -2,7 +2,10 @@ package site
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/flosch/pongo2/v4"
+
 	"sersh.com/totaltube/frontend/types"
 )
 
@@ -12,8 +15,13 @@ type tagAlternatesNode struct {
 func (node *tagAlternatesNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.TemplateWriter) *pongo2.Error {
 	context := pongo2.NewChildExecutionContext(ctx)
 	config := context.Public["config"].(*Config)
+	hostName := context.Public["host"].(string)
 	if !config.General.MultiLanguage {
 		return nil
+	}
+	canonicalUrl := strings.TrimSuffix(config.General.CanonicalUrl, "/")
+	if canonicalUrl == "" {
+		canonicalUrl = "https://"+hostName
 	}
 	langId := context.Public["lang"].(*types.Language).Id
 	languages := context.Public["languages"].([]types.Language)
@@ -31,7 +39,7 @@ func (node *tagAlternatesNode) Execute(ctx *pongo2.ExecutionContext, writer pong
 		}
 		_, err := writer.WriteString(
 			fmt.Sprintf(`<link rel="alternate" hreflang="%s" href="%s">`+"\n",
-				l.Id, getCanonical(context.Public, l.Id, page)))
+				l.Id, canonicalUrl+getCanonical(context.Public, l.Id, page)))
 		if err != nil {
 			return &pongo2.Error{Sender: "tag:alternates", OrigError: err}
 		}

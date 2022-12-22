@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net"
@@ -100,8 +101,18 @@ var TopCategories = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 		cacheTtl = time.Minute * 5
 	}
 	parsed, err := site.ParseTemplate("top-categories", path, config, customContext, nocache, cacheKey, cacheTtl,
-		func(ctx pongo2.Context) (pongo2.Context, error) {
-			results, err := api.TopCategories(hostName, langId, page, groupId)
+		func() (pongo2.Context, error) {
+			ctx := pongo2.Context{}
+			var results = new(types.CategoryResults)
+			var err error
+			var response json.RawMessage
+			response, err = db.GetCachedTimeout(cacheKey+":data", cacheTtl, cacheTtl, func() ([]byte, error) {
+				return api.TopCategoriesRaw(hostName, langId, page, groupId)
+			}, nocache)
+			if err != nil {
+				return ctx, err
+			}
+			err = json.Unmarshal(response, results)
 			if err != nil {
 				return ctx, err
 			}

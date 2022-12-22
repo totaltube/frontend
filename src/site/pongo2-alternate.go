@@ -15,13 +15,18 @@ type tagAlternateNode struct {
 func (node *tagAlternateNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.TemplateWriter) *pongo2.Error {
 	context := pongo2.NewChildExecutionContext(ctx)
 	config := context.Public["config"].(*Config)
+	hostName := context.Public["host"].(string)
 	langId := context.Public["lang"].(*types.Language).Id
 	var page int64 = 1
 	if p, ok := context.Public["page"]; ok {
 		page = p.(int64)
 	}
+	var canonicalUrl = strings.TrimSuffix(config.General.CanonicalUrl, "/")
+	if canonicalUrl == "" {
+		canonicalUrl = "https://"+hostName
+	}
 	if !config.General.MultiLanguage {
-		_, err := writer.WriteString(getCanonical(context.Public, langId, page))
+		_, err := writer.WriteString(canonicalUrl+getCanonical(context.Public, langId, page))
 		if err != nil {
 			return &pongo2.Error{Sender: "tag:alternate", OrigError: err}
 		}
@@ -36,13 +41,14 @@ func (node *tagAlternateNode) Execute(ctx *pongo2.ExecutionContext, writer pongo
 		// Search page doesn't have alternate. Return link to the root
 		link := strings.ReplaceAll(config.Routes.LanguageTemplate, "{lang}", alternateLang)
 		link = strings.ReplaceAll(link, "{route}", "/")
-		_, err := writer.WriteString(link)
+
+		_, err := writer.WriteString(canonicalUrl+link)
 		if err != nil {
 			return &pongo2.Error{Sender: "tag:alternate", OrigError: err}
 		}
 		return nil
 	}
-	_, err1 := writer.WriteString(getCanonical(context.Public, alternateLang, page))
+	_, err1 := writer.WriteString(canonicalUrl+getCanonical(context.Public, alternateLang, page))
 	if err1 != nil {
 		return &pongo2.Error{Sender: "tag:alternate", OrigError: err1}
 	}
