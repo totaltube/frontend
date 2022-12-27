@@ -70,6 +70,7 @@ type (
 		Minify      bool     `toml:"minify"`
 	}
 	ConfigGeneral struct {
+		CanonicalUrl               string `toml:"canonical_url"`
 		TradeUrlTemplate           string `toml:"trade_url_template"`
 		ModelsPerPage              int    `toml:"models_per_page"`
 		ContentRelatedAmount       int    `toml:"content_related_amount"`

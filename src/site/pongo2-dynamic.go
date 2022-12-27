@@ -2,8 +2,9 @@ package site
 
 import (
 	"fmt"
-	"github.com/flosch/pongo2/v4"
 	"html"
+
+	"github.com/flosch/pongo2/v4"
 )
 
 type tagNocacheNode struct {
@@ -25,6 +26,9 @@ func pongo2Dynamic(_ *pongo2.Parser, _ *pongo2.Token, arguments *pongo2.Parser) 
 	for k := 0; k < amountTokens; k++ {
 		token := arguments.Get(k)
 		add := token.Val
+		if add == "include" {
+			add = "include "
+		}
 		if token.Typ == pongo2.TokenString {
 			add = `"` + add + `"`
 		}

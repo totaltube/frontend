@@ -61,7 +61,7 @@ func ApiRequest(siteDomain string, method Method, uri ApiUri, data interface{}) 
 	f.WithHeader(fasthttp.HeaderAuthorization, internal.Config.General.ApiSecret)
 	f.WithHeader("Totaltube-Site", siteDomain)
 	f.WithHeader(fasthttp.HeaderAccept, "application/json")
-	f.WithTimeout(time.Duration(internal.Config.General.ApiTimeout))
+	f.WithTimeout(int64(time.Duration(internal.Config.General.ApiTimeout) / time.Second))
 	f.WithMethod(string(method))
 	if method == "GET" && data != nil {
 		queryParams, ok := data.(url.Values)

@@ -12,8 +12,10 @@ import (
 	"github.com/flosch/pongo2/v4"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
+	"github.com/segmentio/encoding/json"
 
 	"sersh.com/totaltube/frontend/api"
+	"sersh.com/totaltube/frontend/db"
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/internal"
 	"sersh.com/totaltube/frontend/site"
@@ -39,12 +41,20 @@ var TopContent = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cacheTtl = time.Minute * 5
 	}
 	parsed, err := site.ParseTemplate("top-content", path, config, customContext, nocache, cacheKey, cacheTtl,
-		func(ctx pongo2.Context) (pongo2.Context, error) {
-			var results *types.ContentResults
+		func() (pongo2.Context, error) {
+			ctx := pongo2.Context{}
+			var results = new(types.ContentResults)
 			var err error
-			results, err = api.TopContent(hostName, langId, page, groupId)
+			var response json.RawMessage
+			response, err = db.GetCachedTimeout(cacheKey+":data", cacheTtl, cacheTtl, func() ([]byte, error) {
+				return api.TopContentRaw(hostName, langId, page, groupId)
+			}, nocache)
 			if err != nil {
 				log.Println(err)
+				return ctx, err
+			}
+			err = json.Unmarshal(response, results)
+			if err != nil {
 				return ctx, err
 			}
 			if page == 1 {

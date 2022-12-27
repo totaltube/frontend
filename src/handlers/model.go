@@ -69,7 +69,8 @@ var Model = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	userAgent := r.Header.Get("User-Agent")
 	cacheTtl := time.Minute * 15
 	parsed, err := site.ParseTemplate("model", path, config, customContext, nocache, cacheKey, cacheTtl,
-		func(ctx pongo2.Context) (pongo2.Context, error) {
+		func() (pongo2.Context, error) {
+			ctx := pongo2.Context{}
 			// getting category information from cache or from api
 			modelInfoCacheKey := fmt.Sprintf("in:minfo:%d:%s:%s", modelId, modelSlug, langId)
 			modelInfoCacheTtl := time.Hour*24 + time.Duration(rand.Intn(3600*6))*time.Second
@@ -87,24 +88,30 @@ var Model = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				log.Println(err)
 				return ctx, err
 			}
-			var results *types.ContentResults
-			results, _, err = api.Content(hostName, api.ContentParams{
-				Ip:           net.ParseIP(ip),
-				Lang:         langId,
-				Page:         page,
-				CategoryId:   categoryId,
-				CategorySlug: categorySlug,
-				ChannelId:    channelId,
-				ChannelSlug:  channelSlug,
-				ModelId:      modelId,
-				ModelSlug:    modelSlug,
-				Sort:         api.SortBy(sortBy),
-				Timeframe:    sortByViewsTimeframe,
-				DurationGte:  durationFrom,
-				DurationLt:   durationTo,
-				UserAgent:    userAgent,
-				GroupId:      groupId,
-			})
+			var results = new(types.ContentResults)
+			var response json.RawMessage
+			response, err = db.GetCachedTimeout(cacheKey+":data", cacheTtl, cacheTtl, func() ([]byte, error) {
+				return api.ContentRaw(hostName, api.ContentParams{
+					Lang:         langId,
+					Page:         page,
+					CategoryId:   categoryId,
+					CategorySlug: categorySlug,
+					ChannelId:    channelId,
+					ChannelSlug:  channelSlug,
+					ModelId:      modelId,
+					ModelSlug:    modelSlug,
+					Sort:         api.SortBy(sortBy),
+					Timeframe:    sortByViewsTimeframe,
+					DurationGte:  durationFrom,
+					DurationLt:   durationTo,
+					UserAgent:    userAgent,
+					GroupId:      groupId,
+				})
+			}, nocache)
+			if err != nil {
+				return ctx, err
+			}
+			err = json.Unmarshal(response, results)
 			if err != nil {
 				return ctx, err
 			}

@@ -10,11 +10,22 @@ import (
 	"sersh.com/totaltube/frontend/types"
 )
 
-func ContentItem(
-	siteDomain, lang, slug string, id int64,
-	omitRelatedForLink bool, relatedAmount int64, groupId int64,
-) (results *types.ContentItemResult, err error) {
+func ContentItem(siteDomain, lang, slug string, id int64,omitRelatedForLink bool, relatedAmount int64, groupId int64) (
+	results *types.ContentItemResult, err error) {
 	var response json.RawMessage
+	response, err = ContentItemRaw(siteDomain, lang, slug, id, omitRelatedForLink, relatedAmount, groupId)
+	if err != nil {
+		return
+	}
+	results = new(types.ContentItemResult)
+	err = json.Unmarshal(response, results)
+	if err != nil {
+		log.Println(err, string(response))
+	}
+	return
+}
+
+func ContentItemRaw(siteDomain, lang, slug string, id int64,omitRelatedForLink bool, relatedAmount int64, groupId int64) (response json.RawMessage, err error) {
 	response, err = ApiRequest(siteDomain, methodGet, uriContentItem, url.Values{
 		"lang":     []string{lang},
 		"slug":     []string{slug},
@@ -24,13 +35,7 @@ func ContentItem(
 		"group_id": []string{strconv.FormatInt(groupId, 10)},
 	})
 	if err != nil {
-		log.Println(err)
-		return
-	}
-	results = new(types.ContentItemResult)
-	err = json.Unmarshal(response, results)
-	if err != nil {
-		log.Println(err, string(response))
+		log.Println(err, "slug: ", slug, "id: ", id)
 	}
 	return
 }

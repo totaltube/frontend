@@ -54,6 +54,16 @@ type ContentParams struct {
 }
 
 func Content(siteDomain string, params ContentParams) (results *types.ContentResults, rawResponse json.RawMessage, err error) {
+	rawResponse, err = ContentRaw(siteDomain, params)
+	if err != nil {
+		return
+	}
+	results = new(types.ContentResults)
+	err = json.Unmarshal(rawResponse, results)
+	return
+}
+
+func ContentRaw(siteDomain string, params ContentParams) (rawResponse json.RawMessage, err error) {
 	var data = url.Values{}
 	if params.Ip != nil {
 		data.Add("ip", params.Ip.String())
@@ -113,10 +123,5 @@ func Content(siteDomain string, params ContentParams) (results *types.ContentRes
 		data.Add("related_message", params.RelatedMessage)
 	}
 	rawResponse, err = ApiRequest(siteDomain, methodGet, uriContent, data)
-	if err != nil {
-		return
-	}
-	results = new(types.ContentResults)
-	err = json.Unmarshal(rawResponse, results)
 	return
 }

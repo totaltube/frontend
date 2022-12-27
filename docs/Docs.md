@@ -377,6 +377,11 @@ this tag is used to bypass cache for some expression. The arguments of this tag 
 {# this will insert Total Traffic Trader js code and count In. insert_ttt is defined in extensions/function-insert_ttt.js of example site template #}
 {% dynamic insert_ttt() | safe %} 
 ```
+Also, special case is to use `include` keyword, followed by string with template name to include. In this case, this template name will be evaluated on each request (no cache) with any function calls inside. Template must be in `templates` path, no sub-paths. Example:
+```django
+{# this will insert contents of template custom-dynamic-insert.twig evaluated on each request #}
+{% dynamic include "custom-dynamic-insert.twig" %}
+```
 
 ## Functions, available in templates and custom functions.
 

@@ -71,7 +71,8 @@ var Search = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	userAgent := r.Header.Get("User-Agent")
 	cacheTtl := time.Minute * 15
 	parsed, err := site.ParseTemplate("search", path, config, customContext, nocache, cacheKey, cacheTtl,
-		func(ctx pongo2.Context) (pongo2.Context, error) {
+		func() (pongo2.Context, error) {
+			ctx := pongo2.Context{}
 			var results *types.ContentResults
 			var err error
 			results, _, err = api.Content(hostName, api.ContentParams{

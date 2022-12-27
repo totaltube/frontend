@@ -12,8 +12,10 @@ import (
 	"github.com/flosch/pongo2/v4"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
+	"github.com/segmentio/encoding/json"
 
 	"sersh.com/totaltube/frontend/api"
+	"sersh.com/totaltube/frontend/db"
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/internal"
 	"sersh.com/totaltube/frontend/site"
@@ -43,11 +45,19 @@ var Models = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	)
 	cacheTtl := time.Minute * 15
 	parsed, err := site.ParseTemplate("models", path, config, customContext, nocache, cacheKey, cacheTtl,
-		func(ctx pongo2.Context) (pongo2.Context, error) {
+		func() (pongo2.Context, error) {
+			ctx := pongo2.Context{}
 			// getting category information from cache or from api
-			var results *types.ModelResults
+			var results = new(types.ModelResults)
 			var err error
-			results, _, err = api.ModelsList(hostName, langId, page, api.SortBy(sortBy), int64(amount), query, groupId)
+			var response json.RawMessage
+			response, err = db.GetCachedTimeout(cacheKey+":data", cacheTtl, cacheTtl, func() ([]byte, error) {
+				return api.ModelsListRaw(hostName,langId, page, api.SortBy(sortBy), int64(amount), query, groupId )
+			}, nocache)
+			if err != nil {
+				return ctx, err
+			}
+			err = json.Unmarshal(response, results)
 			if err != nil {
 				return ctx, err
 			}

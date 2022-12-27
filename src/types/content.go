@@ -64,12 +64,14 @@ type ThumbFormat struct {
 	Type   string `json:"type"`
 	Retina bool   `json:"retina"`
 }
+
 type ContentGalleryInfo struct {
 	Items        []Size `json:"items"`
 	PreviewItems []Size `json:"preview_items"`
 	Type         string `json:"type"`
 	Name         string `json:"name"`
 }
+
 type ContentVideoInfo struct {
 	Name           string
 	Type           string  `json:"type"`
@@ -84,11 +86,21 @@ type ContentVideoInfo struct {
 }
 
 type ContentDuration int32
+
 type TaxonomyResult struct {
 	Id    int32  `json:"id"`
 	Slug  string `json:"slug"`
 	Title string `json:"title"`
 }
+
+type ChannelShortResult struct {
+	Id     int32  `json:"id"`
+	Slug   string `json:"slug"`
+	Title  string `json:"title"`
+	Url    string `json:"url"`
+	Banner string `json:"banner"`
+}
+
 type TaxonomyResults []TaxonomyResult
 
 type ContentResultUser struct {
@@ -102,7 +114,7 @@ type ContentItemResult struct {
 	Title              string                         `json:"title"`
 	TitleTranslated    bool                           `json:"title_translated,omitempty"`
 	Description        *string                        `json:"description,omitempty"`
-	Channel            *TaxonomyResult                `json:"channel,omitempty"`
+	Channel            *ChannelShortResult            `json:"channel,omitempty"`
 	Content            *string                        `json:"content,omitempty"`
 	Link               *string                        `json:"link,omitempty"`
 	CreatedAt          time.Time                      `json:"created_at"`
@@ -144,7 +156,7 @@ type ContentResult struct {
 	Title              string                         `json:"title"`
 	TitleTranslated    bool                           `json:"title_translated,omitempty"`
 	Description        *string                        `json:"description,omitempty"`
-	Channel            *TaxonomyResult                `json:"channel,omitempty"`
+	Channel            *ChannelShortResult            `json:"channel,omitempty"`
 	Content            *string                        `json:"content,omitempty"`
 	Link               *string                        `json:"link,omitempty"`
 	CreatedAt          time.Time                      `json:"created_at"`
@@ -234,8 +246,10 @@ func (c ContentItemResult) GetThumbFormat(thumbFormatName ...string) (res ThumbF
 	res = c.ThumbFormats[0]
 	if len(thumbFormatName) > 0 {
 		for _, name := range thumbFormatName {
+			name := name
 			if f, ok := lo.Find(c.ThumbFormats, func(tf ThumbFormat) bool { return tf.Name == name }); ok {
-				return f
+				res = f
+				return
 			}
 		}
 	}
@@ -398,8 +412,10 @@ func (c ContentResult) GetThumbFormat(thumbFormatName ...string) (res ThumbForma
 	res = c.ThumbFormats[0]
 	if len(thumbFormatName) > 0 {
 		for _, name := range thumbFormatName {
+			name := name
 			if f, ok := lo.Find(c.ThumbFormats, func(tf ThumbFormat) bool { return tf.Name == name }); ok {
-				return f
+				res = f
+				return
 			}
 		}
 	}

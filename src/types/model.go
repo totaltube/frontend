@@ -47,8 +47,10 @@ func (c ModelResult) GetThumbFormat(thumbFormatName ...string) (res ThumbFormat)
 	res = c.ThumbFormats[0]
 	if len(thumbFormatName) > 0 {
 		for _, name := range thumbFormatName {
+			name := name
 			if f, ok := lo.Find(c.ThumbFormats, func(tf ThumbFormat) bool { return tf.Name == name }); ok {
-				return f
+				res = f
+				return
 			}
 		}
 	}

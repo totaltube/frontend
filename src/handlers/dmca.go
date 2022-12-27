@@ -93,7 +93,8 @@ var Dmca = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	renderCaptcha := session.DmcaAmount > internal.Config.Frontend.MaxDmcaMinute
 	cacheKey := "dmca:" + hostName + ":" + langId + ":" + strconv.FormatBool(isOk) + ":" + strconv.FormatBool(renderCaptcha)
 	parsed, err := site.ParseTemplate("dmca", path, config, customContext, nocache, cacheKey, cacheTtl,
-		func(ctx pongo2.Context) (pongo2.Context, error) {
+		func() (pongo2.Context, error) {
+			ctx := pongo2.Context{}
 			ctx["ok"] = isOk
 			ctx["render_captcha"] = renderCaptcha
 			return ctx, nil

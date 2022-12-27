@@ -103,8 +103,8 @@ func (f *fetchRequest) WithFormData(data map[string]interface{}) *fetchRequest {
 	return f
 }
 
-func (f *fetchRequest) WithTimeout(timeout time.Duration) *fetchRequest {
-	f.timeout = timeout
+func (f *fetchRequest) WithTimeout(seconds int64) *fetchRequest {
+	f.timeout = time.Duration(seconds) * time.Second
 	return f
 }
 

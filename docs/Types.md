@@ -17,7 +17,7 @@ Type fields:
 * `Title` string - content title
 * `TitleTranslated` boolean - if true, the `Title` is translated to requested language.
 * `Description` string - content description
-* `Channel` [TaxonomyResult](#taxonomyresult) - content channel
+* `Channel` [ChannelShortResult](#channelshortresult) - content channel
 * `Link` string - for `video-link` type this field will contain link to video
 * `CreatedAt` time.Time - actual content creation time
 * `Dated` time.Time - appointed content creation time
@@ -74,6 +74,14 @@ The type has the following fields:
 * `Id` integer - numeric ID of category, model or channel
 * `Slug` string - slug of category, model or channel
 * `Title` string - title of category, model or channel
+
+### ChannelShortResult
+The type has the following fields:
+* `Id` integer - numeric ID of channel
+* `Slug` string - slug of channel
+* `Title` string - title of channel
+* `Url` string - url of channel
+* `Banner` string - banner of channel
 
 ### ContentDuration
 This type itself is integer, holds duration in seconds and can be used directly as integer. Also, this type has these functions:
@@ -185,6 +193,8 @@ The type has the following fields:
 * `TitleTranslated` boolean - true if channel title has translation.
 * `Description` string - channel description
 * `Tags` array of strings - channel tags
+* `Url` string - url of channel if set
+* `Banner` string - banner of channel if set
 * `Dated` time.Time - channel dated time
 * `CreatedAt` time.Time - channel actual creation time
 * `Total` integer - total amount of content in this channel.

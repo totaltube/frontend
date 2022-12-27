@@ -319,7 +319,8 @@ func Output404(w http.ResponseWriter, r *http.Request, errMessage string) {
 	cacheKey := fmt.Sprintf("404:%s:%s", langId, helpers.Md5Hash(errMessage))
 	cacheTtl := time.Minute * 5
 	parsed, err := site.ParseTemplate("404", path, config, customContext, nocache, cacheKey, cacheTtl,
-		func(ctx pongo2.Context) (pongo2.Context, error) {
+		func() (pongo2.Context, error) {
+			ctx := pongo2.Context{}
 			return ctx, nil
 		}, w, r)
 	if err != nil {
@@ -340,7 +341,8 @@ func Output500(w http.ResponseWriter, r *http.Request, err error) {
 	cacheTtl := time.Minute * 5
 	var parsed []byte
 	parsed, err = site.ParseTemplate("500", path, config, customContext, nocache, cacheKey, cacheTtl,
-		func(ctx pongo2.Context) (pongo2.Context, error) {
+		func() (pongo2.Context, error) {
+			ctx := pongo2.Context{}
 			return ctx, nil
 		}, w, r)
 	if err != nil {

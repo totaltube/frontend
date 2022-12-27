@@ -12,8 +12,10 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 	"github.com/pkg/errors"
+	"github.com/segmentio/encoding/json"
 
 	"sersh.com/totaltube/frontend/api"
+	"sersh.com/totaltube/frontend/db"
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/internal"
 	"sersh.com/totaltube/frontend/site"
@@ -40,15 +42,23 @@ var VideoEmbed = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	)
 	cacheTtl := time.Minute * 30
 	parsed, err := site.ParseTemplate("video-embed", path, config, customContext, nocache, cacheKey, cacheTtl,
-		func(ctx pongo2.Context) (pongo2.Context, error) {
+		func() (pongo2.Context, error) {
+			ctx := pongo2.Context{}
 			// getting category information from cache or from api
-			var results *types.ContentItemResult
+			var results = new(types.ContentItemResult)
 			var err error
-			results, err = api.ContentItem(hostName, langId, slug, id, true, 0, groupId)
+			var response json.RawMessage
+			response, err = db.GetCachedTimeout(cacheKey+":data", cacheTtl, cacheTtl, func() ([]byte, error) {
+				return api.ContentItemRaw(hostName, langId, slug, id, true, 0, groupId)
+			}, nocache)
 			if err != nil {
 				if strings.Contains(err.Error(), "not found") {
 					return ctx, errors.New("content item not found")
 				}
+				return ctx, err
+			}
+			err = json.Unmarshal(response, results)
+			if err != nil {
 				return ctx, err
 			}
 			if results.Type != "video" {
