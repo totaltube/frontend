@@ -35,7 +35,7 @@ func ContentItemRaw(siteDomain, lang, slug string, id int64,omitRelatedForLink b
 		"group_id": []string{strconv.FormatInt(groupId, 10)},
 	})
 	if err != nil {
-		log.Println(err)
+		log.Println(err, "slug: ", slug, "id: ", id)
 	}
 	return
 }

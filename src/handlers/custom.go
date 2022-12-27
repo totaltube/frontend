@@ -1,8 +1,10 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
@@ -50,6 +52,12 @@ var Custom = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
+		if strings.Contains(err.Error(), "not found") {
+			log.Println(err)
+			Output404(w, r, err.Error())
+			return
+		}
+		log.Println(err)
 		Output500(w, r, err)
 		return
 	}

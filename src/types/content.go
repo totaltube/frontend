@@ -92,6 +92,15 @@ type TaxonomyResult struct {
 	Slug  string `json:"slug"`
 	Title string `json:"title"`
 }
+
+type ChannelShortResult struct {
+	Id     int32  `json:"id"`
+	Slug   string `json:"slug"`
+	Title  string `json:"title"`
+	Url    string `json:"url"`
+	Banner string `json:"banner"`
+}
+
 type TaxonomyResults []TaxonomyResult
 
 type ContentResultUser struct {
@@ -105,7 +114,7 @@ type ContentItemResult struct {
 	Title              string                         `json:"title"`
 	TitleTranslated    bool                           `json:"title_translated,omitempty"`
 	Description        *string                        `json:"description,omitempty"`
-	Channel            *TaxonomyResult                `json:"channel,omitempty"`
+	Channel            *ChannelShortResult            `json:"channel,omitempty"`
 	Content            *string                        `json:"content,omitempty"`
 	Link               *string                        `json:"link,omitempty"`
 	CreatedAt          time.Time                      `json:"created_at"`
@@ -147,7 +156,7 @@ type ContentResult struct {
 	Title              string                         `json:"title"`
 	TitleTranslated    bool                           `json:"title_translated,omitempty"`
 	Description        *string                        `json:"description,omitempty"`
-	Channel            *TaxonomyResult                `json:"channel,omitempty"`
+	Channel            *ChannelShortResult            `json:"channel,omitempty"`
 	Content            *string                        `json:"content,omitempty"`
 	Link               *string                        `json:"link,omitempty"`
 	CreatedAt          time.Time                      `json:"created_at"`

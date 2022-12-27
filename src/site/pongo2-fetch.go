@@ -69,7 +69,7 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 			if t.String() != "" {
 				timeout := types.ParseHumanDuration(t.String())
 				if timeout > 0 {
-					f.WithTimeout(timeout)
+					f.WithTimeout(int64(timeout/time.Second))
 				}
 			}
 		}

@@ -53,7 +53,7 @@ func InitRouter() http.Handler {
 		}
 		hr := chi.NewRouter()
 		hr.Use(middleware.Recoverer)
-		hr.Use(middleware.Timeout(8 * time.Second))
+		hr.Use(middleware.Timeout(60 * time.Second))
 		hr.Use(middleware.GetHead)
 		hr.Use(middleware.StripSlashes)
 		hr.Use(func(next http.Handler) http.Handler {
