@@ -56,6 +56,8 @@ func (s *Size) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+type CustomData map[string]interface{}
+
 type ThumbFormat struct {
 	Name   string `json:"name"`
 	Width  int64  `json:"width"`
@@ -133,7 +135,9 @@ type ContentItemResult struct {
 	ThumbsPath         string                         `json:"thumbs_path"`          // path to thumbs on thumb server
 	ThumbRetina        bool                           `json:"thumb_retina"`         // deprecated
 	ThumbWidth         int32                          `json:"thumb_width"`          // deprecated
+	ThumbsWidth        int32                          `json:"thumbs_width"`         // deprecated
 	ThumbHeight        int32                          `json:"thumb_height"`         // deprecated
+	ThumbsHeight       int32                          `json:"thumbs_height"`        // deprecated
 	ThumbsAmount       int32                          `json:"thumbs_amount"`        // deprecated
 	ThumbFormat        string                         `json:"thumb_format"`         // deprecated
 	ThumbType          string                         `json:"thumb_type"`           // deprecated
@@ -147,6 +151,7 @@ type ContentItemResult struct {
 	Related            []*ContentResult               `json:"related,omitempty"` // similar content
 	SourceSiteId       string                         `json:"source_site_id"`
 	SourceSiteUniqueId string                         `json:"source_site_unique_id"`
+	CustomData         CustomData                     `json:"custom_data"`
 	selectedThumb      *int
 }
 
@@ -175,7 +180,9 @@ type ContentResult struct {
 	ThumbFormats       []ThumbFormat                  `json:"thumb_formats"`
 	ThumbRetina        bool                           `json:"thumb_retina"`         // deprecated
 	ThumbWidth         int32                          `json:"thumb_width"`          // deprecated
+	ThumbsWidth        int32                          `json:"thumbs_width"`         // deprecated
 	ThumbHeight        int32                          `json:"thumb_height"`         // deprecated
+	ThumbsHeight       int32                          `json:"thumbs_height"`        // deprecated
 	ThumbsAmount       int32                          `json:"thumbs_amount"`        // deprecated
 	ThumbFormat        string                         `json:"thumb_format"`         // deprecated
 	ThumbType          string                         `json:"thumb_type"`           // deprecated
@@ -190,6 +197,7 @@ type ContentResult struct {
 	Views              int32                          `json:"views"`
 	SourceSiteId       string                         `json:"source_site_id"`
 	SourceSiteUniqueId string                         `json:"source_site_unique_id"`
+	CustomData         CustomData                     `json:"custom_data"`
 	selectedThumb      *int
 }
 
@@ -207,10 +215,18 @@ type ContentResults struct {
 func (cd ContentDuration) Format() string {
 	var d = time.Duration(cd) * time.Second
 	d = d.Round(time.Second)
+	if d < time.Hour {
+		m := d / time.Minute
+		d -= m * time.Minute
+		s := d / time.Second
+		return fmt.Sprintf("%02d:%02d", m, s)
+	}
+	h := d / time.Hour
+	d -= h * time.Hour
 	m := d / time.Minute
 	d -= m * time.Minute
 	s := d / time.Second
-	return fmt.Sprintf("%02d:%02d", m, s)
+	return fmt.Sprintf("%02d:%02d:%02d", h, m, s)
 }
 
 func (tr *TaxonomyResults) Scan(src interface{}) error {
@@ -237,6 +253,18 @@ func (c *ContentResultUser) Scan(src interface{}) error {
 
 func (c ContentResultUser) Value() (driver.Value, error) {
 	return json.Marshal(c)
+}
+
+func (c ContentItemResult) HasCustomField(name string) bool {
+	_, ok := c.CustomData[name]
+	return ok
+}
+
+func (c ContentItemResult) CustomField(name string) interface{} {
+	if data, ok := c.CustomData[name]; ok {
+		return data
+	}
+	return nil
 }
 
 func (c ContentItemResult) GetThumbFormat(thumbFormatName ...string) (res ThumbFormat) {
@@ -403,6 +431,18 @@ func (c ContentItemResult) MainCategorySlug(defaultName ...string) string {
 		return def
 	}
 	return c.Categories[0].Slug
+}
+
+func (c ContentResult) HasCustomField(name string) bool {
+	_, ok := c.CustomData[name]
+	return ok
+}
+
+func (c ContentResult) CustomField(name string) interface{} {
+	if data, ok := c.CustomData[name]; ok {
+		return data
+	}
+	return nil
 }
 
 func (c ContentResult) GetThumbFormat(thumbFormatName ...string) (res ThumbFormat) {

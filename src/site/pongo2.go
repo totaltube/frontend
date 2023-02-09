@@ -150,7 +150,7 @@ func InitPongo2() {
 				OrigError: errors.New("translate filter needs one param - language code to translate to"),
 			}
 		}
-		out = pongo2.AsValue(deferredTranslate("en", param.String(), in.String(), "page-text"))
+		out = pongo2.AsValue(deferredTranslate("en", param.String(), in.String(), "page-text", false))
 		return
 	})
 	if err != nil {

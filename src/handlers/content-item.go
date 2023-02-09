@@ -64,6 +64,15 @@ var ContentItem = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 			if err != nil {
 				return ctx, err
 			}
+			format := results.GetThumbFormat()
+			results.ThumbFormat = format.Name
+			results.ThumbsWidth = int32(format.Width)
+			results.ThumbsHeight = int32(format.Height)
+			results.ThumbsAmount = int32(format.Amount)
+			results.ThumbRetina = format.Retina
+			results.ThumbType = format.Type
+			results.ThumbWidth = results.ThumbsHeight
+			results.ThumbHeight = results.ThumbsHeight
 			ctx["content_item"] = results
 			ctx["related"] = results.Related
 			return ctx, nil

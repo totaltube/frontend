@@ -26,6 +26,7 @@ func generateCustomContext(w http.ResponseWriter, r *http.Request, templateName 
 	config := r.Context().Value("config").(*site.Config)
 	hostName := r.Context().Value("hostName").(string)
 	langId := r.Context().Value("lang").(string)
+	refreshTranslations := r.URL.Query().Get(config.Params.Nocache) == "3"
 	page, _ := strconv.ParseInt(helpers.FirstNotEmpty(chi.URLParam(r, "page"), r.URL.Query().Get(config.Params.Page), "1"), 10, 16)
 	if page <= 0 {
 		page = 1
@@ -260,6 +261,7 @@ func generateCustomContext(w http.ResponseWriter, r *http.Request, templateName 
 		"route":               route,
 		"country_group":       countryGroup,
 		"group_id":            countryGroup.Id,
+		"refreshTranslations": refreshTranslations,
 		"get_content":         getContentFunc(hostName, langId, userAgent, ip, groupId),
 		"get_top_content":     getTopContentFunc(hostName, langId, groupId),
 		"get_top_categories":  getTopCategoriesFunc(hostName, langId, groupId),

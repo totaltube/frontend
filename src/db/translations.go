@@ -44,6 +44,16 @@ func GetTranslation(from, to, text string) (translation string) {
 	return
 }
 
+func DeleteTranslation(from, to, text string) {
+	key := []byte(translationsPrefix + from + "_" + to + "_" + helpers.Md5Hash(text))
+	triedKey := []byte(translationsTriedPrefix + from + "_" + to + "_" + helpers.Md5Hash(text))
+	_ = bdb.Update(func(txn *badger.Txn) error {
+		_ = txn.Delete(key)
+		_ = txn.Delete(triedKey)
+		return nil
+	})
+}
+
 func SaveTranslation(from, to, text, translation string) {
 	key := []byte(translationsPrefix + from + "_" + to + "_" + helpers.Md5Hash(text))
 	_ = bdb.Update(func(txn *badger.Txn) error {
@@ -58,15 +68,15 @@ func SaveDeferredTranslation(from, to, text, Type string) {
 	triedKey := []byte(translationsTriedPrefix + from + "_" + to + "_" + helpers.Md5Hash(text))
 	err := bdb.Update(func(txn *badger.Txn) error {
 		if _, err := txn.Get(triedKey); err == nil {
-			// Если уже пытались перевести это дело, то ничего не сохраняем, а ждем когда пройдет ttl последней попытки
+			// If we already tried to translate this, then not saving anything, waiting when last attempt ttl will expire
 			return nil
 		}
 		if _, err := txn.Get(key); err == nil {
-			// race condition - ключ уже есть, хотя он по идее не должен быть, ибо нанотайм
-			// тогда попробуем еще раз
+			// race condition - the key is already here, but it shouldn`t
+			// trying again then
 			return raceError
 		}
-		_ = txn.SetEntry(badger.NewEntry(triedKey, []byte(now)).WithTTL(time.Minute * 60)) // Минимум раз в час пробуем еще раз перевести
+		_ = txn.SetEntry(badger.NewEntry(triedKey, []byte(now)).WithTTL(time.Minute * 60)) // After one hour will try to translate again
 		_ = txn.SetEntry(badger.NewEntry(key, helpers.ToJSON(translationDoc{
 			From: from,
 			To:   to,
@@ -128,7 +138,7 @@ func doTranslations() {
 					return err
 				}
 				Type := doc.Type
-				if !lo.Contains(types.TranslationTypes, Type){
+				if !lo.Contains(types.TranslationTypes, Type) {
 					Type = "page-text"
 				}
 				toTranslate = append(toTranslate, toTranslateT{

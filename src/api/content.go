@@ -60,6 +60,12 @@ func Content(siteDomain string, params ContentParams) (results *types.ContentRes
 	}
 	results = new(types.ContentResults)
 	err = json.Unmarshal(rawResponse, results)
+	if err == nil {
+		for k := range results.Items {
+			results.Items[k].ThumbsHeight = results.Items[k].ThumbHeight
+			results.Items[k].ThumbsWidth = results.Items[k].ThumbWidth
+		}
+	}
 	return
 }
 
