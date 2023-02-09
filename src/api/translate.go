@@ -1,8 +1,10 @@
 package api
 
 import (
-	"github.com/segmentio/encoding/json"
 	"log"
+
+	"github.com/segmentio/encoding/json"
+
 	"sersh.com/totaltube/frontend/types"
 )
 

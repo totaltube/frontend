@@ -17,6 +17,7 @@ var Custom = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	path := r.Context().Value("path").(string)
 	config := r.Context().Value("config").(*site.Config)
 	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))
+	hostName := r.Context().Value("hostName").(string)
 	templateName := r.Context().Value("custom_template_name").(string)
 	page, _ := strconv.ParseInt(helpers.FirstNotEmpty(chi.URLParam(r,"page"), r.URL.Query().Get(config.Params.Page), "1"), 10, 16)
 	if page <= 0 {
@@ -53,11 +54,11 @@ var Custom = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if strings.Contains(err.Error(), "not found") {
-			log.Println(err)
+			log.Println(hostName, err)
 			Output404(w, r, err.Error())
 			return
 		}
-		log.Println(err)
+		log.Println(hostName, err)
 		Output500(w, r, err)
 		return
 	}

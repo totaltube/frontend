@@ -52,6 +52,7 @@ var iframeHeightRegex = regexp.MustCompile(`(?i)<\s*iframe[^>]*\sheight\s*=\s*['
 var iframeHttpReplace = regexp.MustCompile(`(?i)^http://`)
 
 func generateContext(name string, sitePath string, customContext pongo2.Context) pongo2.Context {
+	refreshTranslations, _ := customContext["refreshTranslations"].(bool)
 	var ctx = pongo2.Context{
 		"flate":        helpers.Flate,
 		"deflate":      helpers.Deflate,
@@ -72,17 +73,17 @@ func generateContext(name string, sitePath string, customContext pongo2.Context)
 		"sha512_raw":   helpers.Sha512HashRaw,
 		"time8601":     helpers.Time8601,
 		"duration8601": helpers.Duration8601,
-		"translate": func(text string) string {
-			return deferredTranslate("en", customContext["lang"].(*types.Language).Id, text, "page-text")
+		"translate": func(text interface{}) string {
+			return deferredTranslate("en", customContext["lang"].(*types.Language).Id, text, "page-text", refreshTranslations)
 		},
-		"translate_title": func(text string) string {
-			return deferredTranslate("en", customContext["lang"].(*types.Language).Id, text, "content-title")
+		"translate_title": func(text interface{}) string {
+			return deferredTranslate("en", customContext["lang"].(*types.Language).Id, text, "content-title", refreshTranslations)
 		},
-		"translate_description": func(text string) string {
-			return deferredTranslate("en", customContext["lang"].(*types.Language).Id, text, "content-description")
+		"translate_description": func(text interface{}) string {
+			return deferredTranslate("en", customContext["lang"].(*types.Language).Id, text, "content-description", refreshTranslations)
 		},
-		"translate_query": func(text string) string {
-			return deferredTranslate("en", customContext["lang"].(*types.Language).Id, text, "query")
+		"translate_query": func(text interface{}) string {
+			return deferredTranslate("en", customContext["lang"].(*types.Language).Id, text, "query", refreshTranslations)
 		},
 		"static": func(filePaths ...string) string {
 			filePath := strings.Join(filePaths, "")

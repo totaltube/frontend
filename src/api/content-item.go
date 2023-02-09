@@ -10,7 +10,7 @@ import (
 	"sersh.com/totaltube/frontend/types"
 )
 
-func ContentItem(siteDomain, lang, slug string, id int64,omitRelatedForLink bool, relatedAmount int64, groupId int64) (
+func ContentItem(siteDomain, lang, slug string, id int64, omitRelatedForLink bool, relatedAmount int64, groupId int64) (
 	results *types.ContentItemResult, err error) {
 	var response json.RawMessage
 	response, err = ContentItemRaw(siteDomain, lang, slug, id, omitRelatedForLink, relatedAmount, groupId)
@@ -22,10 +22,19 @@ func ContentItem(siteDomain, lang, slug string, id int64,omitRelatedForLink bool
 	if err != nil {
 		log.Println(err, string(response))
 	}
+	format := results.GetThumbFormat()
+	results.ThumbFormat = format.Name
+	results.ThumbsWidth = int32(format.Width)
+	results.ThumbsHeight = int32(format.Height)
+	results.ThumbsAmount = int32(format.Amount)
+	results.ThumbRetina = format.Retina
+	results.ThumbType = format.Type
+	results.ThumbWidth = results.ThumbsHeight
+	results.ThumbHeight = results.ThumbsHeight
 	return
 }
 
-func ContentItemRaw(siteDomain, lang, slug string, id int64,omitRelatedForLink bool, relatedAmount int64, groupId int64) (response json.RawMessage, err error) {
+func ContentItemRaw(siteDomain, lang, slug string, id int64, omitRelatedForLink bool, relatedAmount int64, groupId int64) (response json.RawMessage, err error) {
 	response, err = ApiRequest(siteDomain, methodGet, uriContentItem, url.Values{
 		"lang":     []string{lang},
 		"slug":     []string{slug},
