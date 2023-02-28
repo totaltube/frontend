@@ -1,11 +1,13 @@
 package db
 
 import (
-	"github.com/dgraph-io/badger/v3"
-	"github.com/segmentio/encoding/json"
+	"encoding/json"
 	"log"
-	"sersh.com/totaltube/frontend/helpers"
 	"time"
+
+	"github.com/dgraph-io/badger/v3"
+
+	"sersh.com/totaltube/frontend/helpers"
 )
 
 const (

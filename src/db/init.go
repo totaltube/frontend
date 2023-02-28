@@ -1,12 +1,14 @@
 package db
 
 import (
-	"github.com/dgraph-io/badger/v3"
 	"log"
 	"math/rand"
-	"sersh.com/totaltube/frontend/internal"
 	"strings"
 	"time"
+
+	"github.com/dgraph-io/badger/v3"
+
+	"sersh.com/totaltube/frontend/internal"
 )
 
 var bdb *badger.DB
@@ -22,8 +24,12 @@ func InitDB() {
 				WithSyncWrites(false).
 				WithValueLogMaxEntries(100000).
 				WithValueLogFileSize(1e+7).
+				WithIndexCacheSize(100 * 1e+6).
+				WithBlockCacheSize(50 * 1e+6).
+				WithNumMemtables(2).
 				WithLoggingLevel(badger.WARNING),
 		)
+
 		if err != nil {
 			// Waiting until not closed process will close the database.
 			if strings.Contains(err.Error(), "Cannot acquire directory lock") {

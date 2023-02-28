@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -98,6 +100,26 @@ func generateContext(name string, sitePath string, customContext pongo2.Context)
 		"now": time.Now(),
 		"len": func(items *pongo2.Value) int {
 			return items.Len()
+		},
+		"link": func(route string, args ...interface{}) string {
+			config, _ := customContext["config"].(*Config)
+			pageTemplate, _ := customContext["page_template"].(string)
+			lang, _ := customContext["lang"].(*types.Language)
+			if route == "current" {
+				if args == nil {
+					args = make([]interface{}, 0)
+				}
+				route = customContext["route"].(string)
+				currentParams := customContext["params"].(map[string]string)
+				for k, v := range currentParams {
+					args = append(args, k, v)
+				}
+				queryParams := url.Values(http.Header(customContext["canonical_query"].(url.Values)).Clone())
+				for k, v := range queryParams {
+					args = append(args, k, v)
+				}
+			}
+			return GetLink(route, config, pageTemplate, lang.Id, args...)
 		},
 		"time_ago": func(t time.Time) string {
 			langId := strings.ReplaceAll(customContext["lang"].(*types.Language).Id, "-", "_")

@@ -1,6 +1,7 @@
 package site
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -9,7 +10,6 @@ import (
 	"sync"
 
 	"github.com/evanw/esbuild/pkg/api"
-	"github.com/segmentio/encoding/json"
 )
 
 var rebuildJSMutex sync.Mutex

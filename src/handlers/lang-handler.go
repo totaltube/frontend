@@ -28,7 +28,7 @@ func LangHandlers(hr *chi.Mux, route string, siteConfig *site.Config, handler ht
 			preparedRoute = strings.ReplaceAll(siteConfig.Routes.LanguageTemplate, "{lang}", langId)
 			preparedRoute = strings.ReplaceAll(preparedRoute, "{route}", route)
 		}
-		if len(preparedRoute) > 1  {
+		if len(preparedRoute) > 1 {
 			preparedRoute = strings.TrimSuffix(preparedRoute, "/")
 		}
 		hr.Handle(preparedRoute, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -101,7 +101,11 @@ func LangHandlers(hr *chi.Mux, route string, siteConfig *site.Config, handler ht
 					} else {
 						redirectUri = strings.ReplaceAll(siteConfig.Routes.LanguageTemplate, "{lang}", lang.Id)
 					}
-					redirectUri = strings.ReplaceAll(redirectUri, "{route}", route)
+					var uri = r.URL.Path
+					if r.URL.RawQuery != "" {
+						uri += "?" + r.URL.RawQuery
+					}
+					redirectUri = strings.ReplaceAll(redirectUri, "{route}", uri)
 					http.Redirect(w, r, redirectUri, 302)
 					return
 				}))

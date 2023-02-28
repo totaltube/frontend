@@ -1,12 +1,12 @@
 package api
 
 import (
+	"encoding/json"
 	"log"
 	"net/url"
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/segmentio/encoding/json"
 
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/internal"

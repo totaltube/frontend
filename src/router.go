@@ -231,5 +231,8 @@ func InitRouter() http.Handler {
 		host.handler.ServeHTTP(w, r.WithContext(ctx))
 		return
 	}))
+	if os.Getenv("GO_ENV") == "debug" {
+		r.Mount("/_debug", middleware.Profiler())
+	}
 	return r
 }

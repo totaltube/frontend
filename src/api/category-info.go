@@ -1,10 +1,11 @@
 package api
 
 import (
-	"github.com/segmentio/encoding/json"
+	"encoding/json"
 	"net/url"
-	"sersh.com/totaltube/frontend/types"
 	"strconv"
+
+	"sersh.com/totaltube/frontend/types"
 )
 
 func CategoryInfo(siteDomain, lang string, categoryId int64, categorySlug string) (result *types.CategoryResult, rawResponse json.RawMessage, err error) {
