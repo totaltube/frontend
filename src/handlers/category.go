@@ -77,8 +77,8 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	if page > 1 || filtered {
 		cacheTtl = time.Minute * 5
 	}
-	ip := r.Context().Value("ip").(string)
-	groupId := internal.DetectCountryGroup(net.ParseIP(ip)).Id
+	ip := net.ParseIP(r.Context().Value("ip").(string))
+	groupId := internal.DetectCountryGroup(ip).Id
 	userAgent := r.Header.Get("User-Agent")
 	parsed, err := site.ParseTemplate("category", path, config, customContext, nocache, cacheKey, cacheTtl,
 		func() (pongo2.Context, error) {
@@ -100,13 +100,14 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				log.Println(err)
 				return ctx, err
 			}
-			var results  = new(types.ContentResults)
+			var results = new(types.ContentResults)
 			if filtered {
 				var response []byte
 				response, err = db.GetCachedTimeout(cacheKey+":data", cacheTtl, cacheTtl, func() ([]byte, error) {
 					return api.ContentRaw(hostName, api.ContentParams{
 						Lang:         langId,
 						Page:         page,
+						Ip:           ip,
 						CategoryId:   categoryId,
 						CategorySlug: categorySlug,
 						ChannelId:    channelId,

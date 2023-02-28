@@ -79,7 +79,7 @@ func GetLink(route string, config *Config, pageTemplate string, langId string, a
 			params = fastRemove(params, index)
 		}
 		var categories []types.TaxonomyResult
-		if categoriesParam, index, ok := lo.FindIndexOf(params, func(p linkParam) bool { return p.Type == "categories"}); ok {
+		if categoriesParam, index, ok := lo.FindIndexOf(params, func(p linkParam) bool { return p.Type == "categories" }); ok {
 			if categories, ok = categoriesParam.Value.(types.TaxonomyResults); ok {
 				fastRemove(params, index)
 			}
@@ -126,7 +126,7 @@ func GetLink(route string, config *Config, pageTemplate string, langId string, a
 		}
 	case "content", "content-item", "content_item":
 		var categories []types.TaxonomyResult
-		if categoriesParam, index, ok := lo.FindIndexOf(params, func(p linkParam) bool { return p.Type == "categories"}); ok {
+		if categoriesParam, index, ok := lo.FindIndexOf(params, func(p linkParam) bool { return p.Type == "categories" }); ok {
 			if categories, ok = categoriesParam.Value.(types.TaxonomyResults); ok {
 				fastRemove(params, index)
 			}
@@ -141,15 +141,16 @@ func GetLink(route string, config *Config, pageTemplate string, langId string, a
 			params = fastRemove(params, index)
 		}
 		if categoryParam, index, ok := lo.FindIndexOf(params, func(p linkParam) bool { return p.Type == "category" }); ok {
-			link = strings.ReplaceAll(link, "{category}", fmt.Sprintf("%v", categoryParam.Value))
-			params = fastRemove(params, index)
-		} else {
-			category := "default"
-			if len(categories) > 0 {
-				category = categories[0].Slug
+			if categoryParam.Value != nil {
+				link = strings.ReplaceAll(link, "{category}", fmt.Sprintf("%v", categoryParam.Value))
 			}
-			link = strings.ReplaceAll(link, "{category}", category)
+			params = fastRemove(params, index)
 		}
+		category := "default"
+		if len(categories) > 0 {
+			category = categories[0].Slug
+		}
+		link = strings.ReplaceAll(link, "{category}", category)
 	default:
 		route = strings.TrimPrefix(route, "custom.")
 		if r, ok := config.Routes.Custom[route]; ok {

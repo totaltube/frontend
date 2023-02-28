@@ -484,6 +484,15 @@ It's deferred translate, so if the text is not translated yet, it will show untr
   The result is of type [ContentResults](Types.md#contentresults)
 * `add_random_content` function to add random content to fetched content items. First argument is array of [content items](Types.md#contentresult) and the second is amount of items required in final result. Second argument can be omitted to use default amount for category layout. Result is array of [ContentResult](Types.md#contentresult).
 * `merge` - function to merge two arrays into one by appending second array to the first. The result is the merged array.
+* `link` - function to get URL to some site page or to any external page with passed params. Same as [`{% link %}`](#-link-) tag. First argument is the route name or any external URL. All other parameters - is pairs of key/value for route params and querystring params. Absolutely the same as with [`{% link %}`](#-link-) tag. And special params are `out` as `true` - to generate link to count ctr and `with_trade` as `true` to generate link to trade with redirection to desired page. Examples of using `link`:
+```javascript
+const url = link("content", 
+  "slug", "some-content-slug", 
+  "id", 12345, 
+  "category", "some-category", 
+  "with_trade", true,
+)
+```
 
 
 ## Variables, available in template files and custom functions.

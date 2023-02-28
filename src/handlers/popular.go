@@ -41,8 +41,8 @@ var Popular = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	channelSlug := r.URL.Query().Get(config.Params.ChannelSlug)
 	durationFrom, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.DurationGte), 10, 64)
 	durationTo, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.DurationLt), 10, 64)
-	ip := r.Context().Value("ip").(string)
-	groupId := internal.DetectCountryGroup(net.ParseIP(ip)).Id
+	ip := net.ParseIP(r.Context().Value("ip").(string))
+	groupId := internal.DetectCountryGroup(ip).Id
 	customContext := generateCustomContext(w, r, "popular")
 	cacheKey := "popular:" + helpers.Md5Hash(
 		fmt.Sprintf("%s:%s:%d:%s:%d:%d:%s:%d:%d:%d:%s:%d",
@@ -61,6 +61,7 @@ var Popular = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				return api.ContentRaw(hostName, api.ContentParams{
 					Lang:         langId,
 					Page:         page,
+					Ip:           ip,
 					CategoryId:   categoryId,
 					CategorySlug: categorySlug,
 					ChannelId:    channelId,
