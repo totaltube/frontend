@@ -1,10 +1,9 @@
 package api
 
 import (
+	"encoding/json"
 	"net/url"
 	"strconv"
-
-	"github.com/segmentio/encoding/json"
 
 	"sersh.com/totaltube/frontend/types"
 )

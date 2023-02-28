@@ -1,13 +1,12 @@
 package db
 
 import (
+	"encoding/json"
 	"log"
 	"math/rand"
 	"strconv"
 	"sync"
 	"time"
-
-	"github.com/segmentio/encoding/json"
 
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/helpers"

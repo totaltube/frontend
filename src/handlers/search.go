@@ -12,7 +12,6 @@ import (
 	"github.com/flosch/pongo2/v4"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
-	"github.com/pkg/errors"
 
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/helpers"
@@ -37,7 +36,8 @@ var Search = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		searchQuery = r.URL.Query().Get(config.Params.SearchQuery)
 	}
 	if searchQuery == "" {
-		panic(errors.New("search query not set"))
+		Output404(w, r, "search query not set")
+		return
 	}
 	isNatural, _ := strconv.ParseBool(config.Params.SearchNatural)
 	modelId, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.ModelId), 10, 64)

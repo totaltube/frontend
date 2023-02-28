@@ -1,10 +1,11 @@
 package api
 
 import (
-	"github.com/segmentio/encoding/json"
+	"encoding/json"
 	"net/url"
-	"sersh.com/totaltube/frontend/types"
 	"strconv"
+
+	"sersh.com/totaltube/frontend/types"
 )
 
 func ChannelInfo(siteDomain, lang string, channelInfo int64, channelSlug string) (result *types.ChannelResult, rawResponse json.RawMessage, err error) {

@@ -1,12 +1,13 @@
 package helpers
 
 import (
+	"encoding/json"
 	"fmt"
-	"github.com/segmentio/encoding/json"
 	"log"
-	"sersh.com/totaltube/frontend/types"
 	"strings"
 	"time"
+
+	"sersh.com/totaltube/frontend/types"
 )
 
 func ToJSON(doc interface{}) []byte {

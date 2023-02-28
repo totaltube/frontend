@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -12,7 +13,6 @@ import (
 	"github.com/flosch/pongo2/v4"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
-	"github.com/segmentio/encoding/json"
 
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/db"
@@ -63,11 +63,35 @@ var FakePlayer = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				return ctx, err
 			}
+			if slug != "" && results.Slug != slug {
+				// Rephrased title and slug, need to make a 301 redirect
+				categorySlug := "default"
+				if len(results.Categories) > 0 {
+					categorySlug = results.Categories[0].Slug
+				}
+				var args = make([]interface{}, 0, 10)
+				args = append(args,
+					"slug", results.Slug,
+					"id", results.Id,
+					"category", categorySlug,
+				)
+				for k := range r.URL.Query() {
+					args = append(args, k, r.URL.Query().Get(k))
+				}
+				return nil, redirectErr{
+					url: site.GetLink("content", config, "content-item", langId, args...),
+					code: 301,
+				}
+			}
 			ctx["content_item"] = results
 			ctx["related"] = results.Related
 			return ctx, nil
 		}, w, r)
 	if err != nil {
+		if rErr, ok := err.(redirectErr); ok {
+			http.Redirect(w, r, rErr.url, rErr.code)
+			return
+		}
 		if strings.Contains(err.Error(), "not found") {
 			Output404(w, r, err.Error())
 			return

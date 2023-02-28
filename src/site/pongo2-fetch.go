@@ -1,6 +1,7 @@
 package site
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -11,7 +12,6 @@ import (
 	"time"
 
 	"github.com/flosch/pongo2/v4"
-	"github.com/segmentio/encoding/json"
 	"github.com/stretchr/objx"
 
 	"sersh.com/totaltube/frontend/api"

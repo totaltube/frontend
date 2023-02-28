@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -14,12 +15,11 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/segmentio/encoding/json"
 
 	"sersh.com/totaltube/frontend/internal"
 )
 
-type fetchRequest struct {
+type FetchRequest struct {
 	method  string
 	url     string
 	headers map[string]string
@@ -28,7 +28,7 @@ type fetchRequest struct {
 	timeout time.Duration
 }
 
-func newFetchRequest(u string) *fetchRequest {
+func newFetchRequest(u string) *FetchRequest {
 	var headers = map[string]string{
 		"User-Agent": "Totaltube Frontend/1.0 (+https://totaltraffictrader.com/)",
 	}
@@ -37,7 +37,7 @@ func newFetchRequest(u string) *fetchRequest {
 		u = internal.Config.General.ApiUrl + "v1/" + u
 		headers["Authorization"] = internal.Config.General.ApiSecret
 	}
-	n := fetchRequest{
+	n := FetchRequest{
 		method:  "GET",
 		url:     u,
 		headers: headers,
@@ -48,44 +48,44 @@ func newFetchRequest(u string) *fetchRequest {
 	return &n
 }
 
-func (f *fetchRequest) WithMethod(method string) *fetchRequest {
+func (f *FetchRequest) WithMethod(method string) *FetchRequest {
 	f.method = strings.ToUpper(method)
 	return f
 }
 
-func (f *fetchRequest) WithUrl(url string) *fetchRequest {
+func (f *FetchRequest) WithUrl(url string) *FetchRequest {
 	f.url = url
 	return f
 }
 
-func (f *fetchRequest) WithHeader(headerName, headerValue string) *fetchRequest {
+func (f *FetchRequest) WithHeader(headerName, headerValue string) *FetchRequest {
 	f.headers[headerName] = headerValue
 	return f
 }
 
-func (f *fetchRequest) WithHeaders(headers map[string]string) *fetchRequest {
+func (f *FetchRequest) WithHeaders(headers map[string]string) *FetchRequest {
 	f.headers = headers
 	return f
 }
-func (f *fetchRequest) WithQueryParam(paramName string, paramValue string) *fetchRequest {
+func (f *FetchRequest) WithQueryParam(paramName string, paramValue string) *FetchRequest {
 	f.query[paramName] = []string{paramValue}
 	return f
 }
-func (f *fetchRequest) WithQueryString(querystring string) *fetchRequest {
+func (f *FetchRequest) WithQueryString(querystring string) *FetchRequest {
 	f.query, _ = url.ParseQuery(querystring)
 	return f
 }
-func (f *fetchRequest) WithQuery(query url.Values) *fetchRequest {
+func (f *FetchRequest) WithQuery(query url.Values) *FetchRequest {
 	f.query = query
 	return f
 }
 
-func (f *fetchRequest) WithRawData(data []byte) *fetchRequest {
+func (f *FetchRequest) WithRawData(data []byte) *FetchRequest {
 	f.data = data
 	return f
 }
 
-func (f *fetchRequest) WithJsonData(data interface{}) *fetchRequest {
+func (f *FetchRequest) WithJsonData(data interface{}) *FetchRequest {
 	f.data = data
 	f.headers["Content-Type"] = "application/json"
 	if f.method == "GET" {
@@ -94,7 +94,7 @@ func (f *fetchRequest) WithJsonData(data interface{}) *fetchRequest {
 	return f
 }
 
-func (f *fetchRequest) WithFormData(data map[string]interface{}) *fetchRequest {
+func (f *FetchRequest) WithFormData(data map[string]interface{}) *FetchRequest {
 	f.data = data
 	f.headers["Content-Type"] = "application/x-www-form-urlencoded;charset=UTF-8"
 	if f.method == "GET" {
@@ -103,12 +103,12 @@ func (f *fetchRequest) WithFormData(data map[string]interface{}) *fetchRequest {
 	return f
 }
 
-func (f *fetchRequest) WithTimeout(seconds int64) *fetchRequest {
+func (f *FetchRequest) WithTimeout(seconds int64) *FetchRequest {
 	f.timeout = time.Duration(seconds) * time.Second
 	return f
 }
 
-func (f *fetchRequest) Do() (response []byte, err error) {
+func (f *FetchRequest) Do() (response []byte, err error) {
 	client := http.Client{
 		Transport: &http.Transport{DisableKeepAlives: true, TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 		Timeout: f.timeout,
@@ -193,7 +193,7 @@ func (f *fetchRequest) Do() (response []byte, err error) {
 	return
 }
 
-func (f *fetchRequest) Json() (response map[string]interface{}) {
+func (f *FetchRequest) Json() (response map[string]interface{}) {
 	f.headers["Accept"] = "application/json"
 	bt, err := f.Do()
 	if err != nil {
@@ -208,7 +208,7 @@ func (f *fetchRequest) Json() (response map[string]interface{}) {
 	return
 }
 
-func (f *fetchRequest) Raw() []byte {
+func (f *FetchRequest) Raw() []byte {
 	if res, err := f.Do(); err != nil {
 		log.Println(err)
 		return nil
@@ -217,7 +217,7 @@ func (f *fetchRequest) Raw() []byte {
 	}
 }
 
-func (f *fetchRequest) String() string {
+func (f *FetchRequest) String() string {
 	raw := f.Raw()
 	if raw != nil {
 		return string(raw)
@@ -225,6 +225,6 @@ func (f *fetchRequest) String() string {
 	return ""
 }
 
-func Fetch(u string) *fetchRequest {
+func Fetch(u string) *FetchRequest {
 	return newFetchRequest(u)
 }

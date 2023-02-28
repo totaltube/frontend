@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"strconv"
@@ -9,7 +10,6 @@ import (
 
 	"github.com/flosch/pongo2/v4"
 	"github.com/go-chi/render"
-	"github.com/segmentio/encoding/json"
 
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/db"

@@ -44,14 +44,12 @@ var Custom = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				render.JSON(w, r, err1.JSON)
 				return
 			}
-			if err1.Text != "" {
-				render.HTML(w, r, err1.Text)
-				return
-			}
 			if err1.Data != nil {
 				_, _ = w.Write(err1.Data)
 				return
 			}
+			render.HTML(w, r, err1.Text)
+			return
 		}
 		if strings.Contains(err.Error(), "not found") {
 			log.Println(hostName, err)
