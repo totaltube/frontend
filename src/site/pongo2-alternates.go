@@ -23,7 +23,7 @@ func (node *tagAlternatesNode) Execute(ctx *pongo2.ExecutionContext, writer pong
 	if canonicalUrl == "" {
 		canonicalUrl = "https://"+hostName
 	}
-	langId := context.Public["lang"].(*types.Language).Id
+	//langId := context.Public["lang"].(*types.Language).Id
 	languages := context.Public["languages"].([]types.Language)
 	if pt, ok := context.Public["page_template"].(string); ok && pt == "search" {
 		// For search page no alternates, because it can be in native language
@@ -34,12 +34,9 @@ func (node *tagAlternatesNode) Execute(ctx *pongo2.ExecutionContext, writer pong
 		page = p.(int64)
 	}
 	for _, l := range languages {
-		if l.Id == langId {
-			continue
-		}
 		_, err := writer.WriteString(
 			fmt.Sprintf(`<link rel="alternate" hreflang="%s" href="%s">`+"\n",
-				l.Id, canonicalUrl+getCanonical(context.Public, l.Id, page)))
+				l.Id, canonicalUrl+getAlternate(context.Public, l.Id, page)))
 		if err != nil {
 			return &pongo2.Error{Sender: "tag:alternates", OrigError: err}
 		}

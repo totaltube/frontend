@@ -46,6 +46,7 @@ func RebuildSCSS(path string, config *Config) error {
 				libsass.ImgDir(filepath.Join(path, config.Scss.ImagesPath)),
 				libsass.ImgBuildDir(filepath.Join(outDir, config.Scss.ImagesPath)),
 			)
+
 			if err != nil {
 				return errors.New(fmt.Sprintf("error compiling scss %s: %s", entry, err.Error()))
 			}

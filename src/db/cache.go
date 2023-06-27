@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger/v3"
+
+	"sersh.com/totaltube/frontend/internal"
 )
 
 const (
@@ -25,8 +27,8 @@ type recreateInfo struct {
 }
 
 var recreatingNow sync.Map
-var recreateQueue = make(chan recreateInfo, 50)
-var innerRecreateQueue = make(chan recreateInfo, 50) // extra queue for requests inside recreate functions to avoid deadlock
+var recreateQueue chan recreateInfo
+var innerRecreateQueue chan recreateInfo // extra queue for requests inside recreate functions to avoid deadlock
 
 func recreateJob(job recreateInfo) {
 	defer func() {
@@ -82,10 +84,12 @@ func innerRecreateWorker() {
 }
 
 func launchCacheWorkers() {
-	for i := 0; i < 10; i++ {
+	recreateQueue = make(chan recreateInfo, internal.Config.General.RecreateWorkers*10)
+	innerRecreateQueue = make(chan recreateInfo, internal.Config.General.InnerRecreateWorkers+10) // extra queue for requests inside recreate functions to avoid deadlock
+	for i := 0; i < int(internal.Config.General.RecreateWorkers); i++ {
 		go recreateWorker()
 	}
-	for i := 0; i < 5; i++ {
+	for i := 0; i < int(internal.Config.General.InnerRecreateWorkers); i++ {
 		go innerRecreateWorker()
 	}
 }
@@ -166,12 +170,17 @@ func GetCachedTimeout(cacheKey string, timeout time.Duration, extendedTimeout ti
 		extendedTimeout:  extendedTimeout,
 		doneChannel:      done,
 	}
+	startTime := time.Now()
 	if strings.HasPrefix(cacheKey, "in:") {
 		innerRecreateQueue <- info
 	} else {
 		recreateQueue <- info
 	}
 	err = <-done
+	elapsed := time.Now().Sub(startTime)
+	if elapsed > time.Second*5 {
+		log.Println(cacheKey, "too long time to recreate: ", elapsed, err)
+	}
 	if err != nil {
 		// Removing old cache
 		if found {

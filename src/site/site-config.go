@@ -32,6 +32,7 @@ type (
 	ConfigParams struct {
 		ContentSlug            string `toml:"content_slug"`
 		ContentId              string `toml:"content_id"`
+		CountView              string `toml:"count_view"`
 		CategorySlug           string `toml:"category_slug"`
 		CategoryId             string `toml:"category_id"`
 		ModelSlug              string `toml:"model_slug"`
@@ -54,6 +55,7 @@ type (
 		CountTypeCategory      string `toml:"count_type_category"`
 		CountTypeTopCategories string `toml:"count_type_top_categories"`
 		CountTypeTopContent    string `toml:"count_type_top_content"`
+		CountTypeCategoryView  string `toml:"count_type_category_view"`
 		CountThumbId           string `toml:"count_thumb_id"`
 		Nocache                string `toml:"nocache" json:"-"`
 	}
@@ -76,6 +78,7 @@ type (
 		ContentRelatedAmount       int    `toml:"content_related_amount"`
 		FakeVideoPage              bool   `toml:"fake_video_page"`
 		MultiLanguage              bool   `toml:"multi_language"`
+		DefaultLanguage            string `toml:"default_language"`
 		MinifyHtml                 bool   `toml:"minify_html" json:"-"`
 		PaginationMaxRenderedLinks int    `toml:"pagination_max_rendered_links"`
 		DisableCategoriesRedirect  bool   `toml:"disable_categories_redirect"`
@@ -144,8 +147,10 @@ func NewConfig() *Config {
 			CountTypeCategory:      "c",
 			CountTypeTopContent:    "tc",
 			CountTypeTopCategories: "tca",
+			CountTypeCategoryView:  "ccv",
 			CountThumbId:           "tid",
 			Nocache:                "nocache",
+			CountView:              "cv",
 		},
 	}
 	return &n

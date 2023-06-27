@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -71,6 +72,7 @@ var Search = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	groupId := internal.DetectCountryGroup(net.ParseIP(ip)).Id
 	userAgent := r.Header.Get("User-Agent")
 	cacheTtl := time.Minute * 15
+	started := time.Now()
 	parsed, err := site.ParseTemplate("search", path, config, customContext, nocache, cacheKey, cacheTtl,
 		func() (pongo2.Context, error) {
 			ctx := pongo2.Context{}
@@ -107,6 +109,10 @@ var Search = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx["pages"] = int64(results.Pages)
 			return ctx, nil
 		}, w, r)
+	elapsed := time.Now().Sub(started)
+	if elapsed > time.Second*5 {
+		log.Printf("Long processing search query \"%s\" of site %s: %v, user Agent: %s", searchQuery, hostName, elapsed, r.Header.Get("User-Agent"))
+	}
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			Output404(w, r, err.Error())

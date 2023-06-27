@@ -13,6 +13,7 @@ const (
 	CountTypeTopContent
 	CountTypeTopCategories
 	CountTypeCategory
+	CountTypeCategoryView
 )
 
 func (c CountType) String() string {
@@ -23,6 +24,8 @@ func (c CountType) String() string {
 		return "tca"
 	case CountTypeTopContent:
 		return "tc"
+	case CountTypeCategoryView:
+		return "ccv"
 	default:
 		return ""
 	}

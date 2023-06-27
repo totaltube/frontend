@@ -22,14 +22,14 @@ func (node *tagPrevnextNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2
 	}
 	if page > 1 {
 		// there is a prev page
-		_, err := writer.WriteString(fmt.Sprintf(`<link rel="prev" href="%s">`, getCanonical(context.Public, langId, page-1)))
+		_, err := writer.WriteString(fmt.Sprintf(`<link rel="prev" href="%s">`, getAlternate(context.Public, langId, page-1)))
 		if err != nil {
 			return &pongo2.Error{Sender: "tag:prevnext", OrigError: err}
 		}
 	}
 	if page < pages {
 		// there is a next page
-		_, err := writer.WriteString(fmt.Sprintf(`<link rel="next" href="%s">`, getCanonical(context.Public, langId, page+1)))
+		_, err := writer.WriteString(fmt.Sprintf(`<link rel="next" href="%s">`, getAlternate(context.Public, langId, page+1)))
 		if err != nil {
 			return &pongo2.Error{Sender: "tag:prevnext", OrigError: err}
 		}

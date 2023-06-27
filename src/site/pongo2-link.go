@@ -42,7 +42,6 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 	} else {
 		config = configI.(*Config)
 	}
-
 	if l, ok := node.args["lang"]; ok {
 		lv, err := l.Evaluate(linkContext)
 		if err != nil {
@@ -85,7 +84,10 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 		}
 		queryParams := url.Values(http.Header(linkContext.Public["canonical_query"].(url.Values)).Clone())
 		for k, v := range queryParams {
-			args = append(args, k, v)
+			for _, vv := range v {
+				// prepending query params, because they can be overwritten by template params
+				args = append([]interface{}{k, vv}, args...)
+			}
 		}
 	}
 	link = GetLink(what, config, pageTemplate, lang, args...)

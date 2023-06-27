@@ -109,6 +109,7 @@ func (f *FetchRequest) WithTimeout(seconds int64) *FetchRequest {
 }
 
 func (f *FetchRequest) Do() (response []byte, err error) {
+	started := time.Now()
 	client := http.Client{
 		Transport: &http.Transport{DisableKeepAlives: true, TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 		Timeout: f.timeout,
@@ -169,6 +170,10 @@ func (f *FetchRequest) Do() (response []byte, err error) {
 	}
 	var resp *http.Response
 	resp, err = client.Do(request)
+	elapsed := time.Now().Sub(started)
+	if elapsed > time.Second*2 {
+		log.Println("too long request for ", request.URL.String(), request.Header.Get("Totaltube-Site"), elapsed)
+	}
 	if err != nil {
 		log.Println(err)
 		return
@@ -189,6 +194,10 @@ func (f *FetchRequest) Do() (response []byte, err error) {
 	response, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Println(err)
+	}
+	elapsed = time.Now().Sub(started)
+	if elapsed > time.Second {
+		log.Println("too long getting response for ", request.URL.String(), request.Header.Get("Totaltube-Site"), elapsed)
 	}
 	return
 }
