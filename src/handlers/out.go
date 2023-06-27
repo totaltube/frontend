@@ -24,6 +24,7 @@ type countInfo struct {
 	hostName     string
 	categoryId   int64
 	contentId    int64
+	countView    bool
 	ip           string
 	countType    types.CountType
 	countThumbId int64
@@ -63,6 +64,11 @@ var Out = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	// All calculations are done in background
 	categoryId, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.CategoryId), 10, 32)
 	contentId, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.ContentId), 10, 64)
+	// by default, we count also view on corresponding category or content, but if you set not to count the view, it will not be counted
+	countView := true
+	if len(r.URL.Query().Get(config.Params.CountView)) > 0 {
+		countView, _ = strconv.ParseBool(r.URL.Query().Get(config.Params.CountView))
+	}
 	countType := types.CountTypeNone
 	if countTypeParam == config.Params.CountTypeCategory {
 		countType = types.CountTypeCategory
@@ -70,6 +76,8 @@ var Out = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		countType = types.CountTypeTopCategories
 	} else if countTypeParam == config.Params.CountTypeTopContent {
 		countType = types.CountTypeTopContent
+	} else if countTypeParam == config.Params.CountTypeCategoryView {
+		countType = types.CountTypeCategoryView
 	}
 	info := countInfo{
 		hostName:     hostName,
@@ -78,7 +86,9 @@ var Out = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ip:           ip,
 		countType:    countType,
 		countThumbId: countThumbId,
+		countView:    countView,
 	}
+
 	// let's count in background in separate goroutine, by sending in buffered channel
 	countChannel <- info
 	returnFunc()
@@ -99,27 +109,29 @@ func doCount() {
 			defer db.SaveSession(ip, sess)
 			groupId := internal.DetectCountryGroup(net.ParseIP(ip)).Id
 			var countId int64
-			switch info.countType {
-			case types.CountTypeTopCategories:
-				countId = info.categoryId
-			default:
-				countId = info.contentId
-				if sess.LastViewType == info.countType.String() && sess.LastViewId == countId {
-					// no need to count view or click of this content
-					return
-				}
-				sess.LastViewType = info.countType.String()
-				sess.LastViewId = countId
-				// Let's count view of this content
-				err := api.CountView(info.hostName, types.CountViewParams{
-					Type:    "content",
-					Id:      countId,
-					Ip:      info.ip,
-					ThumbId: int16(info.countThumbId),
-				})
-				if err != nil {
-					log.Println("error counting view:", err)
-					return
+			if info.countView {
+				switch info.countType {
+				case types.CountTypeTopCategories, types.CountTypeCategoryView:
+					countId = info.categoryId
+				default:
+					countId = info.contentId
+					if sess.LastViewType == info.countType.String() && sess.LastViewId == countId {
+						// no need to count view or click of this content
+						return
+					}
+					sess.LastViewType = info.countType.String()
+					sess.LastViewId = countId
+					// Let's count view of this content
+					err := api.CountView(info.hostName, types.CountViewParams{
+						Type:    "content",
+						Id:      countId,
+						Ip:      info.ip,
+						ThumbId: int16(info.countThumbId),
+					})
+					if err != nil {
+						log.Println("error counting view:", err)
+						return
+					}
 				}
 			}
 			// now let's count click

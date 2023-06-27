@@ -75,16 +75,16 @@ func generateContext(name string, sitePath string, customContext pongo2.Context)
 		"sha512_raw":   helpers.Sha512HashRaw,
 		"time8601":     helpers.Time8601,
 		"duration8601": helpers.Duration8601,
-		"translate": func(text interface{}) string {
+		"translate": func(text interface{}) interface{} {
 			return deferredTranslate("en", customContext["lang"].(*types.Language).Id, text, "page-text", refreshTranslations)
 		},
-		"translate_title": func(text interface{}) string {
+		"translate_title": func(text interface{}) interface{} {
 			return deferredTranslate("en", customContext["lang"].(*types.Language).Id, text, "content-title", refreshTranslations)
 		},
-		"translate_description": func(text interface{}) string {
+		"translate_description": func(text interface{}) interface{} {
 			return deferredTranslate("en", customContext["lang"].(*types.Language).Id, text, "content-description", refreshTranslations)
 		},
-		"translate_query": func(text interface{}) string {
+		"translate_query": func(text interface{}) interface{} {
 			return deferredTranslate("en", customContext["lang"].(*types.Language).Id, text, "query", refreshTranslations)
 		},
 		"static": func(filePaths ...string) string {

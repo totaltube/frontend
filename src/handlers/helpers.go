@@ -315,10 +315,11 @@ func Output404(w http.ResponseWriter, r *http.Request, errMessage string) {
 	path := r.Context().Value("path").(string)
 	config := r.Context().Value("config").(*site.Config)
 	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))
+	hostName := r.Context().Value("hostName").(string)
 	langId := r.Context().Value("lang").(string)
 	customContext := generateCustomContext(w, r, "404")
 	customContext["error"] = errMessage
-	cacheKey := fmt.Sprintf("404:%s:%s", langId, helpers.Md5Hash(errMessage))
+	cacheKey := fmt.Sprintf("404:%s:%s:%s", hostName, langId, helpers.Md5Hash(errMessage))
 	cacheTtl := time.Minute * 5
 	parsed, err := site.ParseTemplate("404", path, config, customContext, nocache, cacheKey, cacheTtl,
 		func() (pongo2.Context, error) {
@@ -336,10 +337,11 @@ func Output500(w http.ResponseWriter, r *http.Request, err error) {
 	path := r.Context().Value("path").(string)
 	config := r.Context().Value("config").(*site.Config)
 	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))
+	hostName := r.Context().Value("hostName").(string)
 	langId := r.Context().Value("lang").(string)
 	customContext := generateCustomContext(w, r, "404")
 	customContext["error"] = err.Error()
-	cacheKey := fmt.Sprintf("500:%s:%s", langId, helpers.Md5Hash(err.Error()))
+	cacheKey := fmt.Sprintf("500:%s:%s:%s", hostName, langId, helpers.Md5Hash(err.Error()))
 	cacheTtl := time.Minute * 5
 	var parsed []byte
 	parsed, err = site.ParseTemplate("500", path, config, customContext, nocache, cacheKey, cacheTtl,

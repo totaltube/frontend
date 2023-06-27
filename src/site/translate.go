@@ -6,7 +6,7 @@ import (
 	"sersh.com/totaltube/frontend/db"
 )
 
-func deferredTranslate(from string, to string, text interface{}, Type string, refresh bool) (translation string) {
+func deferredTranslate(from string, to string, text interface{}, Type string, refresh bool) (translation interface{}) {
 	var readyText string
 	switch t := text.(type) {
 	case *string:
@@ -15,6 +15,26 @@ func deferredTranslate(from string, to string, text interface{}, Type string, re
 		}
 	case string:
 		readyText = t
+	case []string:
+		result := make([]string, 0, len(t))
+		for _, s := range t {
+			if s == "" {
+				result = append(result, "")
+				continue
+			}
+			if refresh {
+				db.DeleteTranslation(from, to, s)
+			}
+			stringTranslation := db.GetTranslation(from, to, s)
+			if stringTranslation == "" {
+				db.SaveDeferredTranslation(from, to, s, Type)
+				result = append(result, s)
+				continue
+			}
+			result = append(result, stringTranslation)
+		}
+		translation = result
+		return
 	default:
 		readyText = fmt.Sprintf("%v", t)
 	}

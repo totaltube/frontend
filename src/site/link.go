@@ -127,9 +127,8 @@ func GetLink(route string, config *Config, pageTemplate string, langId string, a
 	case "content", "content-item", "content_item":
 		var categories []types.TaxonomyResult
 		if categoriesParam, index, ok := lo.FindIndexOf(params, func(p linkParam) bool { return p.Type == "categories" }); ok {
-			if categories, ok = categoriesParam.Value.(types.TaxonomyResults); ok {
-				fastRemove(params, index)
-			}
+			categories, _ = categoriesParam.Value.(types.TaxonomyResults)
+			params = fastRemove(params, index)
 		}
 		link = config.Routes.ContentItem
 		if slugParam, index, ok := lo.FindIndexOf(params, func(p linkParam) bool { return p.Type == "slug" }); ok {
@@ -320,6 +319,9 @@ func GetLink(route string, config *Config, pageTemplate string, langId string, a
 		}
 		link = outLink + "?" + outlinkParams.Encode()
 		return
+	}
+	if len(urlParams) > 0 {
+		link = link + "?" + urlParams.Encode()
 	}
 	if withTrade {
 		if strings.Contains(config.General.TradeUrlTemplate, "{{url}}") {

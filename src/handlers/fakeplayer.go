@@ -99,6 +99,6 @@ var FakePlayer = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		Output500(w, r, err)
 		return
 	}
-	w.Header().Set("X-Robots-Tag", "noindex")
+	//w.Header().Set("X-Robots-Tag", "noindex")
 	render.HTML(w, r, string(parsed))
 })

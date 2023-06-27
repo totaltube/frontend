@@ -31,7 +31,7 @@ func (node *tagPageLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2
 	if page < 1 {
 		page = 1
 	}
-	_, err1 := writer.WriteString(getCanonical(context.Public, langId, int64(page)))
+	_, err1 := writer.WriteString(getAlternate(context.Public, langId, int64(page)))
 	if err1 != nil {
 		return &pongo2.Error{Sender: "tag:page_link", OrigError: err1}
 	}
