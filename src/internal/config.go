@@ -15,11 +15,12 @@ var Config *ConfigT
 
 type (
 	ConfigT struct {
-		MainPath string
-		General  General
-		Frontend Frontend
-		Database Database
-		Options  *Options
+		MainPath     string
+		General      General
+		Frontend     Frontend
+		Database     Database
+		Options      *Options
+		Translations map[string]map[string]string `toml:"translations"`
 	}
 	General struct {
 		Nginx                bool `toml:"nginx"`
@@ -54,15 +55,16 @@ var apiVersionRegex = regexp.MustCompile(`^(.*)/v\d+/?$`)
 func InitConfig(configPath string) {
 	Config = &ConfigT{
 		General: General{
-			Nginx:       true,
-			Development: runtime.GOOS == "windows",
-			GeoipUrl:    "https://totaltraffictrader.com/geo/country.tar.gz",
-			RecreateWorkers: 50,
+			Nginx:                true,
+			Development:          runtime.GOOS == "windows",
+			GeoipUrl:             "https://totaltraffictrader.com/geo/country.tar.gz",
+			RecreateWorkers:      50,
 			InnerRecreateWorkers: 20,
 		},
 		Frontend: Frontend{
 			MaxDmcaMinute: 5,
 		},
+		Translations: make(map[string]map[string]string),
 	}
 	if _, err := toml.DecodeFile(configPath, Config); err != nil {
 		log.Fatalln(configPath, ":", err)

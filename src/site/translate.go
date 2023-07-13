@@ -2,8 +2,8 @@ package site
 
 import (
 	"fmt"
-
 	"sersh.com/totaltube/frontend/db"
+	"sersh.com/totaltube/frontend/internal"
 )
 
 func deferredTranslate(from string, to string, text interface{}, Type string, refresh bool) (translation interface{}) {
@@ -46,6 +46,12 @@ func deferredTranslate(from string, to string, text interface{}, Type string, re
 	}
 	if refresh {
 		db.DeleteTranslation(from, to, readyText)
+	}
+	if tr, ok := internal.Config.Translations[to]; ok {
+		if trr, okk := tr[readyText]; okk {
+			translation = trr
+			return
+		}
 	}
 	translation = db.GetTranslation(from, to, readyText)
 	if translation == "" {
