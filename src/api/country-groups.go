@@ -9,7 +9,7 @@ import (
 
 func CountryGroups() (results []types.CountryGroup, err error) {
 	var response json.RawMessage
-	response, err = ApiRequest("", methodGet, uriCountryGroups, url.Values{})
+	response, err = Request("", methodGet, uriCountryGroups, url.Values{})
 	if err != nil {
 		return
 	}

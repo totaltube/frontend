@@ -3,15 +3,15 @@ package handlers
 import (
 	"log"
 	"net/http"
+	"sersh.com/totaltube/frontend/types"
 
 	"github.com/go-chi/render"
 
 	"sersh.com/totaltube/frontend/api"
-	"sersh.com/totaltube/frontend/site"
 )
 
 var Autocomplete = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	config := r.Context().Value("config").(*site.Config)
+	config := r.Context().Value("config").(*types.Config)
 	langId := r.Context().Value("lang").(string)
 	hostName := r.Context().Value("hostName").(string)
 	searchQuery := r.URL.Query().Get(config.Params.SearchQuery)

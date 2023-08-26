@@ -17,7 +17,7 @@ func Category(siteDomain, lang string, categoryId int64, categorySlug string, pa
 		"page":     []string{strconv.FormatInt(page, 10)},
 		"group_id": []string{strconv.FormatInt(groupId, 10)},
 	}
-	response, err = ApiRequest(siteDomain, methodGet, uriCategory, data)
+	response, err = Request(siteDomain, methodGet, uriCategory, data)
 	if err != nil {
 		return
 	}
@@ -34,6 +34,6 @@ func CategoryRaw(siteDomain, lang string, categoryId int64, categorySlug string,
 		"page":     []string{strconv.FormatInt(page, 10)},
 		"group_id": []string{strconv.FormatInt(groupId, 10)},
 	}
-	response, err = ApiRequest(siteDomain, methodGet, uriCategory, data)
+	response, err = Request(siteDomain, methodGet, uriCategory, data)
 	return
 }

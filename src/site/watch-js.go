@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sersh.com/totaltube/frontend/internal"
 	"sync"
 	"time"
 
@@ -59,7 +60,7 @@ func WatchJS(path string, configPath string) {
 						lastChange = time.Now()
 						mu.Unlock()
 						log.Println(ei.Path(),  "changed. Rebuilding js...")
-						err := RebuildJS(path, GetConfig(configPath))
+						err := RebuildJS(path, internal.GetConfig(configPath))
 						if err != nil {
 							log.Println(err)
 						}

@@ -34,7 +34,7 @@ func (r redirectErr) Error() string {
 
 var ContentItem = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	path := r.Context().Value("path").(string)
-	config := r.Context().Value("config").(*site.Config)
+	config := r.Context().Value("config").(*types.Config)
 	hostName := r.Context().Value("hostName").(string)
 	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))
 	langId := r.Context().Value("lang").(string)
@@ -89,7 +89,7 @@ var ContentItem = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 					args = append(args, k, r.URL.Query().Get(k))
 				}
 				return nil, redirectErr{
-					url: site.GetLink("content", config, "content-item", langId, args...),
+					url: site.GetLink("content", config, langId, false, args...),
 					code: 301,
 				}
 			}

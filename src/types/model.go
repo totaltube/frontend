@@ -10,26 +10,29 @@ import (
 )
 
 type ModelResult struct {
-	Id              int32         `json:"id"`
-	Slug            string        `json:"slug"`
-	Title           string        `json:"title"`
-	TitleTranslated bool          `json:"title_translated,omitempty"`
-	Description     *string       `json:"description"`
-	Dated           time.Time     `json:"dated"`
-	CreatedAt       time.Time     `json:"created_at"`
-	ThumbRetina     bool          `json:"thumb_retina"`
-	ThumbWidth      int32         `json:"thumb_width"`
-	ThumbHeight     int32         `json:"thumb_height"`
-	ThumbsAmount    int32         `json:"thumbs_amount"`
-	ThumbsServer    string        `json:"thumbs_server"`
-	ThumbsPath      string        `json:"thumbs_path"`
-	ThumbFormat     string        `json:"thumb_format"`
-	ThumbType       string        `json:"thumb_type"`
-	ThumbFormats    []ThumbFormat `json:"thumb_formats"`
-	BestThumb       *int16        `json:"best_thumb,omitempty"`
-	Total           int32         `json:"total"`
-	Views           int32         `json:"views"`
-	selectedThumb   *int
+	Id                 int32               `json:"id"`
+	Slug               string              `json:"slug"`
+	Title              string              `json:"title"`
+	TitleTranslated    bool                `json:"title_translated,omitempty"`
+	OriginalTitle      string              `json:"original_title"`
+	Description        *string             `json:"description"`
+	Dated              time.Time           `json:"dated"`
+	CreatedAt          time.Time           `json:"created_at"`
+	ThumbRetina        bool                `json:"thumb_retina"`
+	ThumbWidth         int32               `json:"thumb_width"`
+	ThumbHeight        int32               `json:"thumb_height"`
+	ThumbsAmount       int32               `json:"thumbs_amount"`
+	ThumbsServer       string              `json:"thumbs_server"`
+	ThumbsPath         string              `json:"thumbs_path"`
+	ThumbFormat        string              `json:"thumb_format"`
+	ThumbType          string              `json:"thumb_type"`
+	ThumbFormats       []ThumbFormat       `json:"thumb_formats"`
+	BestThumb          *int16              `json:"best_thumb,omitempty"`
+	Total              int32               `json:"total"`
+	Views              int32               `json:"views"`
+	CustomData         CustomData         `json:"custom_data"`
+	CustomTranslations CustomTranslations `json:"custom_translations"`
+	selectedThumb      *int
 }
 type ModelResults struct {
 	Total int            `json:"total"`
@@ -90,3 +93,41 @@ func (c *ModelResult) SelectedThumb(thumbFormatName ...string) int {
 	return *c.selectedThumb
 }
 
+func (c ModelResult) HasCustomField(name string) bool {
+	if c.CustomData == nil {
+		return false
+	}
+	_, ok := c.CustomData[name]
+	return ok
+}
+
+func (c ModelResult) CustomField(name string) interface{} {
+	if c.CustomData == nil {
+		return nil
+	}
+	if data, ok := c.CustomData[name]; ok {
+		return data
+	}
+	return nil
+}
+
+func (c ModelResult) HasCustomTranslation(key string) bool {
+	if c.CustomTranslations == nil {
+		return false
+	}
+	_, ok := c.CustomTranslations[key]
+	return ok
+}
+
+func (c ModelResult) CustomTranslation(key string) (translation string) {
+	if c.CustomTranslations != nil {
+		translation, _ = c.CustomTranslations[key]
+	}
+	if translation == "" && c.CustomData != nil {
+		// if we don't have translation for current language, maybe we will find original text in CustomData
+		if customData, ok := c.CustomData[key]; ok {
+			translation, _ = customData.(string)
+		}
+	}
+	return
+}

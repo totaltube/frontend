@@ -6,6 +6,7 @@ import (
 	"math"
 	"net/http"
 	"path/filepath"
+	"sersh.com/totaltube/frontend/types"
 	"strings"
 	"time"
 
@@ -44,7 +45,7 @@ func (e ErrSendResponse) Error() string {
 	return "custom response"
 }
 
-func ParseCustomTemplate(name, path string, config *Config,
+func ParseCustomTemplate(name, path string, config *types.Config,
 	customContext pongo2.Context, nocache bool, w http.ResponseWriter, r *http.Request) (parsed []byte, err error) {
 	extensionFile := filepath.Join(path, "extensions/route-"+name+".js")
 	var source = getJsSource(extensionFile)
@@ -59,6 +60,7 @@ func ParseCustomTemplate(name, path string, config *Config,
 		log.Println(err)
 		return
 	}
+	_ = VM.Set("fetch", helpers.SiteFetch(config))
 	if err = VM.Set("nocache", nocache); err != nil {
 		log.Println(err)
 		return
@@ -161,6 +163,7 @@ func ParseCustomTemplate(name, path string, config *Config,
 				//defer GojaVMMutex.Unlock(baseName)
 				VM := getJsVM(baseName)
 				_ = VM.Set("config", config)
+				_ = VM.Set("fetch", helpers.SiteFetch(config))
 				_ = VM.Set("nocache", nocache)
 				for k, v := range c {
 					_ = VM.Set(k, v)

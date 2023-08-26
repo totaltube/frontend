@@ -9,7 +9,7 @@ import (
 
 func Languages(siteDomain string) (results []types.Language, err error) {
 	var response json.RawMessage
-	response, err = ApiRequest(siteDomain, methodGet, uriLanguages, url.Values{})
+	response, err = Request(siteDomain, methodGet, uriLanguages, url.Values{})
 	if err != nil {
 		return
 	}

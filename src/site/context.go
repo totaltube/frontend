@@ -102,9 +102,9 @@ func generateContext(name string, sitePath string, customContext pongo2.Context)
 			return items.Len()
 		},
 		"link": func(route string, args ...interface{}) string {
-			config, _ := customContext["config"].(*Config)
-			pageTemplate, _ := customContext["page_template"].(string)
+			config, _ := customContext["config"].(*types.Config)
 			lang, _ := customContext["lang"].(*types.Language)
+			var changeLangLink bool
 			if route == "current" {
 				if args == nil {
 					args = make([]interface{}, 0)
@@ -119,7 +119,19 @@ func generateContext(name string, sitePath string, customContext pongo2.Context)
 					args = append(args, k, v)
 				}
 			}
-			return GetLink(route, config, pageTemplate, lang.Id, args...)
+			for i := 0; i < len(args); i += 2 {
+				if key, ok := args[i].(string); ok {
+					if key == "lang" && len(args) > i+1 {
+						if val, ok := args[i+1].(string); ok {
+							if lang.Id != val {
+								changeLangLink = true
+								break
+							}
+						}
+					}
+				}
+			}
+			return GetLink(route, config, lang.Id, changeLangLink, args...)
 		},
 		"time_ago": func(t time.Time) string {
 			langId := strings.ReplaceAll(customContext["lang"].(*types.Language).Id, "-", "_")
@@ -132,7 +144,7 @@ func generateContext(name string, sitePath string, customContext pongo2.Context)
 		"pagination": func() (result []PaginationItem) {
 			if pages, ok := customContext["pages"].(int64); ok && pages > 0 {
 				var pagination = make([]PaginationItem, 0, pages+5)
-				config := customContext["config"].(*Config)
+				config := customContext["config"].(*types.Config)
 				page := customContext["page"].(int64)
 				var prevState = PaginationItemStateDefault
 				if page == 1 {

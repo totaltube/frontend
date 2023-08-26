@@ -24,7 +24,7 @@ import (
 
 var TopContent = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	path := r.Context().Value("path").(string)
-	config := r.Context().Value("config").(*site.Config)
+	config := r.Context().Value("config").(*types.Config)
 	hostName := r.Context().Value("hostName").(string)
 	ip := r.Context().Value("ip").(string)
 	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))

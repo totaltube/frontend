@@ -14,14 +14,14 @@ type tagAlternatesNode struct {
 
 func (node *tagAlternatesNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.TemplateWriter) *pongo2.Error {
 	context := pongo2.NewChildExecutionContext(ctx)
-	config := context.Public["config"].(*Config)
+	config := context.Public["config"].(*types.Config)
 	hostName := context.Public["host"].(string)
 	if !config.General.MultiLanguage {
 		return nil
 	}
 	canonicalUrl := strings.TrimSuffix(config.General.CanonicalUrl, "/")
 	if canonicalUrl == "" {
-		canonicalUrl = "https://"+hostName
+		canonicalUrl = "https://" + hostName
 	}
 	//langId := context.Public["lang"].(*types.Language).Id
 	languages := context.Public["languages"].([]types.Language)
@@ -41,6 +41,11 @@ func (node *tagAlternatesNode) Execute(ctx *pongo2.ExecutionContext, writer pong
 			return &pongo2.Error{Sender: "tag:alternates", OrigError: err}
 		}
 	}
+	_, err := writer.WriteString(fmt.Sprintf(`<link rel="alternate" hreflang="x-default" href="%s">`+"\n",
+		canonicalUrl+getAlternate(context.Public, config.General.DefaultLanguage, page)))
+	if err != nil {
+		return &pongo2.Error{Sender: "tag:alternates", OrigError: err}
+	}
 	return nil
 }
 
@@ -48,4 +53,3 @@ func pongo2Alternates(_ *pongo2.Parser, _ *pongo2.Token, arguments *pongo2.Parse
 	tag := &tagAlternatesNode{}
 	return tag, nil
 }
-

@@ -45,11 +45,12 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 	}
 	host, _ := ctx.Public["host"].(string)
 	nocache, _ := ctx.Public["nocache"].(bool)
+	config := ctx.Public["config"].(*types.Config)
 	if strings.HasPrefix(node.what, "http://") || strings.HasPrefix(node.what, "https://") {
 		// Fetching information from user address
 		// First let's check if we have cache
 		cacheKey := ""
-		f := helpers.Fetch(node.what)
+		f := helpers.SiteFetch(config)(node.what)
 		method := "GET"
 		if node.method != nil {
 			m, err := node.method.Evaluate(fetchContext)

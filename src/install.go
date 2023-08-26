@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net"
 	"net/url"
@@ -227,7 +226,7 @@ func FreeBSDInstall(path string) error {
 	}
 	_ = os.Chmod("/etc/rc.d/totaltube-frontend", 0755)
 
-	ffc, _ := ioutil.ReadFile("/etc/rc.conf")
+	ffc, _ := os.ReadFile("/etc/rc.conf")
 	if !strings.Contains(string(ffc), "totaltube_enable") {
 		ff, err := os.OpenFile("/etc/rc.conf", os.O_APPEND|os.O_WRONLY, 0644)
 		if err != nil {
@@ -240,8 +239,8 @@ func FreeBSDInstall(path string) error {
 		}
 	}
 	fmt.Println("setting up logging...")
-	_ = ioutil.WriteFile("/etc/syslog.d/totaltube-frontend.conf", []byte("!totaltube-frontend\n*.*     /var/log/totaltube-frontend.log"), 0644)
-	_ = ioutil.WriteFile("/etc/newsyslog.conf.d/totaltube-frontend.conf", []byte("/var/log/totaltube-frontend.log                        644  7     1000  *     JC\n"), 0644)
+	_ = os.WriteFile("/etc/syslog.d/totaltube-frontend.conf", []byte("!totaltube-frontend\n*.*     /var/log/totaltube-frontend.log"), 0644)
+	_ = os.WriteFile("/etc/newsyslog.conf.d/totaltube-frontend.conf", []byte("/var/log/totaltube-frontend.log                        644  7     1000  *     JC\n"), 0644)
 	cmd = exec.Command("touch", "/var/log/totaltube-frontend.log")
 	_ = cmd.Run()
 	cmd = exec.Command("chown", "totaltube", "/var/log/totaltube-frontend.log")
@@ -276,9 +275,9 @@ func SystemdInstall(path string) error {
 	}
 	_ = os.Chmod("/etc/systemd/system/totaltube-frontend.service", 0644)
 	if _, err = os.Stat("/etc/rsyslog.d"); err == nil {
-		_ = ioutil.WriteFile("/etc/rsyslog.d/totaltube-frontend.conf", []byte(`if $programname == 'totaltube-frontend' then /var/log/totaltube-frontend.log
+		_ = os.WriteFile("/etc/rsyslog.d/totaltube-frontend.conf", []byte(`if $programname == 'totaltube-frontend' then /var/log/totaltube-frontend.log
 & stop`), 0644)
-		_ = ioutil.WriteFile("/etc/logrotate.d/totaltube-frontend.conf", []byte(`/var/log/totaltube-frontend.log
+		_ = os.WriteFile("/etc/logrotate.d/totaltube-frontend.conf", []byte(`/var/log/totaltube-frontend.log
 {
 	rotate 10
 	size=5M

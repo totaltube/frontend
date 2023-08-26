@@ -23,7 +23,7 @@ import (
 
 var New = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	path := r.Context().Value("path").(string)
-	config := r.Context().Value("config").(*site.Config)
+	config := r.Context().Value("config").(*types.Config)
 	hostName := r.Context().Value("hostName").(string)
 	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))
 	langId := r.Context().Value("lang").(string)

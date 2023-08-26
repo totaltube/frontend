@@ -20,7 +20,7 @@ func ModelsList(siteDomain, lang string, page int64, sort SortBy, amount int64, 
 }
 
 func ModelsListRaw(siteDomain, lang string, page int64, sort SortBy, amount int64, searchQuery string, groupId int64) (response json.RawMessage, err error) {
-	response, err = ApiRequest(siteDomain, methodGet, uriModelsList, url.Values{
+	response, err = Request(siteDomain, methodGet, uriModelsList, url.Values{
 		"lang":     []string{lang},
 		"sort":     []string{string(sort)},
 		"amount":   []string{strconv.FormatInt(amount, 10)},

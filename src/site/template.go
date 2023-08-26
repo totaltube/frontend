@@ -6,6 +6,7 @@ import (
 	"math"
 	"net/http"
 	"path/filepath"
+	"sersh.com/totaltube/frontend/types"
 	"strings"
 	"sync"
 	"time"
@@ -144,7 +145,7 @@ func GetTemplate(name, path string) (*pongo2.Template, error) {
 	return siteTemplates.get(name, path)
 }
 
-func ParseTemplate(name, path string, config *Config, customContext pongo2.Context,
+func ParseTemplate(name, path string, config *types.Config, customContext pongo2.Context,
 	nocache bool, cacheKey string, cacheTtl time.Duration,
 	prepare func() (pongo2.Context, error),
 	w http.ResponseWriter, r *http.Request) (parsed []byte, err error) {
@@ -201,6 +202,7 @@ func ParseTemplate(name, path string, config *Config, customContext pongo2.Conte
 				//defer GojaVMMutex.Unlock(baseName)
 				VM := getJsVM(baseName)
 				_ = VM.Set("config", config)
+				_ = VM.Set("fetch", helpers.SiteFetch(config))
 				_ = VM.Set("nocache", nocache)
 				for k, v := range c {
 					_ = VM.Set(k, v)

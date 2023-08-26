@@ -24,7 +24,7 @@ func fastRemove[T any](s []T, i int) []T {
 	return s[:len(s)-1]
 }
 
-func GetLink(route string, config *Config, pageTemplate string, langId string, args ...interface{}) (link string) {
+func GetLink(route string, config *types.Config, langId string, changeLangLink bool, args ...interface{}) (link string) {
 	var params = make([]linkParam, 0, len(args)/2)
 	curType := ""
 	for _, p := range args {
@@ -169,7 +169,8 @@ func GetLink(route string, config *Config, pageTemplate string, langId string, a
 			return match.String()
 		}, -1, -1)
 	}
-	if config.General.MultiLanguage && !httpRegex.MatchString(link) && !isCustomRoute {
+	if config.General.MultiLanguage && !httpRegex.MatchString(link) && !isCustomRoute &&
+		(langId != config.General.DefaultLanguage || !config.General.NoRedirectDefaultLanguage || changeLangLink) {
 		link = strings.ReplaceAll(config.Routes.LanguageTemplate, "{route}", link)
 		link = strings.ReplaceAll(link, "{lang}", langId)
 	}

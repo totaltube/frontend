@@ -90,6 +90,8 @@ models_per_page = 20 # Number of models per page on models page
 content_related_amount = 20 # Number of related videos on content item page
 fake_video_page = true # Show fake video page for video links
 disable_categories_redirect = false # if true - redirect to category from top categories page based on referrer will be disabled.
+api_url = "" # if set, it will override minion api url in global config
+api_secret = "" # if set, it will override minion api secret in global config
 ```
 
 In `[javascript]` and `[css]` sections you can define options to build js and css for the site. Example:

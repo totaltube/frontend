@@ -54,7 +54,7 @@ func GetLanguage(lang string) *types.Language {
 	return nil
 }
 
-func DetectLanguage(langCookie, acceptLanguageHeader string) *types.Language {
+func DetectLanguage(langCookie, defaultLanguage, acceptLanguageHeader string) *types.Language {
 	var tag language.Tag
 	if langCookie != "" {
 		tag, _ = language.MatchStrings(matcher, langCookie, acceptLanguageHeader)
@@ -68,5 +68,11 @@ func DetectLanguage(langCookie, acceptLanguageHeader string) *types.Language {
 	if l, ok := languagesMap[b.String()]; ok {
 		return l
 	}
-	return languagesMap["en"]
+	if l, ok := languagesMap[defaultLanguage]; ok {
+		return l
+	}
+	for _, l := range languagesMap {
+		return l
+	}
+	return &types.Language{Id: "en"}
 }

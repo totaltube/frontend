@@ -57,7 +57,7 @@ func getTopCategoriesFunc(hostName string, langId string, groupId int64) func(ar
 
 var TopCategories = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	path := r.Context().Value("path").(string)
-	config := r.Context().Value("config").(*site.Config)
+	config := r.Context().Value("config").(*types.Config)
 	hostName := r.Context().Value("hostName").(string)
 	langId := r.Context().Value("lang").(string)
 	ip := r.Context().Value("ip").(string)

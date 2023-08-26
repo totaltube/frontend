@@ -1,8 +1,9 @@
-package site
+package internal
 
 import (
 	"log"
 	"path/filepath"
+	"sersh.com/totaltube/frontend/types"
 	"sync"
 	"time"
 
@@ -10,21 +11,21 @@ import (
 	"github.com/rjeczalik/notify"
 )
 
-var configsMap = make(map[string]*Config)
+var configsMap = make(map[string]*types.Config)
 var configsMutex sync.RWMutex
 
-
-func GetConfig(configPath string) *Config {
+func GetConfig(configPath string) *types.Config {
 	configsMutex.RLock()
 	defer configsMutex.RUnlock()
-	if config, ok := configsMap[configPath]; ok  {
+	if config, ok := configsMap[configPath]; ok {
 		return config
 	}
 	return GetConfigAndWatch(configPath)
 }
 
-func GetConfigAndWatch(configPath string) *Config {
-	var config = NewConfig()
+func GetConfigAndWatch(configPath string) *types.Config {
+	var config = types.NewConfig()
+	config.Hostname = filepath.Base(filepath.Dir(configPath))
 	if _, err := toml.DecodeFile(configPath, config); err != nil {
 		log.Fatalln("error reading site config at", configPath, err)
 	}
@@ -37,7 +38,7 @@ func GetConfigAndWatch(configPath string) *Config {
 				defer func() {
 					if r := recover(); r != nil {
 						log.Printf("error in config file watching routine: %+v", r)
-						time.Sleep(time.Second*30)
+						time.Sleep(time.Second * 30)
 					}
 				}()
 				c := make(chan notify.EventInfo, 1)
@@ -63,14 +64,15 @@ func GetConfigAndWatch(configPath string) *Config {
 					if !lastChange.After(time.Now().Add(-time.Millisecond * 1500)) {
 						// reload config
 						lastChange = time.Now()
-						var newConfig = NewConfig()
+						var newConfig = types.NewConfig()
+						newConfig.Hostname = filepath.Base(filepath.Dir(configPath))
 						if _, err := toml.DecodeFile(configPath, newConfig); err != nil {
 							log.Println("error reading site config at", configPath, err)
 						} else {
 							configsMutex.Lock()
 							configsMap[configPath] = newConfig
 							configsMutex.Unlock()
-							log.Println("config file "+configPath+" reloaded")
+							log.Println("config file " + configPath + " reloaded")
 						}
 					}
 				}()
@@ -79,4 +81,3 @@ func GetConfigAndWatch(configPath string) *Config {
 	}()
 	return config
 }
-

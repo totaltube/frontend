@@ -24,24 +24,26 @@ type tagLinkNode struct {
 
 func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.TemplateWriter) *pongo2.Error {
 	linkContext := pongo2.NewChildExecutionContext(ctx)
-	pageTemplate, _ := ctx.Public["page_template"].(string)
 	lang := "en"
+
 	if l, ok := linkContext.Public["lang"]; ok {
 		lang = l.(*types.Language).Id
 	}
+	contextLang := lang
 	var copyArgs = make(map[string]pongo2.IEvaluator)
 	for k, v := range node.args {
 		copyArgs[k] = v
 	}
-	var config *Config
+	var config *types.Config
 	if configI, ok := linkContext.Public["config"]; !ok {
 		return &pongo2.Error{
 			Sender:    "tag:link",
 			OrigError: errors.New("can't find config in public context"),
 		}
 	} else {
-		config = configI.(*Config)
+		config = configI.(*types.Config)
 	}
+	var changeLangLink bool
 	if l, ok := node.args["lang"]; ok {
 		lv, err := l.Evaluate(linkContext)
 		if err != nil {
@@ -52,6 +54,9 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 			lang = "en"
 		}
 		delete(copyArgs, "lang")
+		if lang != contextLang {
+			changeLangLink = true
+		}
 	}
 	var as string
 	if asA, ok := node.args["as"]; ok {
@@ -90,7 +95,7 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 			}
 		}
 	}
-	link = GetLink(what, config, pageTemplate, lang, args...)
+	link = GetLink(what, config, lang, changeLangLink, args...)
 	if as != "" {
 		linkContext.Public[as] = link
 	} else {

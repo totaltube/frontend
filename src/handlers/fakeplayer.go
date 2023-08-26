@@ -24,7 +24,7 @@ import (
 
 var FakePlayer = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	path := r.Context().Value("path").(string)
-	config := r.Context().Value("config").(*site.Config)
+	config := r.Context().Value("config").(*types.Config)
 	hostName := r.Context().Value("hostName").(string)
 	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))
 	langId := r.Context().Value("lang").(string)
@@ -51,7 +51,7 @@ var FakePlayer = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var err error
 			var response json.RawMessage
 			response, err = db.GetCachedTimeout(cacheKey+":data", cacheTtl, cacheTtl, func() ([]byte, error) {
-				return api.ContentItemRaw(hostName,langId, slug, id, orfl, int64(relatedAmount), groupId)
+				return api.ContentItemRaw(hostName, langId, slug, id, orfl, int64(relatedAmount), groupId)
 			}, nocache)
 			if err != nil {
 				if strings.Contains(err.Error(), "not found") {
@@ -79,7 +79,7 @@ var FakePlayer = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					args = append(args, k, r.URL.Query().Get(k))
 				}
 				return nil, redirectErr{
-					url: site.GetLink("content", config, "content-item", langId, args...),
+					url:  site.GetLink("content", config, langId, false, args...),
 					code: 301,
 				}
 			}

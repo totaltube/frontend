@@ -1,4 +1,4 @@
-package site
+package types
 
 type (
 	Config struct {
@@ -8,6 +8,7 @@ type (
 		Javascript ConfigJs          `json:"-"`
 		Scss       ConfigScss        `json:"-"`
 		Custom     map[string]string `json:"-"`
+		Hostname   string            `json:"-"`
 	}
 	ConfigRoutes struct {
 		TopCategories    string `toml:"top_categories"`
@@ -79,10 +80,13 @@ type (
 		FakeVideoPage              bool   `toml:"fake_video_page"`
 		MultiLanguage              bool   `toml:"multi_language"`
 		DefaultLanguage            string `toml:"default_language"`
+		NoRedirectDefaultLanguage  bool   `toml:"no_redirect_default_language"`
 		MinifyHtml                 bool   `toml:"minify_html" json:"-"`
 		PaginationMaxRenderedLinks int    `toml:"pagination_max_rendered_links"`
 		DisableCategoriesRedirect  bool   `toml:"disable_categories_redirect"`
 		Debug                      bool   `toml:"debug"`
+		ApiUrl                     string `toml:"api_url"`
+		ApiSecret                  string `toml:"api_secret"`
 	}
 )
 
@@ -111,6 +115,7 @@ func NewConfig() *Config {
 			PaginationMaxRenderedLinks: 10,
 			ModelsPerPage:              200,
 			ContentRelatedAmount:       16,
+			DefaultLanguage:            "en",
 		},
 		Javascript: ConfigJs{
 			Entries: []string{"main.ts"},

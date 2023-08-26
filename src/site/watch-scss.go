@@ -3,6 +3,7 @@ package site
 import (
 	"log"
 	"runtime"
+	"sersh.com/totaltube/frontend/internal"
 	"sync"
 	"time"
 
@@ -42,7 +43,7 @@ func WatchScss(path string, configPath string) {
 						mu.Unlock()
 						log.Println(ei.Path(),  "changed. Rebuilding scss...")
 						started := time.Now()
-						err := RebuildSCSS(path, GetConfig(configPath))
+						err := RebuildSCSS(path, internal.GetConfig(configPath))
 						if err != nil {
 							log.Println("Error rebuilding scss:", err)
 						}

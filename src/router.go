@@ -37,7 +37,7 @@ func InitRouter() http.Handler {
 		if _, err := os.Stat(configPath); err != nil {
 			continue
 		}
-		config := site.GetConfigAndWatch(configPath)
+		config := internal.GetConfigAndWatch(configPath)
 		h := hostRouter{
 			configPath: configPath,
 			path:       m,
