@@ -44,6 +44,15 @@ func main() {
 			panic(errors.Wrap(err, "Can't get sites options"))
 		}
 		startServer()
+	case "child":
+		log.Println("Initializing configuration...")
+		internal.InitConfig(CLI.Config)
+		log.Println("Initializing minion options...")
+		internal.Config.Options, err = api.Options(internal.Config.Frontend.DefaultSite)
+		if err != nil {
+			panic(errors.Wrap(err, "Can't get sites options"))
+		}
+		startChild()
 	case "install":
 		Install()
 	default:

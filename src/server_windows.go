@@ -61,3 +61,7 @@ func server(_ overseer.State) {
 	db.BeforeClose()
 	geoip.ExitCleanup()
 }
+
+func startChild() {
+	log.Fatalln("this command is not for windows")
+}

@@ -11,6 +11,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sersh.com/totaltube/frontend/types"
 	"strings"
 	"sync"
 )
@@ -18,7 +19,7 @@ import (
 var rebuildSCSSMutex sync.Mutex
 var cssMinifier *minify.M
 
-func RebuildSCSS(path string, config *Config) error {
+func RebuildSCSS(path string, config *types.Config) error {
 	rebuildSCSSMutex.Lock()
 	defer rebuildSCSSMutex.Unlock()
 	for _, entryBase := range config.Scss.Entries {

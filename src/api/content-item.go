@@ -34,7 +34,7 @@ func ContentItem(siteDomain, lang, slug string, id int64, omitRelatedForLink boo
 }
 
 func ContentItemRaw(siteDomain, lang, slug string, id int64, omitRelatedForLink bool, relatedAmount int64, groupId int64) (response json.RawMessage, err error) {
-	response, err = ApiRequest(siteDomain, methodGet, uriContentItem, url.Values{
+	response, err = Request(siteDomain, methodGet, uriContentItem, url.Values{
 		"lang":     []string{lang},
 		"slug":     []string{slug},
 		"id":       []string{strconv.FormatInt(id, 10)},

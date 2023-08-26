@@ -3,6 +3,7 @@ package handlers
 import (
 	"log"
 	"net/http"
+	"sersh.com/totaltube/frontend/types"
 	"strconv"
 	"strings"
 
@@ -15,7 +16,7 @@ import (
 
 var Custom = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	path := r.Context().Value("path").(string)
-	config := r.Context().Value("config").(*site.Config)
+	config := r.Context().Value("config").(*types.Config)
 	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))
 	hostName := r.Context().Value("hostName").(string)
 	templateName := r.Context().Value("custom_template_name").(string)

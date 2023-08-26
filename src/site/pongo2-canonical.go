@@ -18,7 +18,7 @@ func getCanonical(ctx pongo2.Context, page int64, q ...url.Values) string {
 			page = p
 		}
 	}
-	config := ctx["config"].(*Config)
+	config := ctx["config"].(*types.Config)
 	var route string
 	if r, ok := ctx["route"]; !ok {
 		return ""
@@ -37,9 +37,9 @@ func getCanonical(ctx pongo2.Context, page int64, q ...url.Values) string {
 			route = strings.ReplaceAll(route, "{"+paramKey+"}", paramValue)
 		}
 	}
-	if config.General.MultiLanguage && isSearchPage {
+	langId := ctx["lang"].(*types.Language).Id
+	if config.General.MultiLanguage && isSearchPage && (langId != config.General.DefaultLanguage || !config.General.NoRedirectDefaultLanguage ) {
 		// Для поисковой страницы нужно каноникал вместе с языком указывать.
-		langId := ctx["lang"].(*types.Language).Id
 		route = strings.ReplaceAll(config.Routes.LanguageTemplate, "{route}", route)
 		route = strings.ReplaceAll(route, "{lang}", langId)
 	}
@@ -60,7 +60,7 @@ type tagCanonicalNode struct {
 
 func (node *tagCanonicalNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.TemplateWriter) *pongo2.Error {
 	context := pongo2.NewChildExecutionContext(ctx)
-	config := context.Public["config"].(*Config)
+	config := context.Public["config"].(*types.Config)
 	hostName := context.Public["host"].(string)
 	var page int64 = 1
 	if p, ok := context.Public["page"]; ok {

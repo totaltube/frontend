@@ -7,10 +7,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
+	"sersh.com/totaltube/frontend/types"
 	"strings"
 	"time"
 
@@ -22,20 +22,35 @@ import (
 type FetchRequest struct {
 	method  string
 	url     string
+	config  *types.Config
 	headers map[string]string
 	query   url.Values
 	data    interface{} // json post data
 	timeout time.Duration
 }
 
-func newFetchRequest(u string) *FetchRequest {
+func newFetchRequest(u string, config *types.Config) *FetchRequest {
 	var headers = map[string]string{
 		"User-Agent": "Totaltube Frontend/1.0 (+https://totaltraffictrader.com/)",
 	}
 	parsed, err := url.Parse(u)
+	timeout := time.Second * 5
 	if err != nil || (parsed.Host == "" && parsed.Scheme == "") {
-		u = internal.Config.General.ApiUrl + "v1/" + u
-		headers["Authorization"] = internal.Config.General.ApiSecret
+		apiUrl := internal.Config.General.ApiUrl
+		apiSecret := internal.Config.General.ApiSecret
+		if config.General.ApiUrl != "" {
+			apiUrl = config.General.ApiUrl
+		}
+		if config.General.ApiSecret != "" {
+			apiSecret = config.General.ApiSecret
+		}
+		u = apiUrl + "v1/" + u
+		headers["Authorization"] = apiSecret
+		headers["Accept"] = "application/json"
+		if config != nil {
+			headers["Totaltube-Site"] = config.Hostname
+		}
+		timeout = time.Duration(internal.Config.General.ApiTimeout)
 	}
 	n := FetchRequest{
 		method:  "GET",
@@ -43,7 +58,8 @@ func newFetchRequest(u string) *FetchRequest {
 		headers: headers,
 		query:   url.Values{},
 		data:    nil,
-		timeout: time.Second * 5,
+		config:  config,
+		timeout: timeout,
 	}
 	return &n
 }
@@ -112,7 +128,7 @@ func (f *FetchRequest) Do() (response []byte, err error) {
 	started := time.Now()
 	client := http.Client{
 		Transport: &http.Transport{DisableKeepAlives: true, TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
-		Timeout: f.timeout,
+		Timeout:   f.timeout,
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), f.timeout)
 	defer cancel()
@@ -164,10 +180,10 @@ func (f *FetchRequest) Do() (response []byte, err error) {
 		if strings.ToLower(name) == "host" {
 			// for Host header we have special case
 			request.Host = val
-		} else {
-			request.Header.Set(name, val)
 		}
+		request.Header.Set(name, val)
 	}
+	//request.Close = true
 	var resp *http.Response
 	resp, err = client.Do(request)
 	elapsed := time.Now().Sub(started)
@@ -175,28 +191,28 @@ func (f *FetchRequest) Do() (response []byte, err error) {
 		log.Println("too long request for ", request.URL.String(), request.Header.Get("Totaltube-Site"), elapsed)
 	}
 	if err != nil {
-		log.Println(err)
+		log.Println(err, request.Host)
 		return
 	}
-	if resp.StatusCode != 200 {
+
+	if resp.StatusCode >= 300 {
 		err = errors.New(fmt.Sprintf("wrong status code: %d", resp.StatusCode))
-		log.Println(f.url, err)
+		log.Println(f.url, err, request.Host)
 	}
 	resp.Header.Get("Accept")
 	if strings.Contains(request.Header.Get("Accept"), "application/json") {
-		// проверим, что возвращенный ответ также json:
 		if !strings.Contains(resp.Header.Get("Content-Type"), "/json") {
 			err = errors.New(fmt.Sprintf("wrong content type: %s", resp.Header.Get("Content-Type")))
 			log.Println(err)
 			return
 		}
 	}
-	response, err = ioutil.ReadAll(resp.Body)
+	response, err = io.ReadAll(resp.Body)
 	if err != nil {
 		log.Println(err)
 	}
 	elapsed = time.Now().Sub(started)
-	if elapsed > time.Second {
+	if elapsed > time.Second * 2 {
 		log.Println("too long getting response for ", request.URL.String(), request.Header.Get("Totaltube-Site"), elapsed)
 	}
 	return
@@ -234,6 +250,10 @@ func (f *FetchRequest) String() string {
 	return ""
 }
 
-func Fetch(u string) *FetchRequest {
-	return newFetchRequest(u)
+func SiteFetch(siteConfig *types.Config) func(u string) *FetchRequest {
+	return func(u string) *FetchRequest {
+		n := newFetchRequest(u, siteConfig)
+		n.config = siteConfig
+		return n
+	}
 }

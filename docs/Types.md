@@ -16,6 +16,7 @@ Type fields:
 * `Id` integer - numeric ID of content
 * `Title` string - content title
 * `TitleTranslated` boolean - if true, the `Title` is translated to requested language.
+* `OriginalTitle` string - if title is translated, this field holds original title
 * `Description` string - content description
 * `Channel` [ChannelShortResult](#channelshortresult) - content channel
 * `Link` string - for `video-link` type this field will contain link to video
@@ -40,6 +41,10 @@ Type fields:
 * `HiresThumb(formatName? string)` string - function return hires thumb or ordinary thumb if no hires thumb available.
 * `SelectedThumb(formatName? string)` integer - returns the index of currently selected thumb to show if content has several thumbs.
 * `MainCategorySlug(defaultName string)` string - returns the slug of content category or `defaultName` if content not in any category. Useful to generate links to content with gallery slug in link.
+* `HasCustomField(fieldName string)` bool - returns true if content item has custom field with name `fieldName`
+* `CustomField(fieldName string)` any - returns the value of custom field with name `fieldName` if it's defined, or `null`
+* `HasCustomTranslation(key string)` bool - returns true if content item has custom translation in current language for key `key`
+* `CustomTranslation(key string)` string - returns the custom translation with key `key`
 
 ### ThumbFormat
 This type holds some information about thumb format
@@ -133,6 +138,7 @@ The type has the following fields:
 * `Slug` string - slug of category
 * `Title` string - title of category
 * `TitleTranslated` boolean - true if category title has translation.
+* `OriginalTitle` string - if title translated, it holds original title
 * `Description` string - category description
 * `Tags` array of strings - category tags
 * `Dated` time.Time - category dated time
@@ -147,6 +153,10 @@ The type has the following fields:
 * `Thumb(formatName? string)` string - function return thumb URL.
 * `HiresThumb(formatName? string)` string - function return hires thumb or ordinary thumb if no hires thumb available.
 * `SelectedThumb(formatName? string)` integer - returns the index of currently selected thumb to show if category has several thumbs.
+* `HasCustomField(fieldName string)` bool - returns true if category has custom field with name `fieldName`
+* `CustomField(fieldName string)` any - returns the value of custom field with name `fieldName` if it's defined, or `null`
+* `HasCustomTranslation(key string)` bool - returns true if category has custom translation in current language for key `key`
+* `CustomTranslation(key string)` string - returns the custom translation with key `key`
 
 ### ModelResults
 This type is returned on fetching models. The type has the following fields:
@@ -163,6 +173,7 @@ The type has the following fields:
 * `Slug` string - slug of model
 * `Title` string - title of model
 * `TitleTranslated` boolean - true if model title has translation.
+* `OriginalTitle` string - if title translated, it holds original title
 * `Description` string - model description
 * `Tags` array of strings - model tags
 * `Dated` time.Time - model dated time
@@ -174,6 +185,10 @@ The type has the following fields:
 * `Thumb(formatName? string)` string - function return thumb URL.
 * `HiresThumb(formatName? string)` string - function return hires thumb or ordinary thumb if no hires thumb available.
 * `SelectedThumb(formatName? string)` integer - returns the index of currently selected thumb to show if model has several thumbs.
+* `HasCustomField(fieldName string)` bool - returns true if model has custom field with name `fieldName`
+* `CustomField(fieldName string)` any - returns the value of custom field with name `fieldName` if it's defined, or `null`
+* `HasCustomTranslation(key string)` bool - returns true if model has custom translation in current language for key `key`
+* `CustomTranslation(key string)` string - returns the custom translation with key `key`
 
 
 ### ChannelResults
@@ -191,6 +206,7 @@ The type has the following fields:
 * `Slug` string - slug of channel
 * `Title` string - title of channel
 * `TitleTranslated` boolean - true if channel title has translation.
+* `OriginalTitle` string - if title translated, it holds original title
 * `Description` string - channel description
 * `Tags` array of strings - channel tags
 * `Url` string - url of channel if set
@@ -204,6 +220,10 @@ The type has the following fields:
 * `Thumb(formatName? string)` string - function return thumb URL.
 * `HiresThumb(formatName? string)` string - function return hires thumb or ordinary thumb if no hires thumb available.
 * `SelectedThumb(formatName? string)` integer - returns the index of currently selected thumb to show if model has several thumbs.
+* `HasCustomField(fieldName string)` bool - returns true if channel has custom field with name `fieldName`
+* `CustomField(fieldName string)` any - returns the value of custom field with name `fieldName` if it's defined, or `null`
+* `HasCustomTranslation(key string)` bool - returns true if channel has custom translation in current language for key `key`
+* `CustomTranslation(key string)` string - returns the custom translation with key `key`
 
 ### TopSearch
 The type has the following fields:

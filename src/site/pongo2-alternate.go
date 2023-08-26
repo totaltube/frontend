@@ -24,7 +24,7 @@ func getAlternate(ctx pongo2.Context, langId string, page int64, q ...url.Values
 			page = p
 		}
 	}
-	config := ctx["config"].(*Config)
+	config := ctx["config"].(*types.Config)
 	var route string
 	if r, ok := ctx["route"]; !ok {
 		return ""
@@ -42,7 +42,7 @@ func getAlternate(ctx pongo2.Context, langId string, page int64, q ...url.Values
 			route = strings.ReplaceAll(route, "{"+paramKey+"}", paramValue)
 		}
 	}
-	if config.General.MultiLanguage {
+	if config.General.MultiLanguage && (config.General.DefaultLanguage != langId || !config.General.NoRedirectDefaultLanguage) {
 		route = strings.ReplaceAll(config.Routes.LanguageTemplate, "{route}", route)
 		route = strings.ReplaceAll(route, "{lang}", langId)
 	}
@@ -59,7 +59,7 @@ func getAlternate(ctx pongo2.Context, langId string, page int64, q ...url.Values
 }
 func (node *tagAlternateNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.TemplateWriter) *pongo2.Error {
 	context := pongo2.NewChildExecutionContext(ctx)
-	config := context.Public["config"].(*Config)
+	config := context.Public["config"].(*types.Config)
 	hostName := context.Public["host"].(string)
 	langId := context.Public["lang"].(*types.Language).Id
 	var page int64 = 1
@@ -79,7 +79,7 @@ func (node *tagAlternateNode) Execute(ctx *pongo2.ExecutionContext, writer pongo
 	}
 	v, err := node.lang.Evaluate(context)
 	if err != nil {
-		return err
+		return &pongo2.Error{Sender: "tag:alternate", OrigError: err}
 	}
 	alternateLang := v.String()
 	if templateName, ok := context.Public["page_template"].(string); ok && templateName == "search" {

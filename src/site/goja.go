@@ -66,10 +66,7 @@ func getJsVM(name string) *goja.Runtime {
 	var gojaRegistry = new(require.Registry)
 	gojaRegistry.Enable(VM)
 	console.Enable(VM)
-	err := VM.Set("fetch", helpers.Fetch)
-	if err != nil {
-		panic(err)
-	}
+	var err error
 	err = VM.Set("cache", func(cacheKey string, timeout string, recreate func() string) string {
 		timeoutDuration := types.ParseHumanDuration(timeout)
 		extendedTimeout := timeoutDuration / 2

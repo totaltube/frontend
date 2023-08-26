@@ -9,7 +9,7 @@ import (
 
 func Options(siteDomain string) (results *internal.Options, err error) {
 	var response json.RawMessage
-	response, err = ApiRequest(siteDomain, methodGet, uriOptions, url.Values{})
+	response, err = Request(siteDomain, methodGet, uriOptions, url.Values{})
 	if err != nil {
 		return
 	}

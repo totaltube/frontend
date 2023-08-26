@@ -2,11 +2,10 @@ package api
 
 import (
 	"encoding/json"
+	"github.com/pkg/errors"
 	"log"
 	"net/url"
-	"time"
-
-	"github.com/pkg/errors"
+	"path/filepath"
 
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/internal"
@@ -55,12 +54,13 @@ const (
 	uriCountryGroups      ApiUri = "country-groups"
 )
 
-func ApiRequest(siteDomain string, method Method, uri ApiUri, data interface{}) (response json.RawMessage, err error) {
-	f := helpers.Fetch(internal.Config.General.ApiUrl + "v1/" + string(uri))
-	f.WithHeader("Authorization", internal.Config.General.ApiSecret)
-	f.WithHeader("Totaltube-Site", siteDomain)
-	f.WithHeader("Accept", "application/json")
-	f.WithTimeout(int64(time.Duration(internal.Config.General.ApiTimeout) / time.Second))
+func Request(siteDomain string, method Method, uri ApiUri, data interface{}) (response json.RawMessage, err error) {
+	if siteDomain == "" {
+		siteDomain = internal.Config.Frontend.DefaultSite
+	}
+	siteConfigPath := filepath.Join(internal.Config.Frontend.SitesPath, siteDomain, "config.toml")
+	siteConfig := internal.GetConfig(siteConfigPath)
+	f := helpers.SiteFetch(siteConfig)(string(uri))
 	f.WithMethod(string(method))
 	if method == "GET" && data != nil {
 		queryParams, ok := data.(url.Values)

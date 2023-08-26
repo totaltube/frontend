@@ -23,7 +23,7 @@ import (
 )
 
 func generateCustomContext(w http.ResponseWriter, r *http.Request, templateName string) pongo2.Context {
-	config := r.Context().Value("config").(*site.Config)
+	config := r.Context().Value("config").(*types.Config)
 	hostName := r.Context().Value("hostName").(string)
 	langId := r.Context().Value("lang").(string)
 	refreshTranslations := r.URL.Query().Get(config.Params.Nocache) == "3"
@@ -313,7 +313,7 @@ func generateCustomContext(w http.ResponseWriter, r *http.Request, templateName 
 
 func Output404(w http.ResponseWriter, r *http.Request, errMessage string) {
 	path := r.Context().Value("path").(string)
-	config := r.Context().Value("config").(*site.Config)
+	config := r.Context().Value("config").(*types.Config)
 	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))
 	hostName := r.Context().Value("hostName").(string)
 	langId := r.Context().Value("lang").(string)
@@ -335,7 +335,7 @@ func Output404(w http.ResponseWriter, r *http.Request, errMessage string) {
 
 func Output500(w http.ResponseWriter, r *http.Request, err error) {
 	path := r.Context().Value("path").(string)
-	config := r.Context().Value("config").(*site.Config)
+	config := r.Context().Value("config").(*types.Config)
 	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))
 	hostName := r.Context().Value("hostName").(string)
 	langId := r.Context().Value("lang").(string)

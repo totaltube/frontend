@@ -127,6 +127,6 @@ func ContentRaw(siteDomain string, params ContentParams) (rawResponse json.RawMe
 	if params.RelatedMessage != "" {
 		data.Add("related_message", params.RelatedMessage)
 	}
-	rawResponse, err = ApiRequest(siteDomain, methodGet, uriContent, data)
+	rawResponse, err = Request(siteDomain, methodGet, uriContent, data)
 	return
 }

@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sersh.com/totaltube/frontend/types"
 	"sync"
 
 	"github.com/evanw/esbuild/pkg/api"
@@ -14,7 +15,7 @@ import (
 
 var rebuildJSMutex sync.Mutex
 
-func RebuildJS(path string, config *Config) error {
+func RebuildJS(path string, config *types.Config) error {
 	rebuildJSMutex.Lock()
 	defer rebuildJSMutex.Unlock()
 	var entryFiles = make([]string, 0, len(config.Javascript.Entries))

@@ -4,6 +4,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -57,6 +58,7 @@ func (s *Size) UnmarshalJSON(b []byte) error {
 }
 
 type CustomData map[string]interface{}
+type CustomTranslations map[string]string
 
 type ThumbFormat struct {
 	Name   string `json:"name"`
@@ -115,6 +117,7 @@ type ContentItemResult struct {
 	Slug               string                         `json:"slug"`
 	Title              string                         `json:"title"`
 	TitleTranslated    bool                           `json:"title_translated,omitempty"`
+	OriginalTitle      string                         `json:"original_title"`
 	Description        *string                        `json:"description,omitempty"`
 	Channel            *ChannelShortResult            `json:"channel,omitempty"`
 	Content            *string                        `json:"content,omitempty"`
@@ -151,7 +154,8 @@ type ContentItemResult struct {
 	Related            []*ContentResult               `json:"related,omitempty"` // similar content
 	SourceSiteId       string                         `json:"source_site_id"`
 	SourceSiteUniqueId string                         `json:"source_site_unique_id"`
-	CustomData         CustomData                     `json:"custom_data"`
+	CustomData         CustomData                    `json:"custom_data"`
+	CustomTranslations CustomTranslations            `json:"custom_translations"`
 	selectedThumb      *int
 }
 
@@ -160,6 +164,7 @@ type ContentResult struct {
 	Slug               string                         `json:"slug"`
 	Title              string                         `json:"title"`
 	TitleTranslated    bool                           `json:"title_translated,omitempty"`
+	OriginalTitle      string                         `json:"original_title"`
 	Description        *string                        `json:"description,omitempty"`
 	Channel            *ChannelShortResult            `json:"channel,omitempty"`
 	Content            *string                        `json:"content,omitempty"`
@@ -197,7 +202,8 @@ type ContentResult struct {
 	Views              int32                          `json:"views"`
 	SourceSiteId       string                         `json:"source_site_id"`
 	SourceSiteUniqueId string                         `json:"source_site_unique_id"`
-	CustomData         CustomData                     `json:"custom_data"`
+	CustomData         CustomData                    `json:"custom_data"`
+	CustomTranslations CustomTranslations            `json:"custom_translations"`
 	selectedThumb      *int
 }
 
@@ -256,15 +262,43 @@ func (c ContentResultUser) Value() (driver.Value, error) {
 }
 
 func (c ContentItemResult) HasCustomField(name string) bool {
+	if c.CustomData == nil {
+		return false
+	}
 	_, ok := c.CustomData[name]
 	return ok
 }
 
 func (c ContentItemResult) CustomField(name string) interface{} {
+	if c.CustomData == nil {
+		return nil
+	}
 	if data, ok := c.CustomData[name]; ok {
 		return data
 	}
 	return nil
+}
+
+func (c ContentItemResult) HasCustomTranslation(key string) bool {
+	if c.CustomTranslations == nil {
+		return false
+	}
+	_, ok := c.CustomTranslations[key]
+	return ok
+}
+
+func (c ContentItemResult) CustomTranslation(key string) (translation string) {
+	log.Println(c.CustomTranslations)
+	if c.CustomTranslations != nil {
+		translation, _ = c.CustomTranslations[key]
+	}
+	if translation == "" && c.CustomData != nil {
+		// if we don't have translation for current language, maybe we will find original text in CustomData
+		if customData, ok := c.CustomData[key]; ok {
+			translation, _ = customData.(string)
+		}
+	}
+	return
 }
 
 func (c ContentItemResult) GetThumbFormat(thumbFormatName ...string) (res ThumbFormat) {
@@ -434,15 +468,42 @@ func (c ContentItemResult) MainCategorySlug(defaultName ...string) string {
 }
 
 func (c ContentResult) HasCustomField(name string) bool {
+	if c.CustomData == nil {
+		return false
+	}
 	_, ok := c.CustomData[name]
 	return ok
 }
 
 func (c ContentResult) CustomField(name string) interface{} {
+	if c.CustomData == nil {
+		return nil
+	}
 	if data, ok := c.CustomData[name]; ok {
 		return data
 	}
 	return nil
+}
+
+func (c ContentResult) HasCustomTranslation(key string) bool {
+	if c.CustomTranslations == nil {
+		return false
+	}
+	_, ok := c.CustomTranslations[key]
+	return ok
+}
+
+func (c ContentResult) CustomTranslation(key string) (translation string) {
+	if c.CustomTranslations != nil {
+		translation, _ = c.CustomTranslations[key]
+	}
+	if translation == "" && c.CustomData != nil {
+		// if we don't have translation for current language, maybe we will find original text in CustomData
+		if customData, ok := c.CustomData[key]; ok {
+			translation, _ = customData.(string)
+		}
+	}
+	return
 }
 
 func (c ContentResult) GetThumbFormat(thumbFormatName ...string) (res ThumbFormat) {

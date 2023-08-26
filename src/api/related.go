@@ -31,7 +31,7 @@ func Related(
 	if amount > 0 {
 		data.Add("amount", strconv.FormatInt(amount, 10))
 	}
-	response, err = ApiRequest(siteDomain, methodGet, uriRelated, data)
+	response, err = Request(siteDomain, methodGet, uriRelated, data)
 	if err != nil {
 		log.Println(err)
 		return

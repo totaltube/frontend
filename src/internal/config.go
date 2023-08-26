@@ -56,6 +56,7 @@ func InitConfig(configPath string) {
 	Config = &ConfigT{
 		General: General{
 			Nginx:                true,
+			LangCookie:           "lng",
 			Development:          runtime.GOOS == "windows",
 			GeoipUrl:             "https://totaltraffictrader.com/geo/country.tar.gz",
 			RecreateWorkers:      50,
