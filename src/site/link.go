@@ -169,7 +169,8 @@ func GetLink(route string, config *types.Config, langId string, changeLangLink b
 			return match.String()
 		}, -1, -1)
 	}
-	if link == "" {
+	if link == "" || link == "-" {
+		link = ""
 		return
 	}
 	if config.General.MultiLanguage && !httpRegex.MatchString(link) && !isCustomRoute &&
