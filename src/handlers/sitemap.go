@@ -38,7 +38,7 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			mainUrls = append(mainUrls, c)
 		}
 		for _, uri := range mainUrls {
-			link := site.GetLink(uri, config, "en", false)
+			link := site.GetLink(uri, config, config.General.DefaultLanguage, false)
 			if link == "" {
 				continue
 			}
@@ -61,7 +61,7 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			route.CreateElement("priority").CreateText("1.0")
 		}
 	case "categories":
-		if config.Sitemap.CategoriesAmount <= 0 {
+		if config.Sitemap.CategoriesAmount <= 0 || config.Routes.Category == "" || config.Routes.Category == "-" {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 			return
 		}
@@ -82,7 +82,7 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var num int64
 		for _, item := range results.Items[(page-1)*config.Sitemap.MaxLinks:] {
 			route := urlSet.CreateElement("url")
-			route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink("category", config, "en", false, "slug", item.Slug, "id", item.Id))
+			route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink("category", config, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
 			if config.General.MultiLanguage {
 				for _, lang := range internal.GetLanguages() {
 					alt := route.CreateElement("xhtml:link")
@@ -100,7 +100,7 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	case "models":
-		if config.Sitemap.ModelsAmount <= 0 {
+		if config.Sitemap.ModelsAmount <= 0 || config.Routes.Model == "" || config.Routes.Model == "-" {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 			return
 		}
@@ -121,7 +121,7 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var num int64
 		for _, item := range results.Items[(page-1)*config.Sitemap.MaxLinks:] {
 			route := urlSet.CreateElement("url")
-			route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink("model", config, "en", false, "slug", item.Slug, "id", item.Id))
+			route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink("model", config, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
 			if config.General.MultiLanguage {
 				for _, lang := range internal.GetLanguages() {
 					alt := route.CreateElement("xhtml:link")
@@ -139,7 +139,7 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	case "channels":
-		if config.Sitemap.ChannelsAmount <= 0 {
+		if config.Sitemap.ChannelsAmount <= 0 || config.Routes.Channel == "" || config.Routes.Channel == "-" {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 			return
 		}
@@ -160,7 +160,7 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var num int64
 		for _, item := range results.Items[(page-1)*config.Sitemap.MaxLinks:] {
 			route := urlSet.CreateElement("url")
-			route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink("channel", config, "en", false, "slug", item.Slug, "id", item.Id))
+			route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink("channel", config, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
 			if config.General.MultiLanguage {
 				for _, lang := range internal.GetLanguages() {
 					alt := route.CreateElement("xhtml:link")
@@ -178,7 +178,7 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	case "videos":
-		if config.Sitemap.ChannelsAmount <= 0 {
+		if config.Sitemap.ChannelsAmount <= 0 || config.Routes.ContentItem == "" || config.Routes.ContentItem == "-" {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 			return
 		}
@@ -200,7 +200,7 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		for _, item := range results.Items[(page-1)*config.Sitemap.MaxLinks:] {
 			route := urlSet.CreateElement("url")
 			route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink(
-				"content_item", config, "en", false,
+				"content_item", config, config.General.DefaultLanguage, false,
 				"slug", item.Slug, "id", item.Id, "categories", item.Categories))
 			if config.General.MultiLanguage {
 				for _, lang := range internal.GetLanguages() {
@@ -275,7 +275,7 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		main := sitemapIndex.CreateElement("sitemap")
 		main.CreateElement("loc").CreateText("https://" + config.Hostname + config.Sitemap.Route + "?type=main")
 		main.CreateElement("lastmod").CreateText(currentDate)
-		if config.Sitemap.CategoriesAmount > 0 {
+		if config.Sitemap.CategoriesAmount > 0 && config.Routes.Category != "" && config.Routes.Category != "-" {
 			results, err := getSitemapCategories(config.Hostname, config.Sitemap.CategoriesAmount)
 			if err != nil {
 				log.Println(err)
@@ -297,7 +297,7 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				lastFrom += config.Sitemap.MaxLinks
 			}
 		}
-		if config.Sitemap.ModelsAmount > 0 {
+		if config.Sitemap.ModelsAmount > 0 && config.Routes.Model != "" && config.Routes.Model != "-" {
 			results, err := getSitemapModels(config.Hostname, config.Sitemap.ModelsAmount)
 			if err != nil {
 				log.Println(err)
@@ -319,7 +319,7 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				lastFrom += config.Sitemap.MaxLinks
 			}
 		}
-		if config.Sitemap.ChannelsAmount > 0 {
+		if config.Sitemap.ChannelsAmount > 0 && config.Routes.Channel != "" && config.Routes.Channel != "-" {
 			results, err := getSitemapChannels(config.Hostname, config.Sitemap.CategoriesAmount)
 			if err != nil {
 				log.Println(err)
@@ -341,7 +341,7 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				lastFrom += config.Sitemap.MaxLinks
 			}
 		}
-		if config.Sitemap.LastVideosAmount > 0 {
+		if config.Sitemap.LastVideosAmount > 0 && config.Routes.ContentItem != "" && config.Routes.ContentItem != "-" {
 			results, err := getSitemapVideos(config.Hostname, config.Sitemap.LastVideosAmount)
 			if err != nil {
 				log.Println(err)
@@ -363,7 +363,7 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				lastFrom += config.Sitemap.MaxLinks
 			}
 		}
-		if config.Sitemap.SearchesAmount > 0 {
+		if config.Sitemap.SearchesAmount > 0 && config.Routes.Search != "" && config.Routes.Search != "-" {
 			langs := []string{config.General.DefaultLanguage}
 			if config.General.MultiLanguage {
 				langs = lo.Map(internal.GetLanguages(), func(t types.Language, i int) string {
