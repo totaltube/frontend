@@ -64,7 +64,7 @@ func GetLink(route string, config *types.Config, langId string, changeLangLink b
 			if !ok {
 				log.Println("no query param for search route")
 			} else {
-				link = strings.ReplaceAll(link, "{query}", fmt.Sprintf("%v", queryParam.Value))
+				link = strings.ReplaceAll(link, "{query}", url.PathEscape(fmt.Sprintf("%v", queryParam.Value)))
 				params = fastRemove(params, queryIndex)
 			}
 		}
@@ -168,6 +168,9 @@ func GetLink(route string, config *types.Config, langId string, changeLangLink b
 			}
 			return match.String()
 		}, -1, -1)
+	}
+	if link == "" {
+		return
 	}
 	if config.General.MultiLanguage && !httpRegex.MatchString(link) && !isCustomRoute &&
 		(langId != config.General.DefaultLanguage || !config.General.NoRedirectDefaultLanguage || changeLangLink) {

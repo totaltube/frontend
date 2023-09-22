@@ -4,11 +4,22 @@ type (
 	Config struct {
 		Routes     ConfigRoutes
 		General    ConfigGeneral
+		Sitemap    ConfigSitemap
 		Params     ConfigParams
 		Javascript ConfigJs          `json:"-"`
 		Scss       ConfigScss        `json:"-"`
 		Custom     map[string]string `json:"-"`
 		Hostname   string            `json:"-"`
+	}
+	ConfigSitemap struct {
+		Route            string   `toml:"route"`
+		AdditionalLinks  []string `toml:"additional_links"`
+		MaxLinks         int64    `toml:"max_links"` // max links for one sitemap file
+		CategoriesAmount int64    `toml:"categories_amount"`
+		ModelsAmount     int64    `toml:"models_amount"`
+		ChannelsAmount   int64    `toml:"channels_amount"`
+		SearchesAmount   int64    `toml:"searches_amount"`
+		LastVideosAmount int64    `toml:"last_videos_amount"`
 	}
 	ConfigRoutes struct {
 		TopCategories    string `toml:"top_categories"`
@@ -109,6 +120,15 @@ func NewConfig() *Config {
 			Dmca:             "/dmca",
 			Out:              "/c",
 			LanguageTemplate: "/{lang}{route}",
+		},
+		Sitemap: ConfigSitemap{
+			Route:            "/sitemap.xml",
+			MaxLinks:         100,
+			CategoriesAmount: 100,
+			ModelsAmount:     100,
+			ChannelsAmount:   100,
+			SearchesAmount:   100,
+			LastVideosAmount: 500,
 		},
 		General: ConfigGeneral{
 			MinifyHtml:                 true,

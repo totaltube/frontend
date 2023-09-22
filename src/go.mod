@@ -6,6 +6,7 @@ require (
 	github.com/AlecAivazis/survey/v2 v2.2.9
 	github.com/BurntSushi/toml v0.3.1
 	github.com/alecthomas/kong v0.2.11
+	github.com/beevik/etree v1.2.0
 	github.com/brianvoe/gofakeit/v6 v6.18.0
 	github.com/dgraph-io/badger/v3 v3.2103.5
 	github.com/dlclark/regexp2 v1.7.0
@@ -35,10 +36,8 @@ require (
 require (
 	github.com/StackExchange/wmi v0.0.0-20210224194228-fe8f1750fd46 // indirect
 	github.com/ajg/form v1.5.1 // indirect
-	github.com/bep/godartsass v0.16.0 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
-	github.com/cli/safeexec v1.0.0 // indirect
 	github.com/dgraph-io/ristretto v0.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/go-ole/go-ole v1.2.5 // indirect

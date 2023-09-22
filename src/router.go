@@ -203,6 +203,9 @@ func InitRouter() http.Handler {
 				}
 			}
 		}
+		if config.Sitemap.Route != "" {
+			hr.Handle(config.Sitemap.Route, handlers.Sitemap)
+		}
 		hr.NotFound(handlers.Handle404)
 		//hr.Handle("/*", handlers.Handle404)
 		h.handler = hr

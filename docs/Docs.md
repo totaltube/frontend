@@ -108,7 +108,19 @@ images_path = "images" # images resolution from this path relative to scss path
 fonts_path = "fonts" # fonts resolution from this path relative to scss path
 minify = true # minify resulting css
 ```
-
+In `[sitemap]` section you can define some options for building the sitemap.xml. Example:
+```toml
+[sitemap]
+route = "/sitemap.xml" # route for main sitemap.xml file, if empty - sitemap will not be generated. Default - /sitemap.xml
+additional_links = ["/somelink", "/someotherlink"] # additional links to add to sitemap. By default, sitemap will be generated for main links, top categories, top models, top channels, top searches and last videos.
+max_links = 100 # max links in one sitemap file
+categories_amount = 100 # num top categories links to place in sitemap
+models_amount = 100 # num top models links to place in sitemap
+channels_amount = 100 # num top channels links to place in sitemap
+searches_amount = 100 # num top searches links to place in sitemap
+last_videos_amount = 500 # num last videos links to place in sitemap
+# for all these categories_amount, models_amount, etc.. if you set to 0, these links will not be added to sitemap.
+```
 In `[custom]` section you can define some custom options, which will be available in templates as config.Custom.your_option. Example:
 ```toml
 [custom] # Some custom configuration options available in template as config.Custom.your_option
