@@ -70,6 +70,7 @@ var New = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					DurationLt:   durationTo,
 					UserAgent:    userAgent,
 					GroupId:      groupId,
+					Ip:           net.ParseIP(ip),
 				})
 			}, nocache)
 			if err != nil {

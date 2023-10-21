@@ -154,8 +154,8 @@ type ContentItemResult struct {
 	Related            []*ContentResult               `json:"related,omitempty"` // similar content
 	SourceSiteId       string                         `json:"source_site_id"`
 	SourceSiteUniqueId string                         `json:"source_site_unique_id"`
-	CustomData         CustomData                    `json:"custom_data"`
-	CustomTranslations CustomTranslations            `json:"custom_translations"`
+	CustomData         CustomData                     `json:"custom_data"`
+	CustomTranslations CustomTranslations             `json:"custom_translations"`
 	selectedThumb      *int
 }
 
@@ -202,8 +202,8 @@ type ContentResult struct {
 	Views              int32                          `json:"views"`
 	SourceSiteId       string                         `json:"source_site_id"`
 	SourceSiteUniqueId string                         `json:"source_site_unique_id"`
-	CustomData         CustomData                    `json:"custom_data"`
-	CustomTranslations CustomTranslations            `json:"custom_translations"`
+	CustomData         CustomData                     `json:"custom_data"`
+	CustomTranslations CustomTranslations             `json:"custom_translations"`
 	selectedThumb      *int
 }
 
@@ -417,23 +417,89 @@ func (c ContentItemResult) VideoFormats() []string {
 	}
 	return lo.Keys(*c.VideoSizes)
 }
+
+func (c ContentItemResult) Mp4VideoFormats() []string {
+	if c.VideoSizes == nil {
+		return []string{}
+	}
+	var formats []string
+	for name, info := range *c.VideoSizes {
+		if info.Type == "mp4" {
+			formats = append(formats, name)
+		}
+	}
+	return formats
+}
 func (c ContentItemResult) VideoUrl(formats ...string) string {
 	info := c.VideoInfo(formats...)
 	return c.VideoServer + c.VideoPath + "/video-" + info.Name + "." + info.Type
 }
+
+func (c ContentItemResult) HlsMasterUrl() string {
+	formats := c.Mp4VideoFormats()
+	if len(formats) == 0 {
+		return ""
+	}
+	formatNames := strings.Join(formats, ",")
+	return c.VideoServer + c.VideoPath + "/video-," + formatNames + ",.mp4.urlset/master.m3u8"
+}
+
 func (c ContentItemResult) VideoPoster(formats ...string) string {
-	info := c.VideoInfo(formats...)
+	var info ContentVideoInfo
+	if c.VideoSizes != nil {
+		var lastSize int64
+		for name, i := range *c.VideoSizes {
+			if len(formats) > 0 {
+				if !lo.Contains(formats, i.Name) {
+					continue
+				}
+			}
+			if i.PosterType != "" && lastSize < i.Size.Width+i.Size.Height {
+				info = i
+				info.Name = name
+				lastSize = i.Size.Width + i.Size.Height
+			}
+		}
+	}
 	if info.PosterType == "" {
 		return ""
 	}
 	return c.VideoServer + c.VideoPath + "/poster-" + info.Name + "." + info.PosterType
 }
+
 func (c ContentItemResult) VideoTimeline(formats ...string) string {
-	info := c.VideoInfo(formats...)
+	var info ContentVideoInfo
+	if c.VideoSizes != nil {
+		for name, i := range *c.VideoSizes {
+			if len(formats) > 0 && !lo.Contains(formats, i.Name) {
+				continue
+			}
+			if i.TimelineType != "" {
+				info = i
+				info.Name = name
+				break
+			}
+		}
+	}
 	if info.TimelineType == "" {
 		return ""
 	}
 	return c.VideoServer + c.VideoPath + "/timeline-" + info.Name + ".vtt"
+}
+
+func (c ContentItemResult) MaxVideoSize() Size {
+	var info ContentVideoInfo
+	var lastSize int64
+	if c.VideoSizes != nil {
+		for name, i := range *c.VideoSizes {
+			if i.Size.Width+i.Size.Height > lastSize {
+				info = i
+				info.Name = name
+				lastSize = i.Size.Width + i.Size.Height
+			}
+		}
+	}
+	return info.Size
 }
 
 func (c ContentItemResult) VideoSize(formats ...string) Size {

@@ -31,6 +31,9 @@ func getAlternate(ctx pongo2.Context, langId string, page int64, q ...url.Values
 	} else {
 		route = r.(string)
 	}
+	if route == config.Routes.VideoEmbed || route == config.Routes.FakePlayer {
+		route = config.Routes.ContentItem
+	}
 	alternateQuery := url.Values(http.Header(ctx["canonical_query"].(url.Values)).Clone())
 	if strings.Contains(route, "{page}") {
 		route = strings.ReplaceAll(route, "{page}", strconv.FormatInt(page, 10))

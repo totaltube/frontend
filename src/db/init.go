@@ -18,23 +18,36 @@ func InitDB() {
 	launchCacheWorkers()
 	var err error
 	for {
-		bdb, err = badger.Open(
-			badger.LSMOnlyOptions(internal.Config.Database.Path).
-				WithDetectConflicts(false).
-				WithSyncWrites(false).
-				WithValueLogMaxEntries(100000).
-				WithValueLogFileSize(1e+7).
-				WithIndexCacheSize(100 * 1e+6).
-				WithBlockCacheSize(50 * 1e+6).
-				WithNumMemtables(2).
-				WithLoggingLevel(badger.WARNING),
-		)
-
+		if internal.Config.Database.LowMemory {
+			// low memory options
+			bdb, err = badger.Open(
+				badger.DefaultOptions(internal.Config.Database.Path).
+					WithDetectConflicts(false).
+					WithValueLogFileSize(16 << 20). // 16 MB
+					WithIndexCacheSize(10 << 20).   // 10 MB
+					WithBlockCacheSize(10 << 20).   // 10 MB
+					WithNumMemtables(2).
+					WithSyncWrites(false).
+					WithLoggingLevel(badger.WARNING),
+			)
+		} else {
+			bdb, err = badger.Open(
+				badger.LSMOnlyOptions(internal.Config.Database.Path).
+					WithDetectConflicts(false).
+					WithSyncWrites(false).
+					WithValueLogMaxEntries(100000).
+					WithValueLogFileSize(1e+7).
+					WithIndexCacheSize(100 << 20).
+					WithBlockCacheSize(50 << 20).
+					WithNumMemtables(2).
+					WithLoggingLevel(badger.WARNING),
+			)
+		}
 		if err != nil {
 			// Waiting until not closed process will close the database.
 			if strings.Contains(err.Error(), "Cannot acquire directory lock") {
 				log.Println("waiting for database unlocking...")
-				time.Sleep(time.Millisecond*200)
+				time.Sleep(time.Millisecond * 200)
 				continue
 			}
 		}

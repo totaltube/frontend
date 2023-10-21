@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"strconv"
@@ -37,6 +38,7 @@ var VideoEmbed = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	ip := r.Context().Value("ip").(string)
 	groupId := internal.DetectCountryGroup(net.ParseIP(ip)).Id
 	customContext := generateCustomContext(w, r, "video-embed")
+	params := customContext["params"].(map[string]string)
 	cacheKey := "video-embed:" + helpers.Md5Hash(
 		fmt.Sprintf("%s:%s:%d:%s", hostName, langId, id, slug),
 	)
@@ -62,10 +64,18 @@ var VideoEmbed = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				return ctx, err
 			}
 			if results.Type != "video" {
+				log.Println("wrong type of video on embed page - ", results.Type)
 				return ctx, errors.New("content item not found")
 			}
 			ctx["content_item"] = results
 			ctx["related"] = results.Related
+			// let's add first category name to params
+			if len(results.Categories) > 0 {
+				params["category"] = results.Categories[0].Slug
+			} else {
+				params["category"] = "default"
+			}
+			ctx["params"] = params
 			return ctx, nil
 		}, w, r)
 	if err != nil {
