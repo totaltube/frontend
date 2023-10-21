@@ -24,7 +24,7 @@ func fastRemove[T any](s []T, i int) []T {
 	return s[:len(s)-1]
 }
 
-func GetLink(route string, config *types.Config, langId string, changeLangLink bool, args ...interface{}) (link string) {
+func GetLink(route string, config *types.Config, host string, langId string, changeLangLink bool, args ...interface{}) (link string) {
 	var params = make([]linkParam, 0, len(args)/2)
 	curType := ""
 	for _, p := range args {
@@ -40,6 +40,11 @@ func GetLink(route string, config *types.Config, langId string, changeLangLink b
 		return
 	}
 	var isCustomRoute = false
+	var isFullUrl = false
+	if fullUrl, index, ok := lo.FindIndexOf(params, func(p linkParam) bool { return p.Type == "full_url" }); ok {
+		isFullUrl, _ = strconv.ParseBool(fmt.Sprintf("%v", fullUrl.Value))
+		params = fastRemove(params, index)
+	}
 	switch route {
 	case "top_categories", "top-categories":
 		link = config.Routes.TopCategories
@@ -64,7 +69,8 @@ func GetLink(route string, config *types.Config, langId string, changeLangLink b
 			if !ok {
 				log.Println("no query param for search route")
 			} else {
-				link = strings.ReplaceAll(link, "{query}", url.PathEscape(fmt.Sprintf("%v", queryParam.Value)))
+
+				link = strings.ReplaceAll(link, "{query}", strings.ReplaceAll(url.PathEscape(strings.ReplaceAll(strings.TrimSpace(fmt.Sprintf("%v", queryParam.Value)), "  ", " ")), "%20", "+"))
 				params = fastRemove(params, queryIndex)
 			}
 		}
@@ -81,7 +87,33 @@ func GetLink(route string, config *types.Config, langId string, changeLangLink b
 		var categories []types.TaxonomyResult
 		if categoriesParam, index, ok := lo.FindIndexOf(params, func(p linkParam) bool { return p.Type == "categories" }); ok {
 			if categories, ok = categoriesParam.Value.(types.TaxonomyResults); ok {
-				fastRemove(params, index)
+				params = fastRemove(params, index)
+			}
+		}
+		if categoryParam, index, ok := lo.FindIndexOf(params, func(p linkParam) bool { return p.Type == "category" }); ok {
+			link = strings.ReplaceAll(link, "{category}", fmt.Sprintf("%v", categoryParam.Value))
+			params = fastRemove(params, index)
+		} else {
+			category := "default"
+			if len(categories) > 0 {
+				category = categories[0].Slug
+			}
+			link = strings.ReplaceAll(link, "{category}", category)
+		}
+	case "video_embed", "video-embed":
+		link = config.Routes.VideoEmbed
+		if slugParam, index, ok := lo.FindIndexOf(params, func(p linkParam) bool { return p.Type == "slug" }); ok {
+			link = strings.ReplaceAll(link, "{slug}", fmt.Sprintf("%v", slugParam.Value))
+			params = fastRemove(params, index)
+		}
+		if idParam, index, ok := lo.FindIndexOf(params, func(p linkParam) bool { return p.Type == "id" }); ok {
+			link = strings.ReplaceAll(link, "{id}", fmt.Sprintf("%v", idParam.Value))
+			params = fastRemove(params, index)
+		}
+		var categories []types.TaxonomyResult
+		if categoriesParam, index, ok := lo.FindIndexOf(params, func(p linkParam) bool { return p.Type == "categories" }); ok {
+			if categories, ok = categoriesParam.Value.(types.TaxonomyResults); ok {
+				params = fastRemove(params, index)
 			}
 		}
 		if categoryParam, index, ok := lo.FindIndexOf(params, func(p linkParam) bool { return p.Type == "category" }); ok {
@@ -151,7 +183,7 @@ func GetLink(route string, config *types.Config, langId string, changeLangLink b
 		}
 		link = strings.ReplaceAll(link, "{category}", category)
 	default:
-		route = strings.TrimPrefix(route, "custom.")
+		route = strings.TrimPrefix(strings.TrimPrefix(route, "custom."), "custom/")
 		if r, ok := config.Routes.Custom[route]; ok {
 			link = r
 			isCustomRoute = true
@@ -323,6 +355,13 @@ func GetLink(route string, config *types.Config, langId string, changeLangLink b
 			}
 		}
 		link = outLink + "?" + outlinkParams.Encode()
+		if isFullUrl && !strings.HasPrefix(link, "https://") && !strings.HasPrefix(link, "http://") {
+			var canonicalUrl = strings.TrimSuffix(config.General.CanonicalUrl, "/")
+			if canonicalUrl == "" {
+				canonicalUrl = "https://"+host
+			}
+			link = canonicalUrl + link
+		}
 		return
 	}
 	if len(urlParams) > 0 {
@@ -336,6 +375,13 @@ func GetLink(route string, config *types.Config, langId string, changeLangLink b
 		} else {
 			link = config.General.TradeUrlTemplate
 		}
+	}
+	if isFullUrl && !strings.HasPrefix(link, "https://") && !strings.HasPrefix(link, "http://") {
+		var canonicalUrl = strings.TrimSuffix(config.General.CanonicalUrl, "/")
+		if canonicalUrl == "" {
+			canonicalUrl = "https://"+host
+		}
+		link = canonicalUrl + link
 	}
 	return
 }

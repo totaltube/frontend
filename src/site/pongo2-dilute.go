@@ -19,14 +19,14 @@ type tagDiluteNode struct {
 	as   string            // save new array as this variable name
 }
 
-func (node *tagDiluteNode) Execute(ctx *pongo2.ExecutionContext, _ pongo2.TemplateWriter) *pongo2.Error {
+func (node *tagDiluteNode) Execute(ctx *pongo2.ExecutionContext, tw pongo2.TemplateWriter) *pongo2.Error {
 	// Evaluate what to repeat
 	what, err := node.what.Evaluate(ctx)
 	if err != nil {
 		return err
 	}
 	if !what.CanSlice() {
-		return &pongo2.Error{Sender: "tag:dilute", OrigError: errors.New("source for dilute must be array")}
+		return &pongo2.Error{Sender: "tag:dilute" ,OrigError: errors.New("source for dilute must be array")}
 	}
 	sourceLength := what.Len()
 	with, err := node.with.Evaluate(ctx)

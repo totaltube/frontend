@@ -138,6 +138,8 @@ func generateCustomContext(w http.ResponseWriter, r *http.Request, templateName 
 		route = config.Routes.FakePlayer
 	case "video-embed":
 		route = config.Routes.VideoEmbed
+	case "sitemap-video":
+		route = config.Sitemap.Route
 	default:
 		if rr, ok := config.Custom[strings.TrimPrefix(templateName, "custom/")]; ok {
 			route = rr

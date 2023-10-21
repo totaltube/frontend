@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/beevik/etree"
+	"github.com/flosch/pongo2/v4"
 	"github.com/samber/lo"
 	"log"
 	"math/rand"
@@ -20,6 +21,8 @@ import (
 
 var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	config := r.Context().Value("config").(*types.Config)
+	path := r.Context().Value("path").(string)
+	hostName := r.Context().Value("hostName").(string)
 	currentDate := time.Now().UTC().Format(time.DateOnly)
 	doc := etree.NewDocument()
 	doc.CreateProcInst("xml", `version="1.0" encoding="UTF-8"`)
@@ -38,7 +41,7 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			mainUrls = append(mainUrls, c)
 		}
 		for _, uri := range mainUrls {
-			link := site.GetLink(uri, config, config.General.DefaultLanguage, false)
+			link := site.GetLink(uri, config, hostName, config.General.DefaultLanguage, false)
 			if link == "" {
 				continue
 			}
@@ -47,7 +50,7 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				CreateText("https://" + config.Hostname + link)
 			if config.General.MultiLanguage {
 				for _, lang := range internal.GetLanguages() {
-					altLink := site.GetLink(uri, config, lang.Id, true)
+					altLink := site.GetLink(uri, config, hostName, lang.Id, true)
 					if altLink != link {
 						alt := route.CreateElement("xhtml:link")
 						alt.CreateAttr("rel", "alternate")
@@ -82,13 +85,13 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var num int64
 		for _, item := range results.Items[(page-1)*config.Sitemap.MaxLinks:] {
 			route := urlSet.CreateElement("url")
-			route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink("category", config, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
+			route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink("category", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
 			if config.General.MultiLanguage {
 				for _, lang := range internal.GetLanguages() {
 					alt := route.CreateElement("xhtml:link")
 					alt.CreateAttr("rel", "alternate")
 					alt.CreateAttr("hreflang", lang.Id)
-					alt.CreateAttr("href", "https://"+config.Hostname+site.GetLink("category", config, lang.Id, true, "slug", item.Slug, "id", item.Id))
+					alt.CreateAttr("href", "https://"+config.Hostname+site.GetLink("category", config, hostName, lang.Id, true, "slug", item.Slug, "id", item.Id))
 				}
 			}
 			route.CreateElement("lastmod").CreateText(time.Now().UTC().Format(time.DateOnly))
@@ -121,13 +124,13 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var num int64
 		for _, item := range results.Items[(page-1)*config.Sitemap.MaxLinks:] {
 			route := urlSet.CreateElement("url")
-			route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink("model", config, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
+			route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink("model", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
 			if config.General.MultiLanguage {
 				for _, lang := range internal.GetLanguages() {
 					alt := route.CreateElement("xhtml:link")
 					alt.CreateAttr("rel", "alternate")
 					alt.CreateAttr("hreflang", lang.Id)
-					alt.CreateAttr("href", "https://"+config.Hostname+site.GetLink("model", config, lang.Id, true, "slug", item.Slug, "id", item.Id))
+					alt.CreateAttr("href", "https://"+config.Hostname+site.GetLink("model", config, hostName, lang.Id, true, "slug", item.Slug, "id", item.Id))
 				}
 			}
 			route.CreateElement("lastmod").CreateText(time.Now().UTC().Format(time.DateOnly))
@@ -160,13 +163,13 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var num int64
 		for _, item := range results.Items[(page-1)*config.Sitemap.MaxLinks:] {
 			route := urlSet.CreateElement("url")
-			route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink("channel", config, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
+			route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink("channel", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
 			if config.General.MultiLanguage {
 				for _, lang := range internal.GetLanguages() {
 					alt := route.CreateElement("xhtml:link")
 					alt.CreateAttr("rel", "alternate")
 					alt.CreateAttr("hreflang", lang.Id)
-					alt.CreateAttr("href", "https://"+config.Hostname+site.GetLink("channel", config, lang.Id, true, "slug", item.Slug, "id", item.Id))
+					alt.CreateAttr("href", "https://"+config.Hostname+site.GetLink("channel", config, hostName, lang.Id, true, "slug", item.Slug, "id", item.Id))
 				}
 			}
 			route.CreateElement("lastmod").CreateText(time.Now().UTC().Format(time.DateOnly))
@@ -197,10 +200,39 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		var num int64
+		customContext := generateCustomContext(w, r, "sitemap-video")
 		for _, item := range results.Items[(page-1)*config.Sitemap.MaxLinks:] {
+			var videoBytes []byte
+			videoBytes, err = site.ParseTemplate("sitemap-video", path, config, customContext, true, fmt.Sprintf("sitemap-video-%d", item.Id), 1, func() (ctx pongo2.Context, err error) {
+				ctx = pongo2.Context{
+					"content_item": item,
+				}
+				return
+			}, w, r)
+			if err == nil {
+				// получаем из шаблона url для видео
+				video := etree.NewDocument()
+				err = video.ReadFromBytes(videoBytes)
+				if err != nil {
+					log.Println(err, string(videoBytes))
+					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+					return
+				}
+				urlSet.AddChild(video.Root())
+				num++
+				if num >= config.Sitemap.MaxLinks {
+					break
+				}
+				continue
+			}
+			if err != site.ErrTemplateNotFound {
+				log.Println(err)
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+				return
+			}
 			route := urlSet.CreateElement("url")
 			route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink(
-				"content_item", config, config.General.DefaultLanguage, false,
+				"content_item", config, hostName, config.General.DefaultLanguage, false,
 				"slug", item.Slug, "id", item.Id, "categories", item.Categories))
 			if config.General.MultiLanguage {
 				for _, lang := range internal.GetLanguages() {
@@ -208,25 +240,27 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					alt.CreateAttr("rel", "alternate")
 					alt.CreateAttr("hreflang", lang.Id)
 					alt.CreateAttr("href", "https://"+config.Hostname+site.GetLink(
-						"content_item", config, lang.Id, true,
+						"content_item", config, hostName, lang.Id, true,
 						"slug", item.Slug, "id", item.Id, "categories", item.Categories))
 				}
 			}
 			route.CreateElement("lastmod").CreateText(time.Now().UTC().Format(time.DateOnly))
 			route.CreateElement("changefreq").CreateText("daily")
 			route.CreateElement("priority").CreateText("0.8")
-			video := route.CreateElement("video:video")
-			video.CreateElement("video:thumbnail_loc").CreateText(item.HiresThumb())
-			video.CreateElement("video:title").CreateCData(item.Title)
-			if item.Description != nil && *item.Description != "" {
-				video.CreateElement("video:description").CreateCData(*item.Description)
-			}
-			video.CreateElement("video:view_count").CreateText(strconv.FormatInt(int64(item.Views), 10))
-			video.CreateElement("video:publication_date").CreateText(item.Dated.Format(time.DateOnly))
-			video.CreateElement("video:duration").CreateText(fmt.Sprintf("%d", item.Duration))
-			for _, cat := range item.Categories {
-				video.CreateElement("video:category").CreateCData(cat.Title)
-			}
+			/*
+				video := route.CreateElement("video:video")
+				video.CreateElement("video:thumbnail_loc").CreateText(item.HiresThumb())
+				video.CreateElement("video:title").CreateCData(item.Title)
+				if item.Description != nil && *item.Description != "" {
+					video.CreateElement("video:description").CreateCData(*item.Description)
+				}
+				video.CreateElement("video:view_count").CreateText(strconv.FormatInt(int64(item.Views), 10))
+				video.CreateElement("video:publication_date").CreateText(item.Dated.Format(time.DateOnly))
+				video.CreateElement("video:duration").CreateText(fmt.Sprintf("%d", item.Duration))
+				for _, cat := range item.Categories {
+					video.CreateElement("video:category").CreateCData(cat.Title)
+				}
+			*/
 			num++
 			if num >= config.Sitemap.MaxLinks {
 				break
@@ -259,7 +293,7 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var num int64
 		for _, item := range results[(page-1)*config.Sitemap.MaxLinks:] {
 			route := urlSet.CreateElement("url")
-			route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink("search", config, lang, false, "query", item.Message))
+			route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink("search", config, hostName, lang, false, "query", item.Message))
 			route.CreateElement("lastmod").CreateText(time.Now().UTC().Format(time.DateOnly))
 			route.CreateElement("changefreq").CreateText("hourly")
 			route.CreateElement("priority").CreateText("0.6")

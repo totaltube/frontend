@@ -89,7 +89,7 @@ var ContentItem = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 					args = append(args, k, r.URL.Query().Get(k))
 				}
 				return nil, redirectErr{
-					url: site.GetLink("content", config, langId, false, args...),
+					url: site.GetLink("content", config, hostName, langId, false, args...),
 					code: 301,
 				}
 			}

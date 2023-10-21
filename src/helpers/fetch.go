@@ -6,12 +6,16 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"github.com/rs/dnscache"
+	"github.com/samber/lo"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"sersh.com/totaltube/frontend/types"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/pkg/errors"
@@ -124,14 +128,56 @@ func (f *FetchRequest) WithTimeout(seconds int64) *FetchRequest {
 	return f
 }
 
+var resolver = &dnscache.Resolver{}
+var resolverInitialized atomic.Bool
+var dnsDialer = func(ctx context.Context, network, address string) (conn net.Conn, err error) {
+	if !resolverInitialized.Swap(true) {
+		go func() {
+			ticker := time.NewTicker(time.Minute * 5)
+			defer ticker.Stop()
+			for range ticker.C {
+				resolver.Refresh(true)
+			}
+		}()
+		log.Println("dns resolver initialized")
+	}
+	var host string
+	var port string
+	host, port, err = net.SplitHostPort(address)
+	if err != nil {
+		return nil, err
+	}
+	var ips []string
+	ips, err = resolver.LookupHost(ctx, host)
+	if err != nil {
+		return nil, err
+	}
+	lo.Shuffle(ips)
+	for _, ip := range ips {
+		var dialer net.Dialer
+		conn, err = dialer.DialContext(ctx, network, net.JoinHostPort(ip, port))
+		if err == nil {
+			return
+		}
+	}
+	return
+}
+
 func (f *FetchRequest) Do() (response []byte, err error) {
 	started := time.Now()
-	client := http.Client{
-		Transport: &http.Transport{DisableKeepAlives: true, TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
-		Timeout:   f.timeout,
-	}
 	ctx, cancel := context.WithTimeout(context.Background(), f.timeout)
 	defer cancel()
+	var client = http.Client{
+		Transport: &http.Transport{
+			MaxIdleConns:        100,  // Максимальное количество неактивных соединений, которое можно сохранять в пуле
+			MaxIdleConnsPerHost: 100,  // Максимальное количество неактивных соединений с одним хостом
+			MaxConnsPerHost:     2000, // Максимальное количество соединений
+			DisableKeepAlives:   true,
+			TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
+			DialContext:         dnsDialer,
+		},
+		Timeout: f.timeout,
+	}
 	var body io.Reader
 	if f.data != nil {
 		switch d := f.data.(type) {
@@ -183,7 +229,7 @@ func (f *FetchRequest) Do() (response []byte, err error) {
 		}
 		request.Header.Set(name, val)
 	}
-	//request.Close = true
+	request.Close = true
 	var resp *http.Response
 	resp, err = client.Do(request)
 	elapsed := time.Now().Sub(started)
@@ -212,7 +258,7 @@ func (f *FetchRequest) Do() (response []byte, err error) {
 		log.Println(err)
 	}
 	elapsed = time.Now().Sub(started)
-	if elapsed > time.Second * 2 {
+	if elapsed > time.Second*2 {
 		log.Println("too long getting response for ", request.URL.String(), request.Header.Get("Totaltube-Site"), elapsed)
 	}
 	return

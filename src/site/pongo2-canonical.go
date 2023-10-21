@@ -25,6 +25,9 @@ func getCanonical(ctx pongo2.Context, page int64, q ...url.Values) string {
 	} else {
 		route = r.(string)
 	}
+	if route == config.Routes.VideoEmbed || route == config.Routes.FakePlayer {
+		route = config.Routes.ContentItem
+	}
 	isSearchPage := route == config.Routes.Search
 	alternateQuery := url.Values(http.Header(ctx["canonical_query"].(url.Values)).Clone())
 	if strings.Contains(route, "{page}") {

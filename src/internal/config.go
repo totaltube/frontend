@@ -31,8 +31,8 @@ type (
 		ApiSecret            string         `toml:"api_secret"`
 		ApiTimeout           types.Duration `toml:"api_timeout"`
 		LangCookie           string         `toml:"lang_cookie"`
-		RecreateWorkers      uint8          `toml:"recreate_workers"`
-		InnerRecreateWorkers uint8          `toml:"inner_recreate_workers"`
+		RecreateWorkers      uint16         `toml:"recreate_workers"`
+		InnerRecreateWorkers uint16         `toml:"inner_recreate_workers"`
 		GeoipUrl             string         `toml:"geoip_url"`
 		Development          bool           `toml:"development"`
 	}
@@ -46,7 +46,8 @@ type (
 		CaptchaWhiteList []string `toml:"captcha_whitelist"`
 	}
 	Database struct {
-		Path string `toml:"path"`
+		Path      string `toml:"path"`
+		LowMemory bool   `toml:"low_memory"`
 	}
 )
 

@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/flosch/pongo2/v4"
@@ -54,6 +55,7 @@ var iframeHeightRegex = regexp.MustCompile(`(?i)<\s*iframe[^>]*\sheight\s*=\s*['
 var iframeHttpReplace = regexp.MustCompile(`(?i)^http://`)
 
 func generateContext(name string, sitePath string, customContext pongo2.Context) pongo2.Context {
+	var mu sync.Mutex
 	refreshTranslations, _ := customContext["refreshTranslations"].(bool)
 	var ctx = pongo2.Context{
 		"flate":        helpers.Flate,
@@ -102,8 +104,12 @@ func generateContext(name string, sitePath string, customContext pongo2.Context)
 			return items.Len()
 		},
 		"link": func(route string, args ...interface{}) string {
+			mu.Lock()
+			defer mu.Unlock()
 			config, _ := customContext["config"].(*types.Config)
 			lang, _ := customContext["lang"].(*types.Language)
+			hostName, _ := customContext["host"].(string)
+			langId := lang.Id
 			var changeLangLink bool
 			if route == "current" {
 				if args == nil {
@@ -119,19 +125,22 @@ func generateContext(name string, sitePath string, customContext pongo2.Context)
 					args = append(args, k, v)
 				}
 			}
+			finalArgs := make([]interface{}, 0, len(args))
 			for i := 0; i < len(args); i += 2 {
 				if key, ok := args[i].(string); ok {
 					if key == "lang" && len(args) > i+1 {
 						if val, ok := args[i+1].(string); ok {
 							if lang.Id != val {
 								changeLangLink = true
-								break
+								langId = val
 							}
+							continue
 						}
 					}
 				}
+				finalArgs = append(finalArgs, args[i], args[i+1])
 			}
-			return GetLink(route, config, lang.Id, changeLangLink, args...)
+			return GetLink(route, config, hostName, langId, changeLangLink, finalArgs...)
 		},
 		"time_ago": func(t time.Time) string {
 			langId := strings.ReplaceAll(customContext["lang"].(*types.Language).Id, "-", "_")

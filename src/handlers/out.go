@@ -29,7 +29,7 @@ type countInfo struct {
 	countThumbId int64
 }
 
-var countChannel = make(chan countInfo, 100)
+var countChannel = make(chan countInfo, 1000)
 
 var Out = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	config := r.Context().Value("config").(*types.Config)
