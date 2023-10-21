@@ -283,6 +283,7 @@ this tag is used to generate link to some site page, based on route settings in 
 * `as` - do not write the link, but save it to variable instead. Variable name is the value of this param.
 * `out` - boolean param. If true, link will go via out script to count the click to content or category (for CTR counting). Default false.
 * `with_trade` - boolean param. If true, link will go via trade script.
+* `full_url` - boolean param. If true, link will be generated as full url, with https://your-domain/ prefix. Default false.
 * All other params will be treated as route named params or additional querystring params. If querystring params are with same names as in `[params]` section of `config.toml`, they will be replaced with corresponding values. 
 
 Examples of `link` tag:
@@ -498,13 +499,14 @@ It's deferred translate, so if the text is not translated yet, it will show untr
   The result is of type [ContentResults](Types.md#contentresults)
 * `add_random_content` function to add random content to fetched content items. First argument is array of [content items](Types.md#contentresult) and the second is amount of items required in final result. Second argument can be omitted to use default amount for category layout. Result is array of [ContentResult](Types.md#contentresult).
 * `merge` - function to merge two arrays into one by appending second array to the first. The result is the merged array.
-* `link` - function to get URL to some site page or to any external page with passed params. Same as [`{% link %}`](#-link-) tag. First argument is the route name or any external URL. All other parameters - is pairs of key/value for route params and querystring params. Absolutely the same as with [`{% link %}`](#-link-) tag. And special params are `out` as `true` - to generate link to count ctr and `with_trade` as `true` to generate link to trade with redirection to desired page. Examples of using `link`:
+* `link` - function to get URL to some site page or to any external page with passed params. Same as [`{% link %}`](#-link-) tag. First argument is the route name or any external URL. All other parameters - is pairs of key/value for route params and querystring params. Absolutely the same as with [`{% link %}`](#-link-) tag. And special params are `out` as `true` - to generate link to count ctr, `with_trade` as `true` to generate link to trade with redirection to desired page and `full_url` as `true` to generate full absolute url. Examples of using `link`:
 ```javascript
 const url = link("content", 
   "slug", "some-content-slug", 
   "id", 12345, 
   "category", "some-category", 
   "with_trade", true,
+  "full_url", true,
 )
 ```
 
