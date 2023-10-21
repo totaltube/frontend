@@ -40,7 +40,7 @@ Type fields:
 * `Thumb(formatName? string)` string - function return thumb URL.
 * `HiresThumb(formatName? string)` string - function return hires thumb or ordinary thumb if no hires thumb available.
 * `SelectedThumb(formatName? string)` integer - returns the index of currently selected thumb to show if content has several thumbs.
-* `MainCategorySlug(defaultName string)` string - returns the slug of content category or `defaultName` if content not in any category. Useful to generate links to content with gallery slug in link.
+* `MainCategorySlug(defaultName string)` string - returns the slug of content category or `defaultName` if content not in any category. Useful to generate links to content with category slug in link.
 * `HasCustomField(fieldName string)` bool - returns true if content item has custom field with name `fieldName`
 * `CustomField(fieldName string)` any - returns the value of custom field with name `fieldName` if it's defined, or `null`
 * `HasCustomTranslation(key string)` bool - returns true if content item has custom translation in current language for key `key`
@@ -62,10 +62,13 @@ This type has the same fields as in [ContentResult](#contentresult), with this a
 * `GalleryImages(galleryFormat string)` array of [GalleryImageInfo](#galleryimageinfo) - function returns gallery images information for rendering image gallery (only for content type `"gallery"`). First argument is optional and can be the name of gallery format.
 * `VideoInfo(videoFormat string)` [ContentVideoInfo](#contentvideoinfo) - function returns information about video format for content of type `"video"`. First argument is optional and can be the name of video format.
 * `VideoFormats()` array of strings - function returns all video format names for content of type `"video"`
-* `VideoUrl(videoFormat string)` string - function returns video url for content of type `"video"`. `videoFormat` argument is optional.
-* `VideoPoster(videoFormat string)` string - function returns video poster image URL for content of type `"video"`. `videoFormat` argument is optional.
-* `VideoTimeline(videoFormat string)` string - function returns video timeline `.vtt` file URL for content of type `"video"`. `videoFormat` argument is optional.
-* `VideoSize(videoFormat string)` [Size](#size) - function returns video size for content of type `"video"`. `videoFormat` argument is optional.
+* `VideoUrl(videoFormat? string)` string - function returns video url for content of type `"video"`. `videoFormat` argument is optional.
+* `VideoPoster(videoFormat? string)` string - function returns video poster image URL for content of type `"video"`. `videoFormat` argument is optional. If no `videoFormat` specified, the function will return poster for format with maximum video size.
+* `VideoTimeline(videoFormat? string)` string - function returns video timeline `.vtt` file URL for content of type `"video"`. `videoFormat` argument is optional.
+* `VideoSize(videoFormat? string)` [Size](#size) - function returns video size for content of type `"video"`. `videoFormat` argument is optional.
+* `MaxVideoSize()` [Size](#size) - function returns maximum video size among all formats for content of type `"video"`.
+* `Mp4VideoFormats()` array of strings - function returns all video format names for content of type `"video"` with type `"mp4"`.
+* `HlsMasterUrl()` string - function returns HLS master playlist URL for content of type `"video"` if you have [nginx-vod](https://github.com/kaltura/nginx-vod-module) setup.
 
 ### RelatedItem
 The type has the following fields:

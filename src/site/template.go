@@ -51,7 +51,9 @@ func (ts *templates) get(name string) (*pongo2.Template, error) {
 			return template, nil
 		}
 	}
-	log.Println(name, "template not found")
+	if name != "sitemap-video" {
+		log.Println(name, "template not found")
+	}
 	return nil, ErrTemplateNotFound
 }
 
@@ -90,7 +92,7 @@ func NewTemplates(path string) *templates {
 						templateName := strings.TrimSuffix(filepath.Base(changedTemplatePath), filepath.Ext(changedTemplatePath))
 						switch templateName {
 						case "top-categories", "category", "top-content", "404", "500",
-							"model", "models", "content-item", "search", "fake-player":
+							"model", "models", "content-item", "search", "fake-player", "sitemap-video":
 							err := db.ClearCacheByPrefix(templateName + ":" + host + ":")
 							if err != nil {
 								log.Println(err)
@@ -233,13 +235,20 @@ func ParseTemplate(name, path string, config *types.Config, customContext pongo2
 	var dataCtx pongo2.Context
 	dataCtx, err = prepare()
 	if err != nil {
-		log.Println(err)
+		if !strings.Contains(err.Error(), "redirect to") {
+			log.Println(err)
+		}
 		return
 	}
 	customContext.Update(dataCtx)
 	var cached []byte
+	// copy custom context for GetCachedTimeout recreate function call to avoid concurrent map write
+	var customContextCopy = make(pongo2.Context)
+	for k, v := range customContext {
+		customContextCopy[k] = v
+	}
 	cached, err = db.GetCachedTimeout(cacheKey, cacheTtl, extendedTtl, func() (result []byte, err error) {
-		c := generateContext(name, path, customContext)
+		c := generateContext(name, path, customContextCopy)
 		addCustomFunctions(c)
 		var template *pongo2.Template
 		template, err = GetTemplate(name, path)

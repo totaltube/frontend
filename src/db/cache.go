@@ -49,22 +49,22 @@ func recreateJob(job recreateInfo) {
 	var expireKey = []byte(cachePrefix + "_exp_" + job.cacheKey)
 	defer recreatingNow.Delete(job.cacheKey)
 	result, err := job.recreateFunction()
-	if err != nil  {
+	if err != nil {
 		if !strings.Contains(err.Error(), "not found") {
 			log.Println(err)
 		}
 	} else {
-		err = bdb.Update(func(txn *badger.Txn) error {
+		err = bdb.Update(func(txn *badger.Txn) (err error) {
 			// we set ttl slightly higher than requested timeout, because we want to use old cache sometimes
 			entry := badger.NewEntry(key, result).WithTTL(job.timeout + job.extendedTimeout)
-			err := txn.SetEntry(entry)
+			err = txn.SetEntry(entry)
 			if err != nil {
-				return err
+				return
 			}
 			expireEntry := badger.NewEntry(expireKey, []byte(time.Now().Add(job.timeout).Format(time.RFC3339))).
 				WithTTL(job.timeout + job.extendedTimeout)
 			err = txn.SetEntry(expireEntry)
-			return err
+			return
 		})
 	}
 	if job.doneChannel != nil {

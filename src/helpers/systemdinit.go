@@ -16,6 +16,8 @@ After=network.target
 [Service]
 Type=simple
 User=totaltube
+Restart=always
+RestartSec=5s
 LimitNOFILE=infinity
 LimitNPROC=infinity
 LimitCORE=infinity

@@ -230,7 +230,15 @@ func InitRouter() http.Handler {
 		if host == nil {
 			host = hosts[internal.Config.Frontend.DefaultSite]
 		}
-		ctx := context.WithValue(r.Context(), "ip", r.Header.Get(internal.Config.General.RealIpHeader))
+		// get first not empty value
+		ip := r.Header.Get(internal.Config.General.RealIpHeader)
+		if ip == "" {
+			ip = r.RemoteAddr
+		}
+		if ip == "" || len(ip) < 7 {
+			ip = "127.0.0.1"
+		}
+		ctx := context.WithValue(r.Context(), "ip", ip)
 		host.handler.ServeHTTP(w, r.WithContext(ctx))
 		return
 	}))

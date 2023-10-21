@@ -37,6 +37,7 @@ var FakePlayer = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	orfl := !config.General.FakeVideoPage
 	relatedAmount := config.General.ContentRelatedAmount
 	customContext := generateCustomContext(w, r, "fake-player")
+	params := customContext["params"].(map[string]string)
 	ip := r.Context().Value("ip").(string)
 	groupId := internal.DetectCountryGroup(net.ParseIP(ip)).Id
 	cacheKey := "fake-player:" + helpers.Md5Hash(
@@ -79,12 +80,19 @@ var FakePlayer = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					args = append(args, k, r.URL.Query().Get(k))
 				}
 				return nil, redirectErr{
-					url:  site.GetLink("content", config, langId, false, args...),
+					url:  site.GetLink("content", config, hostName, langId, false, args...),
 					code: 301,
 				}
 			}
 			ctx["content_item"] = results
 			ctx["related"] = results.Related
+			// let's add first category name to params
+			if len(results.Categories) > 0 {
+				params["category"] = results.Categories[0].Slug
+			} else {
+				params["category"] = "default"
+			}
+			ctx["params"] = params
 			return ctx, nil
 		}, w, r)
 	if err != nil {

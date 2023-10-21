@@ -24,6 +24,7 @@ type tagLinkNode struct {
 
 func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.TemplateWriter) *pongo2.Error {
 	linkContext := pongo2.NewChildExecutionContext(ctx)
+	hostName := linkContext.Public["host"].(string)
 	lang := "en"
 
 	if l, ok := linkContext.Public["lang"]; ok {
@@ -82,7 +83,7 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 		args = append(args, name, value.Interface())
 	}
 	if what == "current" {
-		what = linkContext.Public["route"].(string)
+		what = linkContext.Public["page_template"].(string)
 		currentParams := linkContext.Public["params"].(map[string]string)
 		for k, v := range currentParams {
 			args = append(args, k, v)
@@ -95,7 +96,7 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 			}
 		}
 	}
-	link = GetLink(what, config, lang, changeLangLink, args...)
+	link = GetLink(what, config, hostName, lang, changeLangLink, args...)
 	if as != "" {
 		linkContext.Public[as] = link
 	} else {
