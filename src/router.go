@@ -58,7 +58,7 @@ func InitRouter() http.Handler {
 		hr.Use(middleware.StripSlashes)
 		hr.Use(func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				ctx := context.WithValue(r.Context(), "config", config)
+				ctx := context.WithValue(r.Context(), "config", internal.GetConfig(configPath))
 				ctx = context.WithValue(ctx, "path", h.path)
 				ctx = context.WithValue(ctx, "hostName", hostName)
 				ctx = context.WithValue(ctx, "lang", "en")
