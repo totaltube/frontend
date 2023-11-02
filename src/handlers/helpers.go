@@ -141,7 +141,7 @@ func generateCustomContext(w http.ResponseWriter, r *http.Request, templateName 
 	case "sitemap-video":
 		route = config.Sitemap.Route
 	default:
-		if rr, ok := config.Custom[strings.TrimPrefix(templateName, "custom/")]; ok {
+		if rr, ok := config.Routes.Custom[strings.TrimPrefix(templateName, "custom/")]; ok {
 			route = rr
 		}
 	}
@@ -272,6 +272,8 @@ func generateCustomContext(w http.ResponseWriter, r *http.Request, templateName 
 		"get_categories_list": getCategoriesListFunc(hostName, langId, 100, groupId),
 		"get_channels_list":   getChannelsListFunc(hostName, langId, 100, groupId),
 		"get_category_top":    getCategoryTopFunc(hostName, langId, groupId),
+		"get_category":        getCategoryFunc(hostName, langId),
+		"get_model":           getModelFunc(hostName, langId, groupId),
 		"add_random_content": func(items []*types.ContentResult, amount ...interface{}) []*types.ContentResult {
 			var amt int64 = 0
 			if len(amount) > 0 {
@@ -343,6 +345,7 @@ func Output500(w http.ResponseWriter, r *http.Request, err error) {
 	langId := r.Context().Value("lang").(string)
 	customContext := generateCustomContext(w, r, "404")
 	customContext["error"] = err.Error()
+	log.Println(err, hostName, langId)
 	cacheKey := fmt.Sprintf("500:%s:%s:%s", hostName, langId, helpers.Md5Hash(err.Error()))
 	cacheTtl := time.Minute * 5
 	var parsed []byte

@@ -31,6 +31,13 @@ func getAlternate(ctx pongo2.Context, langId string, page int64, q ...url.Values
 	} else {
 		route = r.(string)
 	}
+	langTemplate := config.Routes.LanguageTemplate
+	if ctn, ok := ctx["custom_template_name"].(string); ok {
+		if customLangTemplate, exists := config.Routes.Custom[ctn+"_multilang"]; exists {
+			langTemplate = customLangTemplate
+		}
+	}
+
 	if route == config.Routes.VideoEmbed || route == config.Routes.FakePlayer {
 		route = config.Routes.ContentItem
 	}
@@ -46,7 +53,7 @@ func getAlternate(ctx pongo2.Context, langId string, page int64, q ...url.Values
 		}
 	}
 	if config.General.MultiLanguage && (config.General.DefaultLanguage != langId || !config.General.NoRedirectDefaultLanguage) {
-		route = strings.ReplaceAll(config.Routes.LanguageTemplate, "{route}", route)
+		route = strings.ReplaceAll(langTemplate, "{route}", route)
 		route = strings.ReplaceAll(route, "{lang}", langId)
 	}
 	for _, qq := range q {
