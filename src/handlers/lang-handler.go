@@ -21,13 +21,22 @@ import (
 // LangHandlers Function creates language routes like /ru/someroute, /en/someroute etc.
 func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler http.Handler) {
 	languages := internal.GetLanguages()
+	var langTemplate = siteConfig.Routes.LanguageTemplate
+	for k, v := range siteConfig.Routes.Custom {
+		if v == route {
+			if langTemplateCustom, ok := siteConfig.Routes.Custom[k+"_multilang"]; ok {
+				langTemplate = langTemplateCustom
+			}
+			break
+		}
+	}
 	for _, l := range languages {
 		langId := l.Id
 		var preparedRoute string
 		if strings.Contains(route, "{lang}") {
 			preparedRoute = strings.ReplaceAll(route, "{lang}", langId)
 		} else {
-			preparedRoute = strings.ReplaceAll(siteConfig.Routes.LanguageTemplate, "{lang}", langId)
+			preparedRoute = strings.ReplaceAll(langTemplate, "{lang}", langId)
 			preparedRoute = strings.ReplaceAll(preparedRoute, "{route}", route)
 		}
 		if len(preparedRoute) > 1 {
@@ -48,15 +57,22 @@ func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler h
 			config := r.Context().Value("config").(*types.Config)
 			if config.General.NoRedirectDefaultLanguage && langId == config.General.DefaultLanguage && !strings.Contains(route, "{lang}") {
 				// for default language, we need to redirect to x-default uri
-				escapedTemplate := regexp.QuoteMeta(config.Routes.LanguageTemplate)
+				escapedTemplate := regexp.QuoteMeta(langTemplate)
 				regexPattern := strings.ReplaceAll(escapedTemplate, "\\{route\\}", "(.*)")
 				regexPattern = strings.ReplaceAll(regexPattern, "\\{lang\\}", config.General.DefaultLanguage)
 				re := regexp.MustCompile("^" + regexPattern + "$")
 				matches := re.FindStringSubmatch(r.URL.Path)
 				if len(matches) > 1 {
+					// redirect to x-default
 					w.Header().Add("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
 					w.Header().Add("Pragma", "no-cache")
 					http.Redirect(w, r, matches[1], http.StatusMovedPermanently)
+					return
+				}
+				if len(matches) > 0 {
+					w.Header().Add("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+					w.Header().Add("Pragma", "no-cache")
+					http.Redirect(w, r, route, http.StatusMovedPermanently)
 					return
 				}
 			}
@@ -81,7 +97,7 @@ func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler h
 			if lang.Id == siteConfig.General.DefaultLanguage && siteConfig.General.NoRedirectDefaultLanguage {
 				redirectUri = "{route}"
 			} else {
-				redirectUri = strings.ReplaceAll(siteConfig.Routes.LanguageTemplate, "{lang}", lang.Id)
+				redirectUri = strings.ReplaceAll(langTemplate, "{lang}", lang.Id)
 			}
 			ip := r.Context().Value("ip").(string)
 			groupId := internal.DetectCountryGroup(net.ParseIP(ip)).Id
@@ -148,12 +164,12 @@ func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler h
 				return
 			}
 			var redirectUri string
-			redirectUri = strings.ReplaceAll(siteConfig.Routes.LanguageTemplate, "{lang}", lang.Id)
+			redirectUri = strings.ReplaceAll(langTemplate, "{lang}", lang.Id)
 			var uri = r.URL.Path
-			if r.URL.RawQuery != "" {
-				uri += "?" + r.URL.RawQuery
-			}
 			redirectUri = strings.ReplaceAll(redirectUri, "{route}", uri)
+			if r.URL.RawQuery != "" {
+				redirectUri += "?" + r.URL.RawQuery
+			}
 			w.Header().Add("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
 			w.Header().Add("Pragma", "no-cache")
 			http.Redirect(w, r, redirectUri, 302)

@@ -189,8 +189,12 @@ func InitRouter() http.Handler {
 		}
 		if config.Routes.Custom != nil {
 			for templateName, routePath := range config.Routes.Custom {
+				if strings.HasSuffix(templateName, "_multilang") {
+					continue
+				}
 				tName := templateName
-				if config.General.MultiLanguage && strings.Contains(routePath, "{lang}") {
+				_, isCustomMultilangTemplate := config.Routes.Custom[tName+"_multilang"]
+				if config.General.MultiLanguage && (strings.Contains(routePath, "{lang}") || isCustomMultilangTemplate) {
 					handlers.LangHandlers(hr, routePath, config, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 						ctx := context.WithValue(r.Context(), "custom_template_name", tName)
 						handlers.Custom.ServeHTTP(w, r.WithContext(ctx))
@@ -202,6 +206,12 @@ func InitRouter() http.Handler {
 					}))
 				}
 			}
+		}
+		if config.General.ToplistDataUrl == "" {
+			config.General.ToplistDataUrl = internal.Config.General.ToplistDataUrl
+		}
+		if config.General.ToplistDataUrl != "" {
+			hr.Handle(config.General.ToplistDataUrl, handlers.ToplistData)
 		}
 		if config.Sitemap.Route != "" {
 			hr.Handle(config.Sitemap.Route, handlers.Sitemap)

@@ -80,6 +80,35 @@ var Models = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	render.HTML(w, r, string(parsed))
 })
 
+func getModelFunc(hostName string, langId string, groupId int64) func(args ...interface{}) *types.ModelResult {
+	return func(args ...interface{}) *types.ModelResult {
+		parsingName := true
+		var modelId int64
+		var modelSlug string
+		curName := ""
+		for k := range args {
+			if parsingName {
+				curName = fmt.Sprintf("%v", args[k])
+				parsingName = false
+				continue
+			}
+			val := fmt.Sprintf("%v", args[k])
+			parsingName = true
+			switch curName {
+			case "id", "model_id":
+				modelId, _ = strconv.ParseInt(val, 10, 64)
+			case "slug", "model_slug":
+				modelSlug = val
+			}
+		}
+		results, _, err := api.ModelInfo(hostName, langId, modelId, modelSlug, groupId)
+		if err != nil {
+			log.Println("can't get model info:", err)
+			return nil
+		}
+		return results
+	}
+}
 func getModelsListFunc(hostName string, langId string, defaultAmount int64, groupId int64) func(args ...interface{}) *types.ModelResults {
 	return func(args ...interface{}) *types.ModelResults {
 		parsingName := true

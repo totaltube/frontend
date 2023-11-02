@@ -44,7 +44,7 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 	} else {
 		config = configI.(*types.Config)
 	}
-	var changeLangLink bool
+	var changeLangLink bool // if true, then we need to change lang in link
 	if l, ok := node.args["lang"]; ok {
 		lv, err := l.Evaluate(linkContext)
 		if err != nil {

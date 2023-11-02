@@ -98,6 +98,7 @@ type (
 		Debug                      bool   `toml:"debug"`
 		ApiUrl                     string `toml:"api_url"`
 		ApiSecret                  string `toml:"api_secret"`
+		ToplistDataUrl             string `toml:"toplist_data_url"` // url to json file with toplist data for trade scripts
 	}
 )
 

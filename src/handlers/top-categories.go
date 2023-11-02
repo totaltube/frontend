@@ -27,7 +27,7 @@ import (
 func getTopCategoriesFunc(hostName string, langId string, groupId int64) func(args ...interface{}) *types.CategoryResults {
 	return func(args ...interface{}) *types.CategoryResults {
 		parsingName := true
-		var page int64
+		var page int64 = 1
 		curName := ""
 		for k := range args {
 			if parsingName {
@@ -48,7 +48,7 @@ func getTopCategoriesFunc(hostName string, langId string, groupId int64) func(ar
 		}
 		results, err := api.TopCategories(hostName, langId, page, groupId)
 		if err != nil {
-			log.Println("can't get top content:", err)
+			log.Println("can't get top categories:", err)
 			return nil
 		}
 		return results

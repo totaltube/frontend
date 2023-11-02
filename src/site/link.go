@@ -45,6 +45,7 @@ func GetLink(route string, config *types.Config, host string, langId string, cha
 		isFullUrl, _ = strconv.ParseBool(fmt.Sprintf("%v", fullUrl.Value))
 		params = fastRemove(params, index)
 	}
+	langTemplate := config.Routes.LanguageTemplate
 	switch route {
 	case "top_categories", "top-categories":
 		link = config.Routes.TopCategories
@@ -191,6 +192,11 @@ func GetLink(route string, config *types.Config, host string, langId string, cha
 			link = route
 		}
 		if config.General.MultiLanguage {
+			if isCustomRoute {
+				if r, ok := config.Routes.Custom[route+"_multilang"]; ok {
+					langTemplate = r
+				}
+			}
 			link = strings.ReplaceAll(link, "{lang}", langId)
 		}
 		link, _ = paramRegex.ReplaceFunc(link, func(match regexp2.Match) string {
@@ -205,9 +211,9 @@ func GetLink(route string, config *types.Config, host string, langId string, cha
 		link = ""
 		return
 	}
-	if config.General.MultiLanguage && !httpRegex.MatchString(link) && !isCustomRoute &&
+	if config.General.MultiLanguage && !httpRegex.MatchString(link) &&
 		(langId != config.General.DefaultLanguage || !config.General.NoRedirectDefaultLanguage || changeLangLink) {
-		link = strings.ReplaceAll(config.Routes.LanguageTemplate, "{route}", link)
+		link = strings.ReplaceAll(langTemplate, "{route}", link)
 		link = strings.ReplaceAll(link, "{lang}", langId)
 	}
 	var pageNum int64 = 1

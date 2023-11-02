@@ -42,7 +42,7 @@ func getCanonical(ctx pongo2.Context, page int64, q ...url.Values) string {
 	}
 	langId := ctx["lang"].(*types.Language).Id
 	if config.General.MultiLanguage && isSearchPage && (langId != config.General.DefaultLanguage || !config.General.NoRedirectDefaultLanguage ) {
-		// Для поисковой страницы нужно каноникал вместе с языком указывать.
+		// For search page we need to add language to canonical url
 		route = strings.ReplaceAll(config.Routes.LanguageTemplate, "{route}", route)
 		route = strings.ReplaceAll(route, "{lang}", langId)
 	}

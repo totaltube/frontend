@@ -29,6 +29,23 @@ func (node *tagAlternatesNode) Execute(ctx *pongo2.ExecutionContext, writer pong
 		// For search page no alternates, because it can be in native language
 		return nil
 	}
+	// let's handle custom page
+	pageTemplate := context.Public["page_template"].(string)
+	if strings.HasPrefix(pageTemplate, "custom/") {
+		langInCustomRoute := false
+		customTemplateName := strings.TrimPrefix(pageTemplate, "custom/")
+		if r := config.Routes.Custom[customTemplateName]; strings.Contains(r, "{lang}") {
+			langInCustomRoute = true
+		}
+		customMultilangTemplateExists := false
+		if _, exists := config.Routes.Custom[customTemplateName+"_multilang"]; exists  {
+			customMultilangTemplateExists = true
+		}
+		if !langInCustomRoute && !customMultilangTemplateExists {
+			// For custom page no alternates
+			return nil
+		}
+	}
 	var page int64 = 1
 	if p, ok := context.Public["page"]; ok {
 		page = p.(int64)

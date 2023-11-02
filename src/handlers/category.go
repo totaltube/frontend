@@ -159,12 +159,47 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	render.HTML(w, r, string(parsed))
 })
 
+func getCategoryFunc(hostName string, langId string) func(args ...interface{}) *types.CategoryResult {
+	return func(args ...interface{}) *types.CategoryResult {
+		parsingName := true
+		var categoryId int64
+		var categorySlug string
+		curName := ""
+		for k := range args {
+			if parsingName {
+				curName = fmt.Sprintf("%v", args[k])
+				parsingName = false
+				continue
+			}
+			val := fmt.Sprintf("%v", args[k])
+			parsingName = true
+			switch curName {
+			case "lang":
+				langId = val
+			case "category_id", "id":
+				categoryId, _ = strconv.ParseInt(val, 10, 32)
+			case "category_slug", "slug":
+				categorySlug = val
+			}
+		}
+		if categoryId == 0 && categorySlug == "" {
+			log.Println("error getting category content - need to set category_id or category_slug param")
+			return nil
+		}
+		if results, _, err := api.CategoryInfo(hostName, langId, categoryId, categorySlug); err != nil {
+			log.Println("error getting category content: ", err)
+			return nil
+		} else {
+			return results
+		}
+	}
+}
 func getCategoryTopFunc(hostName string, langId string, groupId int64) func(args ...interface{}) *types.ContentResults {
 	return func(args ...interface{}) *types.ContentResults {
 		parsingName := true
 		var categoryId int64
 		var categorySlug string
-		var page int64
+		var page int64 = 1
 		curName := ""
 		for k := range args {
 			if parsingName {

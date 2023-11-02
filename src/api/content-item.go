@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"sersh.com/totaltube/frontend/types"
 )
@@ -42,7 +43,7 @@ func ContentItemRaw(siteDomain, lang, slug string, id int64, omitRelatedForLink 
 		"related":  []string{strconv.FormatInt(relatedAmount, 10)},
 		"group_id": []string{strconv.FormatInt(groupId, 10)},
 	})
-	if err != nil {
+	if err != nil && !strings.Contains(err.Error(), "not found") {
 		log.Println(err, "slug: ", slug, "id: ", id)
 	}
 	return
