@@ -35,6 +35,7 @@ type (
 		InnerRecreateWorkers uint16         `toml:"inner_recreate_workers"`
 		GeoipUrl             string         `toml:"geoip_url"`
 		Development          bool           `toml:"development"`
+		ToplistDataUrl       string         `toml:"toplist_data_url"`
 	}
 	Frontend struct {
 		SitesPath        string   `toml:"sites_path"`
@@ -62,6 +63,7 @@ func InitConfig(configPath string) {
 			GeoipUrl:             "https://totaltraffictrader.com/geo/country.tar.gz",
 			RecreateWorkers:      50,
 			InnerRecreateWorkers: 20,
+			ToplistDataUrl:       "/_toplist_data.json",
 		},
 		Frontend: Frontend{
 			MaxDmcaMinute: 5,

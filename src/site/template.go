@@ -224,7 +224,7 @@ func ParseTemplate(name, path string, config *types.Config, customContext pongo2
 				}
 				v, err := VM.RunProgram(program)
 				if err != nil {
-					log.Println(err)
+					log.Println(err, path, name, config.Hostname)
 					return nil
 				}
 				return v.Export()
@@ -235,8 +235,8 @@ func ParseTemplate(name, path string, config *types.Config, customContext pongo2
 	var dataCtx pongo2.Context
 	dataCtx, err = prepare()
 	if err != nil {
-		if !strings.Contains(err.Error(), "redirect to") {
-			log.Println(err)
+		if !strings.Contains(err.Error(), "redirect to") && !strings.Contains(err.Error(), "not found") {
+			log.Println(err, path, name, config.Hostname)
 		}
 		return
 	}

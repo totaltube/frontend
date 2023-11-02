@@ -82,7 +82,7 @@ var TopContent = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 func getTopContentFunc(hostName string, langId string, groupId int64) func(args ...interface{}) *types.ContentResults {
 	return func(args ...interface{}) *types.ContentResults {
 		parsingName := true
-		var page int64
+		var page int64 = 1
 		curName := ""
 		for k := range args {
 			if parsingName {

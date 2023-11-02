@@ -153,12 +153,12 @@ func getContentItemFunc(hostName string, langId string, groupId int64) func(args
 			}
 		}
 		if id == 0 && slug == "" {
-			log.Println("can't get content item: no id or slug")
+			log.Println("can't get content item: no id or slug", hostName)
 			return nil
 		}
 		results, err := api.ContentItem(hostName, langId, slug, id, orfl, relatedAmount, groupId)
 		if err != nil {
-			log.Println("can't get content item:", err)
+			log.Println("can't get content item:", err, hostName)
 			return nil
 		}
 		return results

@@ -1,6 +1,7 @@
 package site
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"math"
@@ -13,7 +14,21 @@ import (
 )
 
 func InitPongo2() {
-	err := pongo2.RegisterFilter("splitUp", func(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err *pongo2.Error) {
+	err := pongo2.RegisterFilter("dump", func(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err *pongo2.Error) {
+		bt, err1 := json.MarshalIndent(in.Interface(), "", "  ")
+		if err1 != nil {
+			return nil, &pongo2.Error{
+				Sender:    "filter:dump",
+				OrigError: err1,
+			}
+		}
+		out = pongo2.AsValue(string(bt))
+		return
+	})
+	if err != nil {
+		log.Fatalln(err)
+	}
+	err = pongo2.RegisterFilter("splitUp", func(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err *pongo2.Error) {
 		defer func() {
 			if r := recover(); r != nil {
 				err = &pongo2.Error{

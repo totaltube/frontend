@@ -189,19 +189,15 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		urlSet.CreateAttr("xmlns", "http://www.sitemaps.org/schemas/sitemap/0.9")
 		urlSet.CreateAttr("xmlns:video", `http://www.google.com/schemas/sitemap-video/1.1`)
 		urlSet.CreateAttr("xmlns:xhtml", `http://www.w3.org/1999/xhtml`)
-		results, err := getSitemapVideos(config.Hostname, config.Sitemap.LastVideosAmount)
+		results, err := getSitemapVideos(config.Hostname, config.Sitemap.MaxLinks, page)
 		if err != nil {
 			log.Println(err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
-		if int64(len(results.Items)) <= (page-1)*config.Sitemap.MaxLinks {
-			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-			return
-		}
 		var num int64
 		customContext := generateCustomContext(w, r, "sitemap-video")
-		for _, item := range results.Items[(page-1)*config.Sitemap.MaxLinks:] {
+		for _, item := range results.Items {
 			var videoBytes []byte
 			videoBytes, err = site.ParseTemplate("sitemap-video", path, config, customContext, true, fmt.Sprintf("sitemap-video-%d", item.Id), 1, func() (ctx pongo2.Context, err error) {
 				ctx = pongo2.Context{
@@ -376,13 +372,16 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if config.Sitemap.LastVideosAmount > 0 && config.Routes.ContentItem != "" && config.Routes.ContentItem != "-" {
-			results, err := getSitemapVideos(config.Hostname, config.Sitemap.LastVideosAmount)
+			results, err := getSitemapVideos(config.Hostname, config.Sitemap.MaxLinks, 1)
 			if err != nil {
 				log.Println(err)
 				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 				return
 			}
-			maxAmount := int64(len(results.Items))
+			maxAmount := config.Sitemap.LastVideosAmount
+			if results.Total < maxAmount {
+				maxAmount = results.Total
+			}
 			var lastFrom int64
 			for lastFrom < maxAmount {
 				videos := sitemapIndex.CreateElement("sitemap")
@@ -481,15 +480,15 @@ func getSitemapChannels(hostName string, amount int64) (results *types.ChannelRe
 	return
 }
 
-func getSitemapVideos(hostName string, amount int64) (results *types.ContentResults, err error) {
+func getSitemapVideos(hostName string, amount int64, page int64) (results *types.ContentResults, err error) {
 	var ttl = time.Hour*2 + time.Duration(rand.Intn(3600))*time.Second
 	var cached []byte
-	if cached, err = db.GetCachedTimeout(fmt.Sprintf("sitemap:%s:top-videos-%d", hostName, amount), ttl, time.Hour*2, func() ([]byte, error) {
+	if cached, err = db.GetCachedTimeout(fmt.Sprintf("sitemap:%s:top-videos-%d-%d", hostName, amount, page), ttl, time.Hour*2, func() ([]byte, error) {
 		var rawResponse json.RawMessage
 		rawResponse, err = api.ContentRaw(hostName, api.ContentParams{
 			Amount:    amount,
 			Sort:      api.SortDated,
-			Timeframe: "",
+			Page:      page,
 		})
 		return rawResponse, err
 	}, false); err != nil {
