@@ -2,6 +2,7 @@ package site
 
 import (
 	"fmt"
+	"github.com/samber/lo"
 	"log"
 	"math"
 	"net/http"
@@ -11,7 +12,7 @@ import (
 	"time"
 
 	"github.com/dop251/goja"
-	"github.com/flosch/pongo2/v4"
+	"github.com/flosch/pongo2/v6"
 	"github.com/pkg/errors"
 
 	"sersh.com/totaltube/frontend/db"
@@ -53,27 +54,29 @@ func ParseCustomTemplate(name, path string, config *types.Config,
 		err = errors.New("source template " + extensionFile + " is empty or not exists")
 		return
 	}
-	helpers.KeyMutex.Lock(name)
-	defer helpers.KeyMutex.Unlock(name)
-	VM := getJsVM(name)
-	if err = VM.Set("config", config); err != nil {
-		log.Println(err)
-		return
-	}
-	_ = VM.Set("fetch", helpers.SiteFetch(config))
-	if err = VM.Set("nocache", nocache); err != nil {
-		log.Println(err)
-		return
-	}
-	if err = VM.Set("redirect", doRedirect); err != nil {
-		log.Println(err)
-		return
-	}
-	for k, v := range customContext {
-		if err = VM.Set(k, v); err != nil {
-			log.Println(err)
-			return
+
+	vm := gojaVmPool.Get().(*goja.Runtime)
+	defer func() {
+		_ = vm.Set("config", goja.Undefined())
+		_ = vm.Set("fetch", goja.Undefined())
+		_ = vm.Set("nocache", goja.Undefined())
+		_ = vm.Set("redirect", goja.Undefined())
+		for k := range customContext {
+			if !lo.Contains([]string{"cache", "URL", "faker"}, k) {
+				_ = vm.Set(k, goja.Undefined())
+			}
 		}
+		gojaVmPool.Put(vm)
+	}()
+	_ = vm.Set("config", config)
+	_ = vm.Set("fetch", helpers.SiteFetch(config))
+	if err = vm.Set("nocache", nocache); err != nil {
+		log.Println(err)
+		return
+	}
+	_ = vm.Set("redirect", doRedirect)
+	for k, v := range customContext {
+		_ = vm.Set(k, v)
 	}
 	var program *goja.Program
 	program, err = getJsProgram(name+":cacheKey", string(source)+" cacheKey()")
@@ -82,7 +85,7 @@ func ParseCustomTemplate(name, path string, config *types.Config,
 		return
 	}
 	var v goja.Value
-	v, err = VM.RunProgram(program)
+	v, err = vm.RunProgram(program)
 	if err != nil {
 		log.Println(err)
 		return
@@ -94,7 +97,7 @@ func ParseCustomTemplate(name, path string, config *types.Config,
 		log.Println(err)
 		return
 	}
-	v, err = VM.RunProgram(program)
+	v, err = vm.RunProgram(program)
 	if err != nil {
 		log.Println(err)
 		return
@@ -157,22 +160,38 @@ func ParseCustomTemplate(name, path string, config *types.Config,
 				continue
 			}
 			c[funcName] = func(args ...interface{}) interface{} {
-				helpers.KeyMutex.Lock(baseName)
-				defer helpers.KeyMutex.Unlock(baseName)
+				//helpers.KeyMutex.Lock(baseName)
+				//defer helpers.KeyMutex.Unlock(baseName)
 				//GojaVMMutex.Lock(baseName)
 				//defer GojaVMMutex.Unlock(baseName)
-				VM := getJsVM(baseName)
-				_ = VM.Set("config", config)
-				_ = VM.Set("fetch", helpers.SiteFetch(config))
-				_ = VM.Set("nocache", nocache)
+				vm := gojaVmPool.Get().(*goja.Runtime)
+				defer func() {
+					_ = vm.Set("config", goja.Undefined())
+					_ = vm.Set("fetch", goja.Undefined())
+					_ = vm.Set("nocache", goja.Undefined())
+					_ = vm.Set("redirect", goja.Undefined())
+					for k := range c {
+						if !lo.Contains([]string{"cache", "URL", "faker"}, k) {
+							_ = vm.Set(k, goja.Undefined())
+						}
+					}
+					for argIndex := range args {
+						var argName = fmt.Sprintf("arg%d", argIndex)
+						_ = vm.Set(argName, goja.Undefined())
+					}
+					gojaVmPool.Put(vm)
+				}()
+				_ = vm.Set("config", config)
+				_ = vm.Set("fetch", helpers.SiteFetch(config))
+				_ = vm.Set("nocache", nocache)
 				for k, v := range c {
-					_ = VM.Set(k, v)
+					_ = vm.Set(k, v)
 				}
 				var argsString string
 				var argsNameArray = make([]string, 0, len(args))
 				for argIndex, arg := range args {
 					var argName = fmt.Sprintf("arg%d", argIndex)
-					_ = VM.Set(argName, arg)
+					_ = vm.Set(argName, arg)
 					argsNameArray = append(argsNameArray, argName)
 				}
 				argsString = strings.Join(argsNameArray, ",")
@@ -181,7 +200,7 @@ func ParseCustomTemplate(name, path string, config *types.Config,
 					log.Println(err)
 					return nil
 				}
-				v, err := VM.RunProgram(program)
+				v, err := vm.RunProgram(program)
 				if err != nil {
 					log.Println(err)
 					return nil
@@ -193,30 +212,78 @@ func ParseCustomTemplate(name, path string, config *types.Config,
 
 	var ctx pongo2.Context
 	recreate := func() (parsed []byte, err error) {
-		program, err = getJsProgram(name+":prepare", string(source)+" prepare()")
+		var prepareCtx map[string]interface{}
+		prepareCtx, err = func() (prepareCtx map[string]interface{}, err error) {
+			// first - run prepare() function
+			vm := gojaVmPool.Get().(*goja.Runtime)
+			defer func() {
+				_ = vm.Set("config", goja.Undefined())
+				_ = vm.Set("fetch", goja.Undefined())
+				_ = vm.Set("nocache", goja.Undefined())
+				_ = vm.Set("redirect", goja.Undefined())
+				for k := range customContext {
+					if !lo.Contains([]string{"cache", "URL", "faker"}, k) {
+						_ = vm.Set(k, goja.Undefined())
+					}
+				}
+				gojaVmPool.Put(vm)
+			}()
+			_ = vm.Set("config", config)
+			_ = vm.Set("fetch", helpers.SiteFetch(config))
+			_ = vm.Set("nocache", nocache)
+			_ = vm.Set("redirect", doRedirect)
+			for k, v := range customContext {
+				_ = vm.Set(k, v)
+			}
+			program, err = getJsProgram(name+":prepare", string(source)+" prepare()")
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			v, err = vm.RunProgram(program)
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			if ctx, ok := v.Export().(map[string]interface{}); ok {
+				prepareCtx = ctx
+			}
+			return
+		}()
 		if err != nil {
-			log.Println(err)
 			return
 		}
-		v, err = VM.RunProgram(program)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-		if ctx, ok := v.Export().(map[string]interface{}); ok {
-			customContext.Update(ctx)
+		if prepareCtx != nil {
+			customContext.Update(prepareCtx)
 		}
 		ctx = generateContext(name, path, customContext)
 		addCustomFunctions(ctx)
+		vm := gojaVmPool.Get().(*goja.Runtime)
+		defer func() {
+			_ = vm.Set("config", goja.Undefined())
+			_ = vm.Set("fetch", goja.Undefined())
+			_ = vm.Set("nocache", goja.Undefined())
+			_ = vm.Set("redirect", goja.Undefined())
+			for k := range ctx {
+				if !lo.Contains([]string{"cache", "URL", "faker"}, k) {
+					_ = vm.Set(k, goja.Undefined())
+				}
+			}
+			gojaVmPool.Put(vm)
+		}()
+		_ = vm.Set("config", config)
+		_ = vm.Set("fetch", helpers.SiteFetch(config))
+		_ = vm.Set("nocache", nocache)
+		_ = vm.Set("redirect", doRedirect)
 		for k, val := range ctx {
-			_ = VM.Set(k, val)
+			_ = vm.Set(k, val)
 		}
 		program, err = getJsProgram(name+":render", string(source)+" render()")
 		if err != nil {
 			log.Println(err)
 			return
 		}
-		v, err = VM.RunProgram(program)
+		v, err = vm.RunProgram(program)
 		if err != nil {
 			log.Println(err)
 			return

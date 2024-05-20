@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/flosch/pongo2/v4"
+	"github.com/flosch/pongo2/v6"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 
@@ -44,10 +44,11 @@ var Popular = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	ip := net.ParseIP(r.Context().Value("ip").(string))
 	groupId := internal.DetectCountryGroup(ip).Id
 	customContext := generateCustomContext(w, r, "popular")
+	amount := config.General.DefaultResultsPerPage
 	cacheKey := "popular:" + helpers.Md5Hash(
-		fmt.Sprintf("%s:%s:%d:%s:%d:%d:%s:%d:%d:%d:%s:%d",
+		fmt.Sprintf("%s:%s:%d:%s:%d:%d:%s:%d:%d:%d:%s:%d:%d",
 			hostName, langId, page, channelSlug, channelId,
-			modelId, modelSlug, durationFrom, durationTo, categoryId, categorySlug, groupId),
+			modelId, modelSlug, durationFrom, durationTo, categoryId, categorySlug, groupId, amount),
 	)
 	userAgent := r.Header.Get("User-Agent")
 	cacheTtl := time.Minute * 15
@@ -73,6 +74,7 @@ var Popular = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					DurationLt:   durationTo,
 					UserAgent:    userAgent,
 					GroupId:      groupId,
+					Amount:       amount,
 				})
 			}, nocache)
 			if err != nil {
@@ -84,6 +86,9 @@ var Popular = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				log.Println(err)
 				return ctx, err
+			}
+			if len(results.Items) == 0 && page > 1 {
+				return ctx, fmt.Errorf("not found")
 			}
 			ctx["content"] = results
 			ctx["total"] = results.Total
