@@ -4,7 +4,6 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
-	"log"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -104,6 +103,11 @@ type ChannelShortResult struct {
 	Url    string `json:"url"`
 	Banner string `json:"banner"`
 }
+type RatingsResults map[string]RatingsResult
+type RatingsResult struct {
+	Likes    int64 `json:"likes"`
+	Dislikes int64 `json:"dislikes"`
+}
 
 type TaxonomyResults []TaxonomyResult
 
@@ -156,6 +160,7 @@ type ContentItemResult struct {
 	SourceSiteUniqueId string                         `json:"source_site_unique_id"`
 	CustomData         CustomData                     `json:"custom_data"`
 	CustomTranslations CustomTranslations             `json:"custom_translations"`
+	Ratings            RatingsResults                 `json:"ratings"`
 	selectedThumb      *int
 }
 
@@ -204,6 +209,7 @@ type ContentResult struct {
 	SourceSiteUniqueId string                         `json:"source_site_unique_id"`
 	CustomData         CustomData                     `json:"custom_data"`
 	CustomTranslations CustomTranslations             `json:"custom_translations"`
+	Ratings            RatingsResults                 `json:"ratings"`
 	selectedThumb      *int
 }
 
@@ -288,7 +294,6 @@ func (c ContentItemResult) HasCustomTranslation(key string) bool {
 }
 
 func (c ContentItemResult) CustomTranslation(key string) (translation string) {
-	log.Println(c.CustomTranslations)
 	if c.CustomTranslations != nil {
 		translation, _ = c.CustomTranslations[key]
 	}
@@ -582,7 +587,7 @@ func (c ContentResult) GetThumbFormat(thumbFormatName ...string) (res ThumbForma
 			name := name
 			if f, ok := lo.Find(c.ThumbFormats, func(tf ThumbFormat) bool { return tf.Name == name }); ok {
 				res = f
-				return
+				break
 			}
 		}
 	}

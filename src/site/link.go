@@ -46,6 +46,7 @@ func GetLink(route string, config *types.Config, host string, langId string, cha
 		params = fastRemove(params, index)
 	}
 	langTemplate := config.Routes.LanguageTemplate
+	multiLanguage := config.General.MultiLanguage
 	switch route {
 	case "top_categories", "top-categories":
 		link = config.Routes.TopCategories
@@ -63,14 +64,17 @@ func GetLink(route string, config *types.Config, host string, langId string, cha
 		link = config.Routes.Models
 	case "out":
 		link = config.Routes.Out
+		multiLanguage = false
+	case "rating":
+		link = config.Routes.Rating
+		multiLanguage = false
 	case "search":
 		link = config.Routes.Search
 		if strings.Contains(link, "{query}") {
-			queryParam, queryIndex, ok := lo.FindIndexOf(params, func(p linkParam) bool { return p.Type == "query" })
+			queryParam, queryIndex, ok := lo.FindIndexOf(params, func(p linkParam) bool { return p.Type == "query" || p.Type == "search_query" })
 			if !ok {
 				log.Println("no query param for search route")
 			} else {
-
 				link = strings.ReplaceAll(link, "{query}", strings.ReplaceAll(url.PathEscape(strings.ReplaceAll(strings.TrimSpace(fmt.Sprintf("%v", queryParam.Value)), "  ", " ")), "%20", "+"))
 				params = fastRemove(params, queryIndex)
 			}
@@ -191,7 +195,7 @@ func GetLink(route string, config *types.Config, host string, langId string, cha
 		} else {
 			link = route
 		}
-		if config.General.MultiLanguage {
+		if multiLanguage {
 			if isCustomRoute {
 				if r, ok := config.Routes.Custom[route+"_multilang"]; ok {
 					langTemplate = r
@@ -211,7 +215,7 @@ func GetLink(route string, config *types.Config, host string, langId string, cha
 		link = ""
 		return
 	}
-	if config.General.MultiLanguage && !httpRegex.MatchString(link) &&
+	if multiLanguage && !httpRegex.MatchString(link) &&
 		(langId != config.General.DefaultLanguage || !config.General.NoRedirectDefaultLanguage || changeLangLink) {
 		link = strings.ReplaceAll(langTemplate, "{route}", link)
 		link = strings.ReplaceAll(link, "{lang}", langId)
@@ -265,7 +269,7 @@ func GetLink(route string, config *types.Config, host string, langId string, cha
 			key = config.Params.DurationGte
 		case "duration_lt":
 			key = config.Params.DurationLt
-		case "search_query":
+		case "search_query", "query":
 			key = config.Params.SearchQuery
 		case "sort_by":
 			key = config.Params.SortBy
@@ -287,6 +291,10 @@ func GetLink(route string, config *types.Config, host string, langId string, cha
 			key = config.Params.Page
 		case "nocache":
 			key = config.Params.Nocache
+		case "like":
+			if link == config.Routes.Rating {
+				key = config.Params.Like
+			}
 		}
 		s := fmt.Sprintf("%v", p.Value)
 		if key == config.Params.SortBy {
@@ -364,7 +372,7 @@ func GetLink(route string, config *types.Config, host string, langId string, cha
 		if isFullUrl && !strings.HasPrefix(link, "https://") && !strings.HasPrefix(link, "http://") {
 			var canonicalUrl = strings.TrimSuffix(config.General.CanonicalUrl, "/")
 			if canonicalUrl == "" {
-				canonicalUrl = "https://"+host
+				canonicalUrl = "https://" + host
 			}
 			link = canonicalUrl + link
 		}
@@ -385,7 +393,7 @@ func GetLink(route string, config *types.Config, host string, langId string, cha
 	if isFullUrl && !strings.HasPrefix(link, "https://") && !strings.HasPrefix(link, "http://") {
 		var canonicalUrl = strings.TrimSuffix(config.General.CanonicalUrl, "/")
 		if canonicalUrl == "" {
-			canonicalUrl = "https://"+host
+			canonicalUrl = "https://" + host
 		}
 		link = canonicalUrl + link
 	}

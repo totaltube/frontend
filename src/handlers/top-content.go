@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/flosch/pongo2/v4"
+	"github.com/flosch/pongo2/v6"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 
@@ -47,7 +47,8 @@ var TopContent = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var err error
 			var response json.RawMessage
 			response, err = db.GetCachedTimeout(cacheKey+":data", cacheTtl, cacheTtl, func() ([]byte, error) {
-				return api.TopContentRaw(hostName, langId, page, groupId)
+				bt, err :=  api.TopContentRaw(hostName, langId, page, groupId)
+				return bt, err
 			}, nocache)
 			if err != nil {
 				log.Println(err)
@@ -56,6 +57,9 @@ var TopContent = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			err = json.Unmarshal(response, results)
 			if err != nil {
 				return ctx, err
+			}
+			if len(results.Items) == 0 && page > 1 {
+				return ctx, fmt.Errorf("not found")
 			}
 			if page == 1 {
 				ctx["count"] = true

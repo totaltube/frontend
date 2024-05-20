@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/flosch/pongo2/v4"
+	"github.com/flosch/pongo2/v6"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 
@@ -61,10 +61,14 @@ var Channel = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	ip := r.Context().Value("ip").(string)
 	groupId := internal.DetectCountryGroup(net.ParseIP(ip)).Id
 	customContext := generateCustomContext(w, r, "channel")
+	amount := config.General.ChannelResultsPerPage
+	if amount == 0 {
+		amount = config.General.DefaultResultsPerPage
+	}
 	cacheKey := "channel:" + helpers.Md5Hash(
-		fmt.Sprintf("%s:%s:%d:%s:%s:%s:%d:%d:%s:%d:%d:%d:%s:%d",
+		fmt.Sprintf("%s:%s:%d:%s:%s:%s:%d:%d:%s:%d:%d:%d:%s:%d:%d",
 			hostName, langId, page, sortBy, sortByViewsTimeframe, channelSlug, channelId,
-			modelId, modelSlug, durationGte, durationLt, categoryId, categorySlug, groupId),
+			modelId, modelSlug, durationGte, durationLt, categoryId, categorySlug, groupId, amount),
 	)
 	cacheTtl := time.Minute * 15
 	userAgent := r.Header.Get("User-Agent")
@@ -106,6 +110,8 @@ var Channel = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					DurationLt:   durationLt,
 					UserAgent:    userAgent,
 					GroupId:      groupId,
+					Amount:       amount,
+					Ip:           net.ParseIP(ip),
 				})
 			}, nocache)
 			if err != nil {
@@ -114,6 +120,9 @@ var Channel = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			err = json.Unmarshal(response, results)
 			if err != nil {
 				return ctx, err
+			}
+			if len(results.Items) == 0 && page > 1 {
+				return ctx, fmt.Errorf("not found")
 			}
 			ctx["channel"] = channelInfo
 			ctx["content"] = results
@@ -126,6 +135,15 @@ var Channel = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		}, w, r)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
+			if channelSlug != "" && config.General.DeletedTaxonomiesToSearch || internal.Config.General.DeletedTaxonomiesToSearch {
+				redirectType := 302
+				if config.General.DeletedTaxonomiesToSearchPermanent || internal.Config.General.DeletedTaxonomiesToSearchPermanent {
+					redirectType = 301
+				}
+				link := site.GetLink("search", config, hostName, langId, false, "search_query", strings.ReplaceAll(channelSlug, "-", "+"))
+				http.Redirect(w, r, link, redirectType)
+				return
+			}
 			Output404(w, r, err.Error())
 			return
 		}

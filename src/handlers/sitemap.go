@@ -4,7 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/beevik/etree"
-	"github.com/flosch/pongo2/v4"
+	"github.com/flosch/pongo2/v6"
+	"github.com/pkg/errors"
 	"github.com/samber/lo"
 	"log"
 	"math/rand"
@@ -50,12 +51,16 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				CreateText("https://" + config.Hostname + link)
 			if config.General.MultiLanguage {
 				for _, lang := range internal.GetLanguages() {
+					var hostname = config.Hostname
+					if d, ok := config.LanguageDomains[lang.Id]; ok && d != "" {
+						hostname = d
+					}
 					altLink := site.GetLink(uri, config, hostName, lang.Id, true)
 					if altLink != link {
 						alt := route.CreateElement("xhtml:link")
 						alt.CreateAttr("rel", "alternate")
 						alt.CreateAttr("hreflang", lang.Id)
-						alt.CreateAttr("href", "https://"+config.Hostname+altLink)
+						alt.CreateAttr("href", "https://"+hostname+altLink)
 					}
 				}
 			}
@@ -91,7 +96,11 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					alt := route.CreateElement("xhtml:link")
 					alt.CreateAttr("rel", "alternate")
 					alt.CreateAttr("hreflang", lang.Id)
-					alt.CreateAttr("href", "https://"+config.Hostname+site.GetLink("category", config, hostName, lang.Id, true, "slug", item.Slug, "id", item.Id))
+					var hostname = config.Hostname
+					if d, ok := config.LanguageDomains[lang.Id]; ok && d != "" {
+						hostname = d
+					}
+					alt.CreateAttr("href", "https://"+hostname+site.GetLink("category", config, hostName, lang.Id, true, "slug", item.Slug, "id", item.Id))
 				}
 			}
 			route.CreateElement("lastmod").CreateText(time.Now().UTC().Format(time.DateOnly))
@@ -127,10 +136,14 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink("model", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
 			if config.General.MultiLanguage {
 				for _, lang := range internal.GetLanguages() {
+					var hostname = config.Hostname
+					if d, ok := config.LanguageDomains[lang.Id]; ok && d != "" {
+						hostname = d
+					}
 					alt := route.CreateElement("xhtml:link")
 					alt.CreateAttr("rel", "alternate")
 					alt.CreateAttr("hreflang", lang.Id)
-					alt.CreateAttr("href", "https://"+config.Hostname+site.GetLink("model", config, hostName, lang.Id, true, "slug", item.Slug, "id", item.Id))
+					alt.CreateAttr("href", "https://"+hostname+site.GetLink("model", config, hostName, lang.Id, true, "slug", item.Slug, "id", item.Id))
 				}
 			}
 			route.CreateElement("lastmod").CreateText(time.Now().UTC().Format(time.DateOnly))
@@ -166,10 +179,14 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink("channel", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
 			if config.General.MultiLanguage {
 				for _, lang := range internal.GetLanguages() {
+					var hostname = config.Hostname
+					if d, ok := config.LanguageDomains[lang.Id]; ok && d != "" {
+						hostname = d
+					}
 					alt := route.CreateElement("xhtml:link")
 					alt.CreateAttr("rel", "alternate")
 					alt.CreateAttr("hreflang", lang.Id)
-					alt.CreateAttr("href", "https://"+config.Hostname+site.GetLink("channel", config, hostName, lang.Id, true, "slug", item.Slug, "id", item.Id))
+					alt.CreateAttr("href", "https://"+hostname+site.GetLink("channel", config, hostName, lang.Id, true, "slug", item.Slug, "id", item.Id))
 				}
 			}
 			route.CreateElement("lastmod").CreateText(time.Now().UTC().Format(time.DateOnly))
@@ -181,7 +198,7 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	case "videos":
-		if config.Sitemap.ChannelsAmount <= 0 || config.Routes.ContentItem == "" || config.Routes.ContentItem == "-" {
+		if config.Sitemap.LastVideosAmount <= 0 || config.Routes.ContentItem == "" || config.Routes.ContentItem == "-" {
 			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 			return
 		}
@@ -221,7 +238,7 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				}
 				continue
 			}
-			if err != site.ErrTemplateNotFound {
+			if !errors.Is(err, site.ErrTemplateNotFound) {
 				log.Println(err)
 				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 				return
@@ -232,10 +249,14 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				"slug", item.Slug, "id", item.Id, "categories", item.Categories))
 			if config.General.MultiLanguage {
 				for _, lang := range internal.GetLanguages() {
+					var hostname = config.Hostname
+					if d, ok := config.LanguageDomains[lang.Id]; ok && d != "" {
+						hostname = d
+					}
 					alt := route.CreateElement("xhtml:link")
 					alt.CreateAttr("rel", "alternate")
 					alt.CreateAttr("hreflang", lang.Id)
-					alt.CreateAttr("href", "https://"+config.Hostname+site.GetLink(
+					alt.CreateAttr("href", "https://"+hostname+site.GetLink(
 						"content_item", config, hostName, lang.Id, true,
 						"slug", item.Slug, "id", item.Id, "categories", item.Categories))
 				}
@@ -486,9 +507,9 @@ func getSitemapVideos(hostName string, amount int64, page int64) (results *types
 	if cached, err = db.GetCachedTimeout(fmt.Sprintf("sitemap:%s:top-videos-%d-%d", hostName, amount, page), ttl, time.Hour*2, func() ([]byte, error) {
 		var rawResponse json.RawMessage
 		rawResponse, err = api.ContentRaw(hostName, api.ContentParams{
-			Amount:    amount,
-			Sort:      api.SortDated,
-			Page:      page,
+			Amount: amount,
+			Sort:   api.SortDated,
+			Page:   page,
 		})
 		return rawResponse, err
 	}, false); err != nil {

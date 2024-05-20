@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/flosch/pongo2/v4"
+	"github.com/flosch/pongo2/v6"
 	"github.com/go-chi/render"
 
 	"sersh.com/totaltube/frontend/api"

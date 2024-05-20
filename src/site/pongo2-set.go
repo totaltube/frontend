@@ -1,6 +1,6 @@
 package site
 
-import "github.com/flosch/pongo2/v4"
+import "github.com/flosch/pongo2/v6"
 
 // a little modified set tag. Make use of public context, not the private.
 

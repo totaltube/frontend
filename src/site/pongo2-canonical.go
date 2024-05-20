@@ -8,9 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/flosch/pongo2/v4"
+	"github.com/flosch/pongo2/v6"
 )
-
 
 func getCanonical(ctx pongo2.Context, page int64, q ...url.Values) string {
 	if page == 0 {
@@ -19,6 +18,8 @@ func getCanonical(ctx pongo2.Context, page int64, q ...url.Values) string {
 		}
 	}
 	config := ctx["config"].(*types.Config)
+	langId := ctx["lang"].(*types.Language).Id
+	hostName := ctx["host"].(string)
 	var route string
 	if r, ok := ctx["route"]; !ok {
 		return ""
@@ -40,8 +41,20 @@ func getCanonical(ctx pongo2.Context, page int64, q ...url.Values) string {
 			route = strings.ReplaceAll(route, "{"+paramKey+"}", paramValue)
 		}
 	}
-	langId := ctx["lang"].(*types.Language).Id
-	if config.General.MultiLanguage && isSearchPage && (langId != config.General.DefaultLanguage || !config.General.NoRedirectDefaultLanguage ) {
+	var canonicalPrefix string
+	if config.General.CanonicalUrl != "" {
+		canonicalPrefix = strings.TrimSuffix(config.General.CanonicalUrl, "/")
+	} else {
+		canonicalPrefix = "https://" + hostName
+	}
+	replacedLang := false
+	if config.General.MultiLanguage && config.LanguageDomains[langId] != "" {
+		canonicalPrefix = "https://" + config.LanguageDomains[langId]
+		route = strings.ReplaceAll(config.Routes.LanguageTemplate, "{route}", route)
+		route = strings.ReplaceAll(route, "{lang}", langId)
+		replacedLang = true
+	}
+	if config.General.MultiLanguage && isSearchPage && (langId != config.General.DefaultLanguage || !config.General.NoRedirectDefaultLanguage) && !replacedLang {
 		// For search page we need to add language to canonical url
 		route = strings.ReplaceAll(config.Routes.LanguageTemplate, "{route}", route)
 		route = strings.ReplaceAll(route, "{lang}", langId)
@@ -55,7 +68,7 @@ func getCanonical(ctx pongo2.Context, page int64, q ...url.Values) string {
 	if query != "" {
 		route += "?" + query
 	}
-	return route
+	return canonicalPrefix + route
 }
 
 type tagCanonicalNode struct {
@@ -63,18 +76,11 @@ type tagCanonicalNode struct {
 
 func (node *tagCanonicalNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.TemplateWriter) *pongo2.Error {
 	context := pongo2.NewChildExecutionContext(ctx)
-	config := context.Public["config"].(*types.Config)
-	hostName := context.Public["host"].(string)
 	var page int64 = 1
 	if p, ok := context.Public["page"]; ok {
 		page = p.(int64)
 	}
 	route := getCanonical(context.Public, page)
-	if config.General.CanonicalUrl != "" {
-		route = strings.TrimSuffix(config.General.CanonicalUrl, "/")+route
-	} else {
-		route = "https://"+hostName+route
-	}
 	_, err := writer.WriteString(fmt.Sprintf(`<link rel="canonical" href="%s">`, route))
 	if err != nil {
 		return &pongo2.Error{Sender: "tag:canonical", OrigError: err}

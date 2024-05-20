@@ -2,6 +2,7 @@ package middlewares
 
 import (
 	"context"
+	"github.com/pkg/errors"
 	"log"
 	"net/http"
 	"time"
@@ -13,7 +14,7 @@ func Timeout(timeout time.Duration) func(next http.Handler) http.Handler {
 			ctx, cancel := context.WithTimeout(r.Context(), timeout)
 			defer func() {
 				cancel()
-				if ctx.Err() == context.DeadlineExceeded {
+				if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 					log.Println("timeout requesting", r.URL.String())
 					w.WriteHeader(http.StatusGatewayTimeout)
 				}
@@ -23,3 +24,4 @@ func Timeout(timeout time.Duration) func(next http.Handler) http.Handler {
 		return http.HandlerFunc(fn)
 	}
 }
+

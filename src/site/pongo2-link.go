@@ -8,7 +8,7 @@ import (
 	"regexp"
 
 	"github.com/dlclark/regexp2"
-	"github.com/flosch/pongo2/v4"
+	"github.com/flosch/pongo2/v6"
 
 	"sersh.com/totaltube/frontend/types"
 )

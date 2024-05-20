@@ -2,14 +2,15 @@ package types
 
 type (
 	Config struct {
-		Routes     ConfigRoutes
-		General    ConfigGeneral
-		Sitemap    ConfigSitemap
-		Params     ConfigParams
-		Javascript ConfigJs          `json:"-"`
-		Scss       ConfigScss        `json:"-"`
-		Custom     map[string]string `json:"-"`
-		Hostname   string            `json:"-"`
+		Routes          ConfigRoutes
+		General         ConfigGeneral
+		Sitemap         ConfigSitemap
+		Params          ConfigParams
+		LanguageDomains map[string]string `toml:"language_domains"`
+		Javascript      ConfigJs          `json:"-"`
+		Scss            ConfigScss        `json:"-"`
+		Custom          map[string]string `json:"-"`
+		Hostname        string            `json:"-"`
 	}
 	ConfigSitemap struct {
 		Route            string   `toml:"route"`
@@ -39,6 +40,8 @@ type (
 		Dmca             string
 		VideoEmbed       string            `toml:"video_embed"`
 		LanguageTemplate string            `toml:"language_template"`
+		Blackhole        string            `toml:"blackhole"`
+		Rating           string            `toml:"rating"`
 		Custom           map[string]string `toml:"custom"`
 	}
 	ConfigParams struct {
@@ -49,6 +52,7 @@ type (
 		CategoryId             string `toml:"category_id"`
 		ModelSlug              string `toml:"model_slug"`
 		ModelId                string `toml:"model_id"`
+		Like                   string `toml:"like"`
 		ChannelSlug            string `toml:"channel_slug"`
 		ChannelId              string `toml:"channel_id"`
 		DurationGte            string `toml:"duration_gte"`
@@ -84,21 +88,30 @@ type (
 		Minify      bool     `toml:"minify"`
 	}
 	ConfigGeneral struct {
-		CanonicalUrl               string `toml:"canonical_url"`
-		TradeUrlTemplate           string `toml:"trade_url_template"`
-		ModelsPerPage              int    `toml:"models_per_page"`
-		ContentRelatedAmount       int    `toml:"content_related_amount"`
-		FakeVideoPage              bool   `toml:"fake_video_page"`
-		MultiLanguage              bool   `toml:"multi_language"`
-		DefaultLanguage            string `toml:"default_language"`
-		NoRedirectDefaultLanguage  bool   `toml:"no_redirect_default_language"`
-		MinifyHtml                 bool   `toml:"minify_html" json:"-"`
-		PaginationMaxRenderedLinks int    `toml:"pagination_max_rendered_links"`
-		DisableCategoriesRedirect  bool   `toml:"disable_categories_redirect"`
-		Debug                      bool   `toml:"debug"`
-		ApiUrl                     string `toml:"api_url"`
-		ApiSecret                  string `toml:"api_secret"`
-		ToplistDataUrl             string `toml:"toplist_data_url"` // url to json file with toplist data for trade scripts
+		CanonicalUrl                       string `toml:"canonical_url"`
+		TradeUrlTemplate                   string `toml:"trade_url_template"`
+		ModelsPerPage                      int    `toml:"models_per_page"`
+		DefaultResultsPerPage              int64  `toml:"default_results_per_page"`
+		SearchResultsPerPage               int64  `toml:"search_results_per_page"`
+		CategoryResultsPerPage             int64  `toml:"category_results_per_page"`
+		ChannelResultsPerPage              int64  `toml:"channel_results_per_page"`
+		ModelResultsPerPage                int64  `toml:"model_results_per_page"`
+		TopContentResultsPerPage           int64  `toml:"top_content_results_per_page"`
+		TopCategoriesResultsPerPage        int64  `toml:"top_categories_results_per_page"`
+		ContentRelatedAmount               int    `toml:"content_related_amount"`
+		FakeVideoPage                      bool   `toml:"fake_video_page"`
+		MultiLanguage                      bool   `toml:"multi_language"`
+		DefaultLanguage                    string `toml:"default_language"`
+		NoRedirectDefaultLanguage          bool   `toml:"no_redirect_default_language"`
+		MinifyHtml                         bool   `toml:"minify_html" json:"-"`
+		PaginationMaxRenderedLinks         int    `toml:"pagination_max_rendered_links"`
+		DisableCategoriesRedirect          bool   `toml:"disable_categories_redirect"`
+		Debug                              bool   `toml:"debug"`
+		ApiUrl                             string `toml:"api_url"`
+		ApiSecret                          string `toml:"api_secret"`
+		ToplistDataUrl                     string `toml:"toplist_data_url"` // url to json file with toplist data for trade scripts
+		DeletedTaxonomiesToSearch          bool   `toml:"deleted_taxonomies_to_search"`
+		DeletedTaxonomiesToSearchPermanent bool   `toml:"deleted_taxonomies_to_search_permanent"`
 	}
 )
 
@@ -120,6 +133,7 @@ func NewConfig() *Config {
 			FakePlayer:       "/player/{data}/{hash}",
 			Dmca:             "/dmca",
 			Out:              "/c",
+			Rating:           "/rating/{id}",
 			LanguageTemplate: "/{lang}{route}",
 		},
 		Sitemap: ConfigSitemap{
@@ -177,7 +191,9 @@ func NewConfig() *Config {
 			CountThumbId:           "tid",
 			Nocache:                "nocache",
 			CountView:              "cv",
+			Like:                   "like",
 		},
+		LanguageDomains: make(map[string]string),
 	}
 	return &n
 }

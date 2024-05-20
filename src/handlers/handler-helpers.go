@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"fmt"
+	"github.com/mileusna/useragent"
+	"github.com/samber/lo"
 	"log"
 	"net"
 	"net/http"
@@ -11,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/flosch/pongo2/v4"
+	"github.com/flosch/pongo2/v6"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 
@@ -102,6 +104,7 @@ func generateCustomContext(w http.ResponseWriter, r *http.Request, templateName 
 	}
 	queryString := r.URL.RawQuery
 	headers := make(map[string]string)
+	headers["Host"] = r.Host
 	for k := range r.Header {
 		headers[k] = r.Header.Get(k)
 	}
@@ -145,8 +148,7 @@ func generateCustomContext(w http.ResponseWriter, r *http.Request, templateName 
 			route = rr
 		}
 	}
-	switch templateName {
-	case "category", "model", "channel", "top-content", "popular", "new", "long", "search":
+	if lo.Contains([]string{"category", "model", "channel", "top-content", "popular", "new", "long", "search"}, templateName) || strings.HasPrefix(templateName, "custom/") {
 		if categorySlug, ok := query[config.Params.CategorySlug]; ok {
 			canonicalQuery.Set(config.Params.CategorySlug, categorySlug)
 			if templateName == "category" {
@@ -264,6 +266,12 @@ func generateCustomContext(w http.ResponseWriter, r *http.Request, templateName 
 		"country_group":       countryGroup,
 		"group_id":            countryGroup.Id,
 		"refreshTranslations": refreshTranslations,
+		"parse_ua":            func(ua ...string) useragent.UserAgent {
+			if len(ua) > 0 {
+				return useragent.Parse(ua[0])
+			}
+			return useragent.Parse(r.UserAgent())
+		},
 		"get_content":         getContentFunc(hostName, langId, userAgent, ip, groupId),
 		"get_top_content":     getTopContentFunc(hostName, langId, groupId),
 		"get_top_categories":  getTopCategoriesFunc(hostName, langId, groupId),

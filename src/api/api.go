@@ -2,10 +2,11 @@ package api
 
 import (
 	"encoding/json"
-	"github.com/pkg/errors"
 	"log"
 	"net/url"
 	"path/filepath"
+
+	"github.com/pkg/errors"
 
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/internal"
@@ -52,6 +53,10 @@ const (
 	uriTranslate          ApiUri = "translate"
 	uriLanguages          ApiUri = "languages"
 	uriCountryGroups      ApiUri = "country-groups"
+	uriBadbotRegister     ApiUri = "badbot"
+	uriBadBotsList        ApiUri = "badbots"
+	uriWhitelistBotsList  ApiUri = "bot-whitelist"
+	uriRating             ApiUri = "rating"
 )
 
 func Request(siteDomain string, method Method, uri ApiUri, data interface{}) (response json.RawMessage, err error) {
@@ -87,7 +92,8 @@ func Request(siteDomain string, method Method, uri ApiUri, data interface{}) (re
 	if !r.Success {
 		var errorString string
 		_ = json.Unmarshal(r.Value, &errorString)
-		err = errors.New("error from api: " + errorString)
+		err = errors.New("error from api: " + errorString + ", " + string(method) + ", " + string(uri))
+		log.Printf("error from api: %s, %s, %s, %s, %v", errorString, siteDomain, method, uri, data)
 		return
 	}
 	response = r.Value

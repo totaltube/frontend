@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/flosch/pongo2/v4"
+	"github.com/flosch/pongo2/v6"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 
@@ -22,7 +22,6 @@ import (
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
 )
-
 
 func getTopCategoriesFunc(hostName string, langId string, groupId int64) func(args ...interface{}) *types.CategoryResults {
 	return func(args ...interface{}) *types.CategoryResults {
@@ -78,7 +77,7 @@ var TopCategories = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 							}
 							redirectUrl = strings.ReplaceAll(redirectUrl, "{slug}", cat.Slug)
 							redirectUrl = strings.ReplaceAll(redirectUrl, "{id}", strconv.FormatInt(int64(cat.Id), 10))
-							if qs :=r.URL.RawQuery; qs != "" {
+							if qs := r.URL.RawQuery; qs != "" {
 								redirectUrl = redirectUrl + "?" + qs
 							}
 							http.Redirect(w, r, redirectUrl, 302)
@@ -107,7 +106,8 @@ var TopCategories = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 			var err error
 			var response json.RawMessage
 			response, err = db.GetCachedTimeout(cacheKey+":data", cacheTtl, cacheTtl, func() ([]byte, error) {
-				return api.TopCategoriesRaw(hostName, langId, page, groupId)
+				bt, err := api.TopCategoriesRaw(hostName, langId, page, groupId)
+				return bt, err
 			}, nocache)
 			if err != nil {
 				return ctx, err
@@ -115,6 +115,9 @@ var TopCategories = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 			err = json.Unmarshal(response, results)
 			if err != nil {
 				return ctx, err
+			}
+			if len(results.Items) == 0 && page > 1 {
+				return ctx, fmt.Errorf("not found")
 			}
 			ctx["top_categories"] = results
 			ctx["total"] = int64(results.Total)

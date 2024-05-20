@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"sersh.com/totaltube/frontend/middlewares"
 	"sersh.com/totaltube/frontend/types"
 	"strconv"
 	"strings"
@@ -76,7 +77,7 @@ func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler h
 					return
 				}
 			}
-			handler.ServeHTTP(w, r.WithContext(ctx))
+			middlewares.BadBotMiddleware(handler).ServeHTTP(w, r.WithContext(ctx))
 		}))
 	}
 	if strings.Contains(route, "{lang}") {
@@ -137,7 +138,7 @@ func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler h
 			if siteConfig.General.NoRedirectDefaultLanguage && lang.Id == siteConfig.General.DefaultLanguage {
 				ctx := context.WithValue(r.Context(), "lang", lang.Id)
 				ctx = context.WithValue(ctx, "isXDefault", true)
-				handler.ServeHTTP(w, r.WithContext(ctx))
+				middlewares.BadBotMiddleware(handler).ServeHTTP(w, r.WithContext(ctx))
 				return
 			}
 			redirectUri = strings.ReplaceAll(redirectUri, "{route}", route)
@@ -160,7 +161,7 @@ func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler h
 			if siteConfig.General.NoRedirectDefaultLanguage && lang.Id == siteConfig.General.DefaultLanguage {
 				ctx := context.WithValue(r.Context(), "lang", lang.Id)
 				ctx = context.WithValue(ctx, "isXDefault", true)
-				handler.ServeHTTP(w, r.WithContext(ctx))
+				middlewares.BadBotMiddleware(handler).ServeHTTP(w, r.WithContext(ctx))
 				return
 			}
 			var redirectUri string

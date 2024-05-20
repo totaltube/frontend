@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/flosch/pongo2/v4"
+	"github.com/flosch/pongo2/v6"
 
 	"sersh.com/totaltube/frontend/types"
 )
@@ -51,9 +51,13 @@ func (node *tagAlternatesNode) Execute(ctx *pongo2.ExecutionContext, writer pong
 		page = p.(int64)
 	}
 	for _, l := range languages {
+		canonical := canonicalUrl
+		if d, ok := config.LanguageDomains[l.Id]; ok {
+			canonical = "https://"+d
+		}
 		_, err := writer.WriteString(
 			fmt.Sprintf(`<link rel="alternate" hreflang="%s" href="%s">`+"\n",
-				l.Id, canonicalUrl+getAlternate(context.Public, l.Id, page)))
+				l.Id, canonical+getAlternate(context.Public, l.Id, page)))
 		if err != nil {
 			return &pongo2.Error{Sender: "tag:alternates", OrigError: err}
 		}

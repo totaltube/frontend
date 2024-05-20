@@ -48,13 +48,17 @@ func newFetchRequest(u string, config *types.Config) *FetchRequest {
 		if config.General.ApiSecret != "" {
 			apiSecret = config.General.ApiSecret
 		}
+		if u == "translate" {
+			timeout = time.Second * 60
+		} else {
+			timeout = time.Duration(internal.Config.General.ApiTimeout)
+		}
 		u = apiUrl + "v1/" + u
 		headers["Authorization"] = apiSecret
 		headers["Accept"] = "application/json"
 		if config != nil {
 			headers["Totaltube-Site"] = config.Hostname
 		}
-		timeout = time.Duration(internal.Config.General.ApiTimeout)
 	}
 	n := FetchRequest{
 		method:  "GET",
@@ -164,6 +168,11 @@ var dnsDialer = func(ctx context.Context, network, address string) (conn net.Con
 }
 
 func (f *FetchRequest) Do() (response []byte, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = errors.New(fmt.Sprintf("panic in fetch request: %v", r))
+		}
+	}()
 	started := time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), f.timeout)
 	defer cancel()
@@ -233,7 +242,7 @@ func (f *FetchRequest) Do() (response []byte, err error) {
 	var resp *http.Response
 	resp, err = client.Do(request)
 	elapsed := time.Now().Sub(started)
-	if elapsed > time.Second*2 {
+	if elapsed > time.Second*2 && !strings.Contains(request.URL.String(), "/translate") {
 		log.Println("too long request for ", request.URL.String(), request.Header.Get("Totaltube-Site"), elapsed)
 	}
 	if err != nil {
@@ -258,7 +267,7 @@ func (f *FetchRequest) Do() (response []byte, err error) {
 		log.Println(err)
 	}
 	elapsed = time.Now().Sub(started)
-	if elapsed > time.Second*2 {
+	if elapsed > time.Second*2 && !strings.Contains(request.URL.String(), "/translate") {
 		log.Println("too long getting response for ", request.URL.String(), request.Header.Get("Totaltube-Site"), elapsed)
 	}
 	return

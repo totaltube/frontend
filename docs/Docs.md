@@ -509,7 +509,13 @@ const url = link("content",
   "full_url", true,
 )
 ```
-
+* `parse_ua` - function to parse user_agent (of current surfer or provided as first parameter) and return object with these properties: `URL`: url of bot, `Name`: name of browser/bot, `Version`: version of browser/bot, `OS`: name of OS, `OSVersion`: version of OS, `Device`: name of device, `Mobile`: true if mobile device, `Tablet`: true if tablet device, `Desktop`: true if desktop device, `Bot`: true if bot. Example:
+```javascript
+const ua = parse_ua()
+if (ua.Mobile) {
+  console.log("Surfer is on mobile device")
+}
+```
 
 ## Variables, available in template files and custom functions.
 
