@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/flosch/pongo2/v4"
+	"github.com/flosch/pongo2/v6"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 
@@ -63,10 +63,14 @@ var Search = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	durationFrom, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.DurationGte), 10, 64)
 	durationTo, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.DurationLt), 10, 64)
 	customContext := generateCustomContext(w, r, "search")
+	amount := config.General.SearchResultsPerPage
+	if amount == 0 {
+		amount = config.General.DefaultResultsPerPage
+	}
 	cacheKey := "search:" + helpers.Md5Hash(
-		fmt.Sprintf("%s:%s:%d:%s:%d:%d:%s:%d:%d:%d:%s:%s:%s",
+		fmt.Sprintf("%s:%s:%d:%s:%d:%d:%s:%d:%d:%d:%s:%s:%s:%d",
 			hostName, langId, page, channelSlug, channelId,
-			modelId, modelSlug, durationFrom, durationTo, categoryId, categorySlug, sortBy, searchQuery),
+			modelId, modelSlug, durationFrom, durationTo, categoryId, categorySlug, sortBy, searchQuery, amount),
 	)
 	ip := r.Context().Value("ip").(string)
 	groupId := internal.DetectCountryGroup(net.ParseIP(ip)).Id
@@ -96,9 +100,13 @@ var Search = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				DurationLt:   durationTo,
 				UserAgent:    userAgent,
 				GroupId:      groupId,
+				Amount:       amount,
 			})
 			if err != nil {
 				return ctx, err
+			}
+			if len(results.Items) == 0 && page > 1 {
+				return ctx, fmt.Errorf("not found")
 			}
 			ctx["search_query"] = searchQuery
 			ctx["content"] = results

@@ -98,7 +98,10 @@ func (c *CategoryResult) SelectedThumb(thumbFormatName ...string) int {
 		c.selectedThumb = &idx
 	} else {
 		format := c.GetThumbFormat(thumbFormatName...)
-		idx := rand.Intn(int(format.Amount))
+		var idx int
+		if format.Amount > 0 {
+			idx = rand.Intn(int(format.Amount))
+		}
 		c.selectedThumb = &idx
 	}
 	return *c.selectedThumb

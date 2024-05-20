@@ -2,7 +2,7 @@ package site
 
 import (
 	"errors"
-	"github.com/flosch/pongo2/v4"
+	"github.com/flosch/pongo2/v6"
 	"golang.org/x/text/collate"
 	"golang.org/x/text/language"
 	"reflect"

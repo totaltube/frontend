@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/flosch/pongo2/v4"
+	"github.com/flosch/pongo2/v6"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 
@@ -66,10 +66,11 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	durationFrom, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.DurationGte), 10, 64)
 	durationTo, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.DurationLt), 10, 64)
 	customContext := generateCustomContext(w, r, "category")
+	amount := config.General.CategoryResultsPerPage
 	cacheKey := "category:" + helpers.Md5Hash(
-		fmt.Sprintf("%s:%s:%d:%s:%d:%s:%s:%s:%d:%d:%s:%d:%d",
+		fmt.Sprintf("%s:%s:%d:%s:%d:%s:%s:%s:%d:%d:%s:%d:%d:%d",
 			hostName, langId, categoryId, categorySlug, page, sortBy, sortByViewsTimeframe, channelSlug, channelId,
-			modelId, modelSlug, durationFrom, durationTo),
+			modelId, modelSlug, durationFrom, durationTo, amount),
 	)
 	filtered := channelId > 0 || channelSlug != "" || modelId > 0 || modelSlug != "" || sortBy != "" ||
 		durationTo > 0 || durationFrom > 0
@@ -91,13 +92,13 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				return rawResponse, err
 			}, nocache)
 			if err != nil {
-				log.Println(err)
+				log.Println(err, config.Hostname)
 				return ctx, err
 			}
 			categoryInfo := new(types.CategoryResult)
 			err = json.Unmarshal(categoryInfoCached, categoryInfo)
 			if err != nil {
-				log.Println(err)
+				log.Println(err, config.Hostname)
 				return ctx, err
 			}
 			var results = new(types.ContentResults)
@@ -119,6 +120,7 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 						DurationGte:  durationFrom,
 						DurationLt:   durationTo,
 						UserAgent:    userAgent,
+						Amount:       amount,
 					})
 				}, nocache)
 				if err != nil {
@@ -139,6 +141,9 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				return ctx, err
 			}
+			if len(results.Items) == 0 && page > 1 {
+				return ctx, fmt.Errorf("not found")
+			}
 			ctx["category"] = categoryInfo
 			ctx["content"] = results
 			ctx["total"] = results.Total
@@ -150,8 +155,19 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		}, w, r)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			Output404(w, r, err.Error())
-			return
+			if strings.Contains(err.Error(), "not found") {
+				if categorySlug != "" && config.General.DeletedTaxonomiesToSearch || internal.Config.General.DeletedTaxonomiesToSearch {
+					redirectType := 302
+					if config.General.DeletedTaxonomiesToSearchPermanent || internal.Config.General.DeletedTaxonomiesToSearchPermanent {
+						redirectType = 301
+					}
+					link := site.GetLink("search", config, hostName, langId, false, "search_query", strings.ReplaceAll(categorySlug, "-", "+"))
+					http.Redirect(w, r, link, redirectType)
+					return
+				}
+				Output404(w, r, err.Error())
+				return
+			}
 		}
 		Output500(w, r, err)
 		return

@@ -128,6 +128,31 @@ func GetCachedTimeout(cacheKey string, timeout time.Duration, extendedTimeout ti
 		if expire.After(time.Now()) { // there are some time for expiration, just return found cached value
 			return
 		}
+		if extendedTimeout == 0 {
+			// recreating in place
+			result, err = recreate()
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			// Saving to cache
+			err = bdb.Update(func(txn *badger.Txn) error {
+				entry := badger.NewEntry(key, result).WithTTL(timeout + extendedTimeout)
+				err = txn.SetEntry(entry)
+				if err != nil {
+					return err
+				}
+				expireEntry := badger.NewEntry(expireKey, []byte(time.Now().Add(timeout).Format(time.RFC3339))).
+					WithTTL(timeout + extendedTimeout)
+				err = txn.SetEntry(expireEntry)
+				return err
+			})
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			return
+		}
 		// need to recreate found cached value. But let's check if we already have recreate job for this
 		if _, loaded := recreatingNow.LoadOrStore(cacheKey, time.Now()); loaded {
 			// currently we recreating value, so, just return old one cached

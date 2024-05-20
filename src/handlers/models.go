@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/flosch/pongo2/v4"
+	"github.com/flosch/pongo2/v6"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 
@@ -60,6 +60,9 @@ var Models = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			err = json.Unmarshal(response, results)
 			if err != nil {
 				return ctx, err
+			}
+			if len(results.Items) == 0 && page > 1 {
+				return ctx, fmt.Errorf("not found")
 			}
 			ctx["content"] = results
 			ctx["total"] = results.Total

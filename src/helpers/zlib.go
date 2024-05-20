@@ -3,6 +3,7 @@ package helpers
 import (
 	"bytes"
 	"encoding/base64"
+	"fmt"
 	"io/ioutil"
 	"log"
 
@@ -13,6 +14,9 @@ import (
 
 func Base64(data []byte) string {
 	return base64.StdEncoding.EncodeToString(data)
+}
+func Base64Url(data []byte) string {
+	return base64.URLEncoding.EncodeToString(data)
 }
 
 func Flate(data []byte) []byte {
@@ -27,6 +31,9 @@ func Flate(data []byte) []byte {
 	return b.Bytes()
 }
 
+func Bytes(data interface{}) []byte {
+	return []byte(fmt.Sprintf("%v", data))
+}
 
 func Deflate(data []byte) []byte {
 	var b = bytes.NewReader(data)

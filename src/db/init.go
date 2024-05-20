@@ -23,7 +23,7 @@ func InitDB() {
 			bdb, err = badger.Open(
 				badger.DefaultOptions(internal.Config.Database.Path).
 					WithDetectConflicts(false).
-					WithValueLogFileSize(16 << 20). // 16 MB
+					WithValueLogFileSize(50 << 20). // 50 MB
 					WithIndexCacheSize(10 << 20).   // 10 MB
 					WithBlockCacheSize(10 << 20).   // 10 MB
 					WithNumMemtables(2).
@@ -35,11 +35,13 @@ func InitDB() {
 				badger.LSMOnlyOptions(internal.Config.Database.Path).
 					WithDetectConflicts(false).
 					WithSyncWrites(false).
-					WithValueLogMaxEntries(100000).
-					WithValueLogFileSize(1e+7).
-					WithIndexCacheSize(100 << 20).
-					WithBlockCacheSize(50 << 20).
-					WithNumMemtables(2).
+					// WithValueLogMaxEntries(100000).
+					WithValueLogFileSize(250 << 20). // 250 MB
+					WithIndexCacheSize(2000 << 20). // 2 GB
+					WithBlockCacheSize(100 << 20).   // 100 MB
+					WithNumMemtables(5).
+					WithNumLevelZeroTables(1).
+					WithNumLevelZeroTablesStall(2).
 					WithLoggingLevel(badger.WARNING),
 			)
 		}
@@ -68,7 +70,7 @@ func InitDB() {
 						log.Println("recover in badger db maintenance", r)
 					}
 				}()
-				err = bdb.RunValueLogGC(0.7)
+				err = bdb.RunValueLogGC(0.5)
 				if err != nil && err != badger.ErrNoRewrite {
 					log.Println(err)
 				}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/samber/lo"
 	"log"
 	"net/http"
 	"os"
@@ -55,6 +56,9 @@ func InitRouter() http.Handler {
 		hr.Use(middleware.Recoverer)
 		hr.Use(middleware.Timeout(60 * time.Second))
 		hr.Use(middleware.GetHead)
+		if internal.Config.General.EnableAccessLog {
+			hr.Use(middleware.Logger)
+		}
 		hr.Use(middleware.StripSlashes)
 		hr.Use(func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -79,113 +83,119 @@ func InitRouter() http.Handler {
 				next.ServeHTTP(w, r)
 			})
 		})
+		if config.Routes.Rating != "" && config.Routes.Rating != "-" {
+			hr.Handle(config.Routes.Rating, middlewares.BadBotMiddleware(handlers.Rating))
+		}
 		if config.Routes.Autocomplete != "" && config.Routes.Autocomplete != "-" {
 			if config.General.MultiLanguage {
 				handlers.LangHandlers(hr, config.Routes.Autocomplete, config, handlers.Autocomplete)
 			} else {
-				hr.Handle(config.Routes.Autocomplete, handlers.Autocomplete)
+				hr.Handle(config.Routes.Autocomplete, middlewares.BadBotMiddleware(handlers.Autocomplete))
 			}
 		}
 		if config.Routes.Search != "" && config.Routes.Search != "-" {
 			if config.General.MultiLanguage {
 				handlers.LangHandlers(hr, config.Routes.Search, config, handlers.Search)
 			} else {
-				hr.Handle(config.Routes.Search, handlers.Search)
+				hr.Handle(config.Routes.Search, middlewares.BadBotMiddleware(handlers.Search))
 			}
 		}
 		if config.Routes.Category != "" && config.Routes.Category != "-" {
 			if config.General.MultiLanguage {
 				handlers.LangHandlers(hr, config.Routes.Category, config, handlers.Category)
 			} else {
-				hr.Handle(config.Routes.Category, handlers.Category)
+				hr.Handle(config.Routes.Category, middlewares.BadBotMiddleware(handlers.Category))
 			}
 		}
 		if config.Routes.TopCategories != "" && config.Routes.TopCategories != "-" {
 			if config.General.MultiLanguage {
 				handlers.LangHandlers(hr, config.Routes.TopCategories, config, handlers.TopCategories)
 			} else {
-				hr.Handle(config.Routes.TopCategories, handlers.TopCategories)
+				hr.Handle(config.Routes.TopCategories, middlewares.BadBotMiddleware(handlers.TopCategories))
 			}
 		}
 		if config.Routes.TopContent != "" && config.Routes.TopContent != "-" {
 			if config.General.MultiLanguage {
 				handlers.LangHandlers(hr, config.Routes.TopContent, config, handlers.TopContent)
 			} else {
-				hr.Handle(config.Routes.TopContent, handlers.TopContent)
+				hr.Handle(config.Routes.TopContent, middlewares.BadBotMiddleware(handlers.TopContent))
 			}
 		}
 		if config.Routes.Model != "" && config.Routes.Model != "-" {
 			if config.General.MultiLanguage {
 				handlers.LangHandlers(hr, config.Routes.Model, config, handlers.Model)
 			} else {
-				hr.Handle(config.Routes.Model, handlers.Model)
+				hr.Handle(config.Routes.Model, middlewares.BadBotMiddleware(handlers.Model))
 			}
 		}
 		if config.Routes.Channel != "" && config.Routes.Channel != "-" {
 			if config.General.MultiLanguage {
 				handlers.LangHandlers(hr, config.Routes.Channel, config, handlers.Channel)
 			} else {
-				hr.Handle(config.Routes.Channel, handlers.Channel)
+				hr.Handle(config.Routes.Channel, middlewares.BadBotMiddleware(handlers.Channel))
 			}
 		}
 		if config.Routes.ContentItem != "" && config.Routes.ContentItem != "-" {
 			if config.General.MultiLanguage {
 				handlers.LangHandlers(hr, config.Routes.ContentItem, config, handlers.ContentItem)
 			} else {
-				hr.Handle(config.Routes.ContentItem, handlers.ContentItem)
+				hr.Handle(config.Routes.ContentItem, middlewares.BadBotMiddleware(handlers.ContentItem))
 			}
 		}
 		if config.Routes.New != "" && config.Routes.New != "-" {
 			if config.General.MultiLanguage {
 				handlers.LangHandlers(hr, config.Routes.New, config, handlers.New)
 			} else {
-				hr.Handle(config.Routes.New, handlers.New)
+				hr.Handle(config.Routes.New, middlewares.BadBotMiddleware(handlers.New))
 			}
 		}
 		if config.Routes.Long != "" && config.Routes.Long != "-" {
 			if config.General.MultiLanguage {
 				handlers.LangHandlers(hr, config.Routes.Long, config, handlers.Long)
 			} else {
-				hr.Handle(config.Routes.Long, handlers.Long)
+				hr.Handle(config.Routes.Long, middlewares.BadBotMiddleware(handlers.Long))
 			}
 		}
 		if config.Routes.Popular != "" && config.Routes.Popular != "-" {
 			if config.General.MultiLanguage {
 				handlers.LangHandlers(hr, config.Routes.Popular, config, handlers.Popular)
 			} else {
-				hr.Handle(config.Routes.Popular, handlers.Popular)
+				hr.Handle(config.Routes.Popular, middlewares.BadBotMiddleware(handlers.Popular))
 			}
 		}
 		if config.Routes.Models != "" && config.Routes.Models != "-" {
 			if config.General.MultiLanguage {
 				handlers.LangHandlers(hr, config.Routes.Models, config, handlers.Models)
 			} else {
-				hr.Handle(config.Routes.Models, handlers.Models)
+				hr.Handle(config.Routes.Models, middlewares.BadBotMiddleware(handlers.Models))
 			}
 		}
 		if config.Routes.Out != "" && config.Routes.Out != "-" {
-			hr.Handle(config.Routes.Out, handlers.Out)
+			hr.Handle(config.Routes.Out, middlewares.BadBotMiddleware(handlers.Out))
 		}
 		if config.Routes.FakePlayer != "" && config.Routes.FakePlayer != "-" {
 			if config.General.MultiLanguage {
 				handlers.LangHandlers(hr, config.Routes.FakePlayer, config, handlers.FakePlayer)
 			} else {
-				hr.Handle(config.Routes.FakePlayer, handlers.FakePlayer)
+				hr.Handle(config.Routes.FakePlayer, middlewares.BadBotMiddleware(handlers.FakePlayer))
 			}
 		}
 		if config.Routes.VideoEmbed != "" && config.Routes.VideoEmbed != "-" {
 			if config.General.MultiLanguage {
 				handlers.LangHandlers(hr, config.Routes.VideoEmbed, config, handlers.VideoEmbed)
 			} else {
-				hr.Handle(config.Routes.VideoEmbed, handlers.VideoEmbed)
+				hr.Handle(config.Routes.VideoEmbed, middlewares.BadBotMiddleware(handlers.VideoEmbed))
 			}
 		}
 		if config.Routes.Dmca != "" && config.Routes.Dmca != "-" {
 			if config.General.MultiLanguage {
 				handlers.LangHandlers(hr, config.Routes.Dmca, config, handlers.Dmca)
 			} else {
-				hr.Handle(config.Routes.Dmca, handlers.Dmca)
+				hr.Handle(config.Routes.Dmca, middlewares.BadBotMiddleware(handlers.Dmca))
 			}
+		}
+		if internal.Config.Frontend.RouteRedirectContentItem != "" && internal.Config.Frontend.RouteRedirectContentItem != "-" {
+			hr.Handle(internal.Config.Frontend.RouteRedirectContentItem, handlers.RedirectToContentItem)
 		}
 		if config.Routes.Custom != nil {
 			for templateName, routePath := range config.Routes.Custom {
@@ -197,12 +207,12 @@ func InitRouter() http.Handler {
 				if config.General.MultiLanguage && (strings.Contains(routePath, "{lang}") || isCustomMultilangTemplate) {
 					handlers.LangHandlers(hr, routePath, config, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 						ctx := context.WithValue(r.Context(), "custom_template_name", tName)
-						handlers.Custom.ServeHTTP(w, r.WithContext(ctx))
+						middlewares.BadBotMiddleware(handlers.Custom).ServeHTTP(w, r.WithContext(ctx))
 					}))
 				} else {
 					hr.Handle(routePath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 						ctx := context.WithValue(r.Context(), "custom_template_name", tName)
-						handlers.Custom.ServeHTTP(w, r.WithContext(ctx))
+						middlewares.BadBotMiddleware(handlers.Custom).ServeHTTP(w, r.WithContext(ctx))
 					}))
 				}
 			}
@@ -211,10 +221,20 @@ func InitRouter() http.Handler {
 			config.General.ToplistDataUrl = internal.Config.General.ToplistDataUrl
 		}
 		if config.General.ToplistDataUrl != "" {
-			hr.Handle(config.General.ToplistDataUrl, handlers.ToplistData)
+			hr.Handle(config.General.ToplistDataUrl, middlewares.BadBotMiddleware(handlers.ToplistData))
 		}
 		if config.Sitemap.Route != "" {
 			hr.Handle(config.Sitemap.Route, handlers.Sitemap)
+		}
+		blackholeRoute := internal.Config.General.DefaultBlackholeRoute
+		if config.Routes.Blackhole != "" {
+			blackholeRoute = config.Routes.Blackhole
+		}
+		if blackholeRoute != "" && blackholeRoute != "-" {
+			lo.ForEach(strings.Split(blackholeRoute, ","), func(s string, i int) {
+				route := strings.TrimSpace(s)
+				hr.Handle(route, handlers.Blackhole)
+			})
 		}
 		hr.NotFound(handlers.Handle404)
 		//hr.Handle("/*", handlers.Handle404)
@@ -238,6 +258,7 @@ func InitRouter() http.Handler {
 		hostName := strings.TrimPrefix(strings.ToLower(r.Host), "www.")
 		host := hosts[hostName]
 		if host == nil {
+			log.Println("can't find hostname", hostName, ", defaulting to", internal.Config.Frontend.DefaultSite)
 			host = hosts[internal.Config.Frontend.DefaultSite]
 		}
 		// get first not empty value

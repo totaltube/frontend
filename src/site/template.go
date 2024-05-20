@@ -2,6 +2,8 @@ package site
 
 import (
 	"fmt"
+	"github.com/dop251/goja"
+	"github.com/samber/lo"
 	"log"
 	"math"
 	"net/http"
@@ -11,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/flosch/pongo2/v4"
+	"github.com/flosch/pongo2/v6"
 	"github.com/pkg/errors"
 	"github.com/rjeczalik/notify"
 
@@ -198,22 +200,31 @@ func ParseTemplate(name, path string, config *types.Config, customContext pongo2
 				continue
 			}
 			c[funcName] = func(args ...interface{}) interface{} {
-				helpers.KeyMutex.Lock(baseName)
-				defer helpers.KeyMutex.Unlock(baseName)
-				//GojaVMMutex.Lock(baseName)
-				//defer GojaVMMutex.Unlock(baseName)
-				VM := getJsVM(baseName)
-				_ = VM.Set("config", config)
-				_ = VM.Set("fetch", helpers.SiteFetch(config))
-				_ = VM.Set("nocache", nocache)
+				//helpers.KeyMutex.Lock(baseName)
+				//defer helpers.KeyMutex.Unlock(baseName)
+				vm := gojaVmPool.Get().(*goja.Runtime)
+				defer func() {
+					_ = vm.Set("config", goja.Undefined())
+					_ = vm.Set("fetch", goja.Undefined())
+					_ = vm.Set("nocache", goja.Undefined())
+					for k := range c {
+						if !lo.Contains([]string{"cache", "URL", "faker"}, k) {
+							_ = vm.Set(k, goja.Undefined())
+						}
+					}
+					gojaVmPool.Put(vm)
+				}()
+				_ = vm.Set("config", config)
+				_ = vm.Set("fetch", helpers.SiteFetch(config))
+				_ = vm.Set("nocache", nocache)
 				for k, v := range c {
-					_ = VM.Set(k, v)
+					_ = vm.Set(k, v)
 				}
 				var argsString string
 				var argsNameArray = make([]string, 0, len(args))
 				for argIndex, arg := range args {
 					var argName = fmt.Sprintf("arg%d", argIndex)
-					_ = VM.Set(argName, arg)
+					_ = vm.Set(argName, arg)
 					argsNameArray = append(argsNameArray, argName)
 				}
 				argsString = strings.Join(argsNameArray, ",")
@@ -222,7 +233,7 @@ func ParseTemplate(name, path string, config *types.Config, customContext pongo2
 					log.Println(err)
 					return nil
 				}
-				v, err := VM.RunProgram(program)
+				v, err := vm.RunProgram(program)
 				if err != nil {
 					log.Println(err, path, name, config.Hostname)
 					return nil
@@ -252,13 +263,15 @@ func ParseTemplate(name, path string, config *types.Config, customContext pongo2
 		addCustomFunctions(c)
 		var template *pongo2.Template
 		template, err = GetTemplate(name, path)
-		if err != nil {
-			log.Println(err)
+		if err != nil{
+			if err != ErrTemplateNotFound {
+				log.Println(err, name, path, config.Hostname)
+			}
 			return
 		}
 		result, err = template.ExecuteBytes(c)
 		if err != nil {
-			log.Println(err)
+			log.Println(err, name, path, config.Hostname)
 			return
 		}
 		if config.General.MinifyHtml {
@@ -268,7 +281,7 @@ func ParseTemplate(name, path string, config *types.Config, customContext pongo2
 	}, nocache)
 	if err != nil {
 		if !strings.Contains(err.Error(), "not found") {
-			log.Println(err)
+			log.Println(err, path, name, config.Hostname)
 		}
 		return
 	}
@@ -276,5 +289,9 @@ func ParseTemplate(name, path string, config *types.Config, customContext pongo2
 	addCustomFunctions(c)
 	addDynamicFunctions(c)
 	parsed, err = InsertDynamic(cached, path, c)
+	if err != nil {
+		log.Println(err, path, name, config.Hostname)
+		return
+	}
 	return
 }

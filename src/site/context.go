@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/flosch/pongo2/v4"
+	"github.com/flosch/pongo2/v6"
 	"github.com/sersh88/timeago"
 
 	"sersh.com/totaltube/frontend/helpers"
@@ -60,11 +60,13 @@ func generateContext(name string, sitePath string, customContext pongo2.Context)
 	var ctx = pongo2.Context{
 		"flate":        helpers.Flate,
 		"deflate":      helpers.Deflate,
+		"bytes":        helpers.Bytes,
 		"gzip":         helpers.Gzip,
 		"ungzip":       helpers.Ungzip,
 		"zip":          helpers.Zip,
 		"unzip":        helpers.Unzip,
 		"base64":       helpers.Base64,
+		"base64_url":   helpers.Base64Url,
 		"sha1":         helpers.Sha1Hash,
 		"sha1_raw":     helpers.Sha1HashRaw,
 		"md5":          helpers.Md5Hash,
@@ -155,6 +157,9 @@ func generateContext(name string, sitePath string, customContext pongo2.Context)
 				var pagination = make([]PaginationItem, 0, pages+5)
 				config := customContext["config"].(*types.Config)
 				page := customContext["page"].(int64)
+				if page > pages {
+					return []PaginationItem{}
+				}
 				var prevState = PaginationItemStateDefault
 				if page == 1 {
 					prevState = PaginationItemStateDisabled
