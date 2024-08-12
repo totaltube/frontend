@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/url"
 	"regexp"
+	"sersh.com/totaltube/frontend/internal"
 	"strings"
 	"time"
 
@@ -70,7 +71,7 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 			if t.String() != "" {
 				timeout := types.ParseHumanDuration(t.String())
 				if timeout > 0 {
-					f.WithTimeout(int64(timeout/time.Second))
+					f.WithTimeout(int64(timeout / time.Second))
 				}
 			}
 		}
@@ -156,12 +157,14 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 		return err
 	}
 	amount := 100
+	argAmount := 0
 	if a, ok := node.args["amount"]; ok {
 		av, err := a.Evaluate(fetchContext)
 		if err != nil {
 			return err
 		}
 		amount = av.Integer()
+		argAmount = av.Integer()
 		if amount <= 0 {
 			return &pongo2.Error{
 				Sender:    "tag:fetch",
@@ -198,12 +201,14 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 		}
 	}
 	sort := api.SortPopular
+	argSort := ""
 	if s, ok := node.args["sort"]; ok {
 		sv, err := s.Evaluate(fetchContext)
 		if err != nil {
 			return err
 		}
 		sort = api.SortBy(sv.String())
+		argSort = sv.String()
 	}
 	searchQuery := ""
 	if s, ok := node.args["search_query"]; ok {
@@ -479,6 +484,69 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 				return &pongo2.Error{Sender: "tag:fetch", OrigError: err}
 			}
 			fetchContext.Private["channels"] = results
+		}
+	case "comments":
+		var contentId int64
+		if node.args["content_id"] != nil {
+			contentIdE, err := node.args["content_id"].Evaluate(fetchContext)
+			if err != nil {
+				return err
+			}
+			contentId = int64(contentIdE.Integer())
+		} else if contentItem, ok := ctx.Public["content_item"].(*types.ContentItemResult); ok {
+			contentId = contentItem.Id
+		} else {
+			return &pongo2.Error{
+				Sender:    "tag:fetch",
+				OrigError: errors.New("content_item not found"),
+			}
+		}
+		from := 0
+		size := internal.Config.Comments.ItemsPerPage
+		commentsSort := api.CommentsSortByLastUpdated
+		if argSort != "" {
+			commentsSort = api.CommentsSortBy(argSort)
+			if commentsSort != api.CommentsSortByLastUpdated && commentsSort != api.CommentsSortByLikes &&
+				commentsSort != api.CommentsSortByDislikes && commentsSort != api.CommentsSortByCreated {
+				return &pongo2.Error{
+					Sender:    "tag:fetch",
+					OrigError: errors.New("invalid sort param"),
+				}
+			}
+		}
+		if s, ok := node.args["from"]; ok {
+			fromE, err := s.Evaluate(fetchContext)
+			if err != nil {
+				return err
+			}
+			from = fromE.Integer()
+		}
+		if argAmount > 0 {
+			size = argAmount
+		}
+		if cacheTimeout > 0 {
+			cached, err := db.GetCachedTimeout(cacheKey, cacheTimeout, cacheTimeout, func() ([]byte, error) {
+				_, rawResponse, err := api.GetComments(host, contentId, from, size, commentsSort, lang)
+				return rawResponse, err
+			}, nocache)
+			if err != nil {
+				log.Println(err)
+				return &pongo2.Error{Sender: "tag:fetch", OrigError: err}
+			}
+			var results = new(types.CommentsResult)
+			if err = json.Unmarshal(cached, results); err != nil {
+				log.Println(err)
+				return &pongo2.Error{Sender: "tag:fetch", OrigError: err}
+			} else {
+				fetchContext.Private["comments"] = results
+			}
+		} else {
+			results, _, err := api.GetComments(host, contentId, from, size, commentsSort, lang)
+			if err != nil {
+				log.Println(err)
+				return &pongo2.Error{Sender: "tag:fetch", OrigError: err}
+			}
+			fetchContext.Private["comments"] = results
 		}
 	case "searches":
 		if cacheTimeout > 0 {

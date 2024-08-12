@@ -13,6 +13,7 @@ type tagNocacheNode struct {
 
 func (node *tagNocacheNode) Execute(_ *pongo2.ExecutionContext, writer pongo2.TemplateWriter) *pongo2.Error {
 	var err error
+
 	_, err = writer.WriteString(fmt.Sprintf(`<data class="_dynamic" value="%s"></data>`, html.EscapeString(node.expression)))
 	if err != nil {
 		return &pongo2.Error{Sender: "tag:dynamic", OrigError: err}

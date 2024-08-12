@@ -14,7 +14,60 @@ import (
 type tagAlternateNode struct {
 	lang pongo2.IEvaluator
 }
-
+func paginationRoute(route string, config *types.Config) string {
+	switch route {
+	case config.Routes.Category:
+		if config.Routes.CategoryPagination != "" && config.Routes.CategoryPagination != "-" {
+			route = config.Routes.CategoryPagination
+		}
+	case config.Routes.Model:
+		if config.Routes.ModelPagination != "" && config.Routes.ModelPagination != "-" {
+			route = config.Routes.ModelPagination
+		}
+	case config.Routes.Search:
+		if config.Routes.SearchPagination != "" && config.Routes.SearchPagination != "-" {
+			route = config.Routes.SearchPagination
+		}
+	case config.Routes.New:
+		if config.Routes.NewPagination != "" && config.Routes.NewPagination != "-" {
+			route = config.Routes.NewPagination
+		}
+	case config.Routes.Channel:
+		if config.Routes.ChannelPagination != "" && config.Routes.ChannelPagination != "-" {
+			route = config.Routes.ChannelPagination
+		}
+	case config.Routes.Long:
+		if config.Routes.LongPagination != "" && config.Routes.LongPagination != "-" {
+			route = config.Routes.LongPagination
+		}
+	case config.Routes.TopContent:
+		if config.Routes.TopContentPagination != "" && config.Routes.TopContentPagination != "-" {
+			route = config.Routes.TopContentPagination
+		}
+	case config.Routes.Popular:
+		if config.Routes.PopularPagination != "" && config.Routes.PopularPagination != "-" {
+			route = config.Routes.PopularPagination
+		}
+	case config.Routes.Models:
+		if config.Routes.ModelsPagination != "" && config.Routes.ModelsPagination != "-" {
+			route = config.Routes.ModelsPagination
+		}
+	case config.Routes.TopCategories:
+		if config.Routes.TopCategoriesPagination != "" && config.Routes.TopCategoriesPagination != "-" {
+			route = config.Routes.TopCategoriesPagination
+		}
+	default:
+		for key, val := range config.Routes.Custom {
+			if val == route {
+				if config.Routes.Custom[key+"_pagination"] != "" && config.Routes.Custom[key+"_pagination"] != "-" {
+					route = config.Routes.Custom[key+"_pagination"]
+				}
+				break
+			}
+		}
+	}
+	return route
+}
 func getAlternate(ctx pongo2.Context, langId string, page int64, q ...url.Values) string {
 	if langId == "" {
 		langId = ctx["lang"].(*types.Language).Id
@@ -40,6 +93,9 @@ func getAlternate(ctx pongo2.Context, langId string, page int64, q ...url.Values
 
 	if route == config.Routes.VideoEmbed || route == config.Routes.FakePlayer {
 		route = config.Routes.ContentItem
+	}
+	if page > 1 {
+		route = paginationRoute(route, config)
 	}
 	alternateQuery := url.Values(http.Header(ctx["canonical_query"].(url.Values)).Clone())
 	if strings.Contains(route, "{page}") {
@@ -78,10 +134,10 @@ func (node *tagAlternateNode) Execute(ctx *pongo2.ExecutionContext, writer pongo
 	}
 	var canonicalUrl = strings.TrimSuffix(config.General.CanonicalUrl, "/")
 	if canonicalUrl == "" {
-		canonicalUrl = "https://"+hostName
+		canonicalUrl = "https://" + hostName
 	}
 	if !config.General.MultiLanguage {
-		_, err := writer.WriteString(canonicalUrl+ getAlternate(context.Public, langId, page))
+		_, err := writer.WriteString(canonicalUrl + getAlternate(context.Public, langId, page))
 		if err != nil {
 			return &pongo2.Error{Sender: "tag:alternate", OrigError: err}
 		}
@@ -97,13 +153,13 @@ func (node *tagAlternateNode) Execute(ctx *pongo2.ExecutionContext, writer pongo
 		link := strings.ReplaceAll(config.Routes.LanguageTemplate, "{lang}", alternateLang)
 		link = strings.ReplaceAll(link, "{route}", "/")
 
-		_, err := writer.WriteString(canonicalUrl+link)
+		_, err := writer.WriteString(canonicalUrl + link)
 		if err != nil {
 			return &pongo2.Error{Sender: "tag:alternate", OrigError: err}
 		}
 		return nil
 	}
-	_, err1 := writer.WriteString(canonicalUrl+ getAlternate(context.Public, alternateLang, page))
+	_, err1 := writer.WriteString(canonicalUrl + getAlternate(context.Public, alternateLang, page))
 	if err1 != nil {
 		return &pongo2.Error{Sender: "tag:alternate", OrigError: err1}
 	}
@@ -119,4 +175,3 @@ func pongo2Alternate(_ *pongo2.Parser, _ *pongo2.Token, arguments *pongo2.Parser
 	tag.lang = expression
 	return tag, nil
 }
-

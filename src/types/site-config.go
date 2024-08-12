@@ -23,26 +23,37 @@ type (
 		LastVideosAmount int64    `toml:"last_videos_amount"`
 	}
 	ConfigRoutes struct {
-		TopCategories    string `toml:"top_categories"`
-		TopContent       string `toml:"top_content"`
-		Autocomplete     string
-		Search           string
-		Popular          string
-		New              string
-		Long             string
-		Model            string
-		Models           string
-		Category         string
-		Channel          string
-		ContentItem      string `toml:"content_item"`
-		FakePlayer       string `toml:"fake_player"`
-		Out              string
-		Dmca             string
-		VideoEmbed       string            `toml:"video_embed"`
-		LanguageTemplate string            `toml:"language_template"`
-		Blackhole        string            `toml:"blackhole"`
-		Rating           string            `toml:"rating"`
-		Custom           map[string]string `toml:"custom"`
+		TopCategories           string `toml:"top_categories"`
+		TopCategoriesPagination string `toml:"top_categories_pagination"`
+		TopContent              string `toml:"top_content"`
+		TopContentPagination    string `toml:"top_content_pagination"`
+		Autocomplete            string
+		Search                  string
+		SearchPagination        string `toml:"search_pagination"`
+		Popular                 string
+		PopularPagination       string `toml:"popular_pagination"`
+		New                     string
+		NewPagination           string `toml:"new_pagination"`
+		Long                    string
+		LongPagination          string `toml:"long_pagination"`
+		Model                   string
+		ModelPagination         string `toml:"model_pagination"`
+		Models                  string
+		ModelsPagination        string `toml:"models_pagination"`
+		Category                string
+		CategoryPagination      string `toml:"category_pagination"`
+		Channel                 string
+		ChannelPagination       string `toml:"channel_pagination"`
+		ContentItem             string `toml:"content_item"`
+		FakePlayer              string `toml:"fake_player"`
+		Out                     string
+		Dmca                    string
+		VideoEmbed              string            `toml:"video_embed"`
+		LanguageTemplate        string            `toml:"language_template"`
+		Blackhole               string            `toml:"blackhole"`
+		Rating                  string            `toml:"rating"`
+		Comments                string            `toml:"comments"`
+		Custom                  map[string]string `toml:"custom"`
 	}
 	ConfigParams struct {
 		ContentSlug            string `toml:"content_slug"`
@@ -134,6 +145,7 @@ func NewConfig() *Config {
 			Dmca:             "/dmca",
 			Out:              "/c",
 			Rating:           "/rating/{id}",
+			Comments:         "/api-comments",
 			LanguageTemplate: "/{lang}{route}",
 		},
 		Sitemap: ConfigSitemap{

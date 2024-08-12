@@ -2,14 +2,18 @@ package site
 
 import (
 	"fmt"
-	"github.com/samber/lo"
 	"log"
 	"math"
+	"net"
 	"net/http"
 	"path/filepath"
-	"sersh.com/totaltube/frontend/types"
 	"strings"
 	"time"
+
+	"github.com/samber/lo"
+	"sersh.com/totaltube/frontend/geoip"
+	"sersh.com/totaltube/frontend/internal"
+	"sersh.com/totaltube/frontend/types"
 
 	"github.com/dop251/goja"
 	"github.com/flosch/pongo2/v6"
@@ -135,7 +139,18 @@ func ParseCustomTemplate(name, path string, config *types.Config,
 		}
 		ctx["cookies"] = cookies
 		ctx["headers"] = headers
+		ip := r.Context().Value("ip").(string)
+		ctx["ip"] = ip
+
+		ctx["country"] = func() string {
+			country, _ := geoip.Country(net.ParseIP(ip))
+			return country
+		}
+		ctx["country_group"] = func() types.CountryGroup {
+			return internal.DetectCountryGroup(net.ParseIP(ip))
+		}
 	}
+	addDynamicFunctions(customContext)
 	// Adding custom functions to context
 	var addCustomFunctions = func(c pongo2.Context) {
 		c["add_header"] = func(name, value string) {
@@ -258,6 +273,7 @@ func ParseCustomTemplate(name, path string, config *types.Config,
 		}
 		ctx = generateContext(name, path, customContext)
 		addCustomFunctions(ctx)
+		//addDynamicFunctions(ctx)
 		vm := gojaVmPool.Get().(*goja.Runtime)
 		defer func() {
 			_ = vm.Set("config", goja.Undefined())
@@ -345,7 +361,7 @@ func ParseCustomTemplate(name, path string, config *types.Config,
 		}
 		c := generateContext(name, path, customContext)
 		addCustomFunctions(c)
-		addDynamicFunctions(c)
+		//addDynamicFunctions(c)
 		parsed, err = InsertDynamic(parsed, path, c)
 		return
 	}

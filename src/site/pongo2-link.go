@@ -84,15 +84,28 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 	}
 	if what == "current" {
 		what = linkContext.Public["page_template"].(string)
-		currentParams := linkContext.Public["params"].(map[string]string)
-		for k, v := range currentParams {
-			args = append(args, k, v)
-		}
-		queryParams := url.Values(http.Header(linkContext.Public["canonical_query"].(url.Values)).Clone())
-		for k, v := range queryParams {
-			for _, vv := range v {
-				// prepending query params, because they can be overwritten by template params
-				args = append([]interface{}{k, vv}, args...)
+		if what == "search" && contextLang != lang {
+			// For search pages we can't change the lang in the link, because it will change the search results, so we will redirect to another page
+			if config.Routes.TopCategories == "/" {
+				what = "top_categories"
+			} else if config.Routes.New != "" && config.Routes.New != "-" {
+				what = "new"
+			} else if config.Routes.Popular != "" && config.Routes.Popular != "-" {
+				what = "popular"
+			} else {
+				what = "top_content"
+			}
+		} else {
+			currentParams := linkContext.Public["params"].(map[string]string)
+			for k, v := range currentParams {
+				args = append(args, k, v)
+			}
+			queryParams := url.Values(http.Header(linkContext.Public["canonical_query"].(url.Values)).Clone())
+			for k, v := range queryParams {
+				for _, vv := range v {
+					// prepending query params, because they can be overwritten by template params
+					args = append([]interface{}{k, vv}, args...)
+				}
 			}
 		}
 	}

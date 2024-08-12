@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/samber/lo"
 
 	"sersh.com/totaltube/frontend/types"
 )
@@ -21,7 +22,10 @@ type (
 		Frontend     Frontend
 		Database     Database
 		Options      *Options
+		Mail         Mail
+		Comments     Comments
 		Translations map[string]map[string]string `toml:"translations"`
+		Custom       map[string]string            `toml:"custom"`
 	}
 	General struct {
 		Nginx                              bool `toml:"nginx"`
@@ -42,6 +46,7 @@ type (
 		EnableAccessLog                    bool           `toml:"enable_access_log"`
 		DeletedTaxonomiesToSearch          bool           `toml:"deleted_taxonomies_to_search"`
 		DeletedTaxonomiesToSearchPermanent bool           `toml:"deleted_taxonomies_to_search_permanent"`
+		DebugRoute                         string         `toml:"debug_route"`
 	}
 	Frontend struct {
 		SitesPath                string   `toml:"sites_path"`
@@ -54,8 +59,26 @@ type (
 		RouteRedirectContentItem string   `toml:"route_redirect_content_item"`
 	}
 	Database struct {
-		Path      string `toml:"path"`
-		LowMemory bool   `toml:"low_memory"`
+		Path              string `toml:"path"`
+		LowMemory         bool   `toml:"low_memory"`
+		BackupPath        string `toml:"backup_path"`
+		RestoreFromBackup bool   `toml:"restore_from_backup"`
+		DebugBadger       bool   `toml:"debug_badger"`
+		Engine            string `toml:"engine"`
+	}
+	Mail struct {
+		Secure       bool
+		Port         int64
+		Hostname     string
+		User         string
+		Password     string
+		Timeout      uint
+		AddressFrom  string `toml:"address_from"`
+		AddressReply string `toml:"address_reply"`
+	}
+	Comments struct {
+		ItemsPerPage int `toml:"items_per_page"`
+		MaxReplies   int `toml:"max_replies"`
 	}
 )
 
@@ -74,13 +97,27 @@ func InitConfig(configPath string) {
 			ApiTimeout:           types.Duration(time.Second * 20),
 		},
 		Frontend: Frontend{
-			MaxDmcaMinute: 5,
+			MaxDmcaMinute:            5,
 			RouteRedirectContentItem: "/_redirect_content_item",
 		},
+		Database: Database{
+			Engine: "badger",
+		},
 		Translations: make(map[string]map[string]string),
+		Mail: Mail{
+			Secure:  false,
+			Timeout: 30,
+		},
+		Comments: Comments{
+			ItemsPerPage: 30,
+			MaxReplies:   200,
+		},
 	}
 	if _, err := toml.DecodeFile(configPath, Config); err != nil {
 		log.Fatalln(configPath, ":", err)
+	}
+	if !lo.Contains([]string{"badger", "bolt", "pebble"}, Config.Database.Engine) {
+		log.Fatalln("Unsupported database engine:", Config.Database.Engine)
 	}
 	matches := apiVersionRegex.FindStringSubmatch(Config.General.ApiUrl)
 	if matches != nil {

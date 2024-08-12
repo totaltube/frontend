@@ -31,6 +31,9 @@ func getCanonical(ctx pongo2.Context, page int64, q ...url.Values) string {
 	}
 	isSearchPage := route == config.Routes.Search
 	alternateQuery := url.Values(http.Header(ctx["canonical_query"].(url.Values)).Clone())
+	if page > 1 {
+		route = paginationRoute(route, config)
+	}
 	if strings.Contains(route, "{page}") {
 		route = strings.ReplaceAll(route, "{page}", strconv.FormatInt(page, 10))
 	} else if page > 1 {

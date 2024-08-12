@@ -512,19 +512,26 @@ func (c ContentItemResult) VideoSize(formats ...string) Size {
 	return info.Size
 }
 
-func (c *ContentItemResult) SelectedThumb(thumbFormatName ...string) int {
+func (c *ContentItemResult) SelectedThumb(thumbFormatName ...string) (selectedThumb int) {
+	maxAmount := int64(-1)
+	for _, format := range c.ThumbFormats {
+		if format.Amount < maxAmount || maxAmount == -1 {
+			maxAmount = format.Amount
+		}
+	}
 	if c.selectedThumb != nil {
-		return *c.selectedThumb
+		selectedThumb = *c.selectedThumb
+		return
 	}
 	if c.BestThumb != nil {
 		idx := int(*c.BestThumb)
 		c.selectedThumb = &idx
 	} else {
-		format := c.GetThumbFormat(thumbFormatName...)
-		idx := rand.Intn(int(format.Amount))
+		idx := rand.Intn(int(maxAmount))
 		c.selectedThumb = &idx
 	}
-	return *c.selectedThumb
+	selectedThumb = *c.selectedThumb
+	return
 }
 
 func (c ContentItemResult) MainCategorySlug(defaultName ...string) string {

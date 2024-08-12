@@ -61,7 +61,11 @@ var TopCategories = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	langId := r.Context().Value("lang").(string)
 	ip := r.Context().Value("ip").(string)
 	groupId := internal.DetectCountryGroup(net.ParseIP(ip)).Id
-	if ref := r.Header.Get("Referer"); ref != "" && !config.General.DisableCategoriesRedirect {
+	page, _ := strconv.ParseInt(helpers.FirstNotEmpty(chi.URLParam(r, "page"), r.URL.Query().Get(config.Params.Page), "1"), 10, 16)
+	if page <= 0 {
+		page = 1
+	}
+	if ref := r.Header.Get("Referer"); ref != "" && page == 1 && !config.General.DisableCategoriesRedirect {
 		if u, err := url.Parse(ref); err == nil &&
 			strings.TrimPrefix(strings.ToLower(u.Hostname()), "www.") != hostName &&
 			!botDetector.IsBot(r.Header.Get("User-Agent")) {
@@ -89,10 +93,6 @@ var TopCategories = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 		}
 	}
 	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))
-	page, _ := strconv.ParseInt(helpers.FirstNotEmpty(chi.URLParam(r, "page"), r.URL.Query().Get(config.Params.Page), "1"), 10, 16)
-	if page <= 0 {
-		page = 1
-	}
 	customContext := generateCustomContext(w, r, "top-categories")
 	cacheKey := fmt.Sprintf("top-categories:%s:%s:%d:%d", hostName, langId, page, groupId)
 	cacheTtl := time.Second * 5

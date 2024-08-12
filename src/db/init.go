@@ -3,10 +3,12 @@ package db
 import (
 	"log"
 	"math/rand"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/dgraph-io/badger/v3"
+	"github.com/dgraph-io/badger/v4"
 
 	"sersh.com/totaltube/frontend/internal"
 )
@@ -16,6 +18,14 @@ var bdb *badger.DB
 func InitDB() {
 	rand.Seed(time.Now().UnixNano())
 	launchCacheWorkers()
+	if internal.Config.Database.Engine == "pebble" {
+		InitPebble()
+		return
+	}
+	if internal.Config.Database.Engine == "bolt" {
+		InitBolt()
+		return
+	}
 	var err error
 	for {
 		if internal.Config.Database.LowMemory {
@@ -32,17 +42,20 @@ func InitDB() {
 			)
 		} else {
 			bdb, err = badger.Open(
-				badger.LSMOnlyOptions(internal.Config.Database.Path).
+				badger.DefaultOptions(internal.Config.Database.Path).
 					WithDetectConflicts(false).
 					WithSyncWrites(false).
 					// WithValueLogMaxEntries(100000).
-					WithValueLogFileSize(250 << 20). // 250 MB
+					//WithValueLogFileSize(250 << 20). // 250 MB
 					WithIndexCacheSize(2000 << 20). // 2 GB
-					WithBlockCacheSize(100 << 20).   // 100 MB
-					WithNumMemtables(5).
+					//WithBlockCacheSize(100 << 20).   // 100 MB
+					WithMemTableSize(1 << 20). // 1 MB
+					WithNumMemtables(2).
 					WithNumLevelZeroTables(1).
 					WithNumLevelZeroTablesStall(2).
-					WithLoggingLevel(badger.WARNING),
+					//WithNumLevelZeroTablesStall(2).
+					WithValueThreshold(10 << 10). // 10 KB
+					WithLoggingLevel(badger.INFO),
 			)
 		}
 		if err != nil {
@@ -59,9 +72,22 @@ func InitDB() {
 		log.Fatalln("Badger DB initialization error:", err, "Try to remove files from db directory",
 			internal.Config.Database.Path, "if nothing helps")
 	}
+	if internal.Config.Database.RestoreFromBackup {
+		var file *os.File
+		file, err = os.Open(filepath.Join(internal.Config.Database.BackupPath, "current.backup"))
+		if err != nil {
+			log.Println(err)
+		} else {
+			err = bdb.Load(file, 16)
+			if err != nil {
+				log.Println(err)
+			} else {
+				log.Println("Restored from backup file", file.Name())
+			}
+		}
+	}
 	// Garbage collector
 	go func() {
-		var err error
 		for {
 			time.Sleep(time.Second*30 + time.Second*time.Duration(rand.Intn(60)))
 			func() {
@@ -70,13 +96,23 @@ func InitDB() {
 						log.Println("recover in badger db maintenance", r)
 					}
 				}()
-				err = bdb.RunValueLogGC(0.5)
-				if err != nil && err != badger.ErrNoRewrite {
-					log.Println(err)
+				// Запускаем GC до тех пор, пока он не вернёт ошибку badger.ErrNoRewrite
+				for {
+					log.Println("запускаем badger GC")
+					err := bdb.RunValueLogGC(0.5)
+					if err == badger.ErrNoRewrite {
+						log.Println("badger очищен")
+						break
+					}
+					if err != nil {
+						log.Println("Ошибка очистки badger: ", err)
+						break
+					}
 				}
 			}()
 		}
 	}()
+
 	// Translations
 	go func() {
 		for {
@@ -85,9 +121,67 @@ func InitDB() {
 			time.Sleep(time.Millisecond*2000 + time.Millisecond*time.Duration(rand.Intn(3000)))
 		}
 	}()
+	// Backups
+	go func() {
+		for {
+			time.Sleep(time.Millisecond * 1200)
+			doBackups()
+			time.Sleep(time.Second*60 + time.Second*time.Duration(rand.Intn(120)))
+		}
+	}()
+
+	if internal.Config.Database.DebugBadger {
+		go func() {
+			log.Println("Badger DB debug started")
+			prefixStats := make(map[string]struct {
+				Count   int
+				Expired int
+				Size    int64
+			})
+			// Создаем транзакцию для чтения
+			err := bdb.View(func(txn *badger.Txn) error {
+				// Создаем итератор с опциями
+				opts := badger.DefaultIteratorOptions
+				opts.PrefetchValues = false // Чтобы не загружать значения сразу
+				it := txn.NewIterator(opts)
+				defer it.Close()
+				for it.Rewind(); it.Valid(); it.Next() {
+					item := it.Item()
+					key := item.Key()
+					prefix := "_"
+					// Находим префикс до первого символа '_'
+					prefixEnd := strings.IndexByte(string(key), '_')
+					if prefixEnd != -1 {
+						prefix = string(key[:prefixEnd+1])
+					}
+					// Обновляем статистику для префикса
+					stats := prefixStats[prefix]
+					stats.Count++
+					stats.Size += int64(len(key)) + int64(item.EstimatedSize())
+					if item.IsDeletedOrExpired() {
+						stats.Expired++
+					}
+					prefixStats[prefix] = stats
+				}
+				return nil
+			})
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			// Выводим результаты
+			for prefix, stats := range prefixStats {
+				log.Printf("Prefix: %s, Count: %d, Expired: %d, Size: %d bytes\n", prefix, stats.Count, stats.Expired, stats.Size)
+			}
+		}()
+	}
 }
 
 func BeforeClose() {
+	if internal.Config.Database.Engine == "pebble" {
+		BeforeClosePebble()
+		return
+	}
 	if bdb != nil {
 		err := bdb.Close()
 		if err != nil {

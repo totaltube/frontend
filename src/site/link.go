@@ -47,21 +47,47 @@ func GetLink(route string, config *types.Config, host string, langId string, cha
 	}
 	langTemplate := config.Routes.LanguageTemplate
 	multiLanguage := config.General.MultiLanguage
+	var pageNum int64 = 1
+	pageParam, _, ok := lo.FindIndexOf(params, func(p linkParam) bool { return p.Type == "page" })
+	if ok {
+		pageNum, _ = strconv.ParseInt(fmt.Sprintf("%v", pageParam.Value), 10, 64)
+		if pageNum < 1 {
+			pageNum = 1
+		}
+	}
 	switch route {
 	case "top_categories", "top-categories":
 		link = config.Routes.TopCategories
+		if pageNum > 1 && config.Routes.TopCategoriesPagination != "" && config.Routes.TopCategoriesPagination != "-" {
+			link = config.Routes.TopCategoriesPagination
+		}
 	case "top_content", "top-content":
 		link = config.Routes.TopContent
+		if pageNum > 1 && config.Routes.TopContentPagination != "" && config.Routes.TopContentPagination != "-" {
+			link = config.Routes.TopContentPagination
+		}
 	case "autocomplete":
 		link = config.Routes.Autocomplete
 	case "popular":
 		link = config.Routes.Popular
+		if pageNum > 1 && config.Routes.PopularPagination != "" && config.Routes.PopularPagination != "-" {
+			link = config.Routes.PopularPagination
+		}
 	case "new":
 		link = config.Routes.New
+		if pageNum > 1 && config.Routes.NewPagination != "" && config.Routes.NewPagination != "-" {
+			link = config.Routes.NewPagination
+		}
 	case "long":
 		link = config.Routes.Long
+		if pageNum > 1 && config.Routes.LongPagination != "" && config.Routes.LongPagination != "-" {
+			link = config.Routes.LongPagination
+		}
 	case "models":
 		link = config.Routes.Models
+		if pageNum > 1 && config.Routes.ModelsPagination != "" && config.Routes.ModelsPagination != "-" {
+			link = config.Routes.ModelsPagination
+		}
 	case "out":
 		link = config.Routes.Out
 		multiLanguage = false
@@ -70,6 +96,9 @@ func GetLink(route string, config *types.Config, host string, langId string, cha
 		multiLanguage = false
 	case "search":
 		link = config.Routes.Search
+		if pageNum > 1 && config.Routes.SearchPagination != "" && config.Routes.SearchPagination != "-" {
+			link = config.Routes.SearchPagination
+		}
 		if strings.Contains(link, "{query}") {
 			queryParam, queryIndex, ok := lo.FindIndexOf(params, func(p linkParam) bool { return p.Type == "query" || p.Type == "search_query" })
 			if !ok {
@@ -133,6 +162,9 @@ func GetLink(route string, config *types.Config, host string, langId string, cha
 		}
 	case "model":
 		link = config.Routes.Model
+		if pageNum > 1 && config.Routes.ModelPagination != "" && config.Routes.ModelPagination != "-" {
+			link = config.Routes.ModelPagination
+		}
 		if slugParam, index, ok := lo.FindIndexOf(params, func(p linkParam) bool { return p.Type == "slug" }); ok {
 			link = strings.ReplaceAll(link, "{slug}", fmt.Sprintf("%v", slugParam.Value))
 			params = fastRemove(params, index)
@@ -143,6 +175,9 @@ func GetLink(route string, config *types.Config, host string, langId string, cha
 		}
 	case "category":
 		link = config.Routes.Category
+		if pageNum > 1 && config.Routes.CategoryPagination != "" && config.Routes.CategoryPagination != "-" {
+			link = config.Routes.CategoryPagination
+		}
 		if slugParam, index, ok := lo.FindIndexOf(params, func(p linkParam) bool { return p.Type == "slug" }); ok {
 			link = strings.ReplaceAll(link, "{slug}", fmt.Sprintf("%v", slugParam.Value))
 			params = fastRemove(params, index)
@@ -153,6 +188,9 @@ func GetLink(route string, config *types.Config, host string, langId string, cha
 		}
 	case "channel":
 		link = config.Routes.Channel
+		if pageNum > 1 && config.Routes.ChannelPagination != "" && config.Routes.ChannelPagination != "-" {
+			link = config.Routes.ChannelPagination
+		}
 		if slugParam, index, ok := lo.FindIndexOf(params, func(p linkParam) bool { return p.Type == "slug" }); ok {
 			link = strings.ReplaceAll(link, "{slug}", fmt.Sprintf("%v", slugParam.Value))
 			params = fastRemove(params, index)
@@ -192,6 +230,11 @@ func GetLink(route string, config *types.Config, host string, langId string, cha
 		if r, ok := config.Routes.Custom[route]; ok {
 			link = r
 			isCustomRoute = true
+			if pageNum > 1 {
+				if pagination, ok := config.Routes.Custom[route+"_pagination"]; ok {
+					link = pagination
+				}
+			}
 		} else {
 			link = route
 		}
@@ -220,17 +263,12 @@ func GetLink(route string, config *types.Config, host string, langId string, cha
 		link = strings.ReplaceAll(langTemplate, "{route}", link)
 		link = strings.ReplaceAll(link, "{lang}", langId)
 	}
-	var pageNum int64 = 1
 	if strings.Contains(link, "{page}") {
-		pageParam, index, ok := lo.FindIndexOf(params, func(p linkParam) bool { return p.Type == "page" })
+		link = strings.ReplaceAll(link, "{page}", fmt.Sprintf("%d", pageNum))
+		_, index, ok := lo.FindIndexOf(params, func(p linkParam) bool { return p.Type == "page" })
 		if ok {
-			pageNum, _ = strconv.ParseInt(fmt.Sprintf("%v", pageParam.Value), 10, 64)
-			if pageNum < 1 {
-				pageNum = 1
-			}
 			params = fastRemove(params, index)
 		}
-		link = strings.ReplaceAll(link, "{page}", fmt.Sprintf("%d", pageNum))
 	}
 	isOut := false
 	if outParam, index, ok := lo.FindIndexOf(params, func(p linkParam) bool { return p.Type == "out" }); ok {

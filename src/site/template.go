@@ -2,16 +2,19 @@ package site
 
 import (
 	"fmt"
-	"github.com/dop251/goja"
-	"github.com/samber/lo"
 	"log"
 	"math"
+	"net"
 	"net/http"
 	"path/filepath"
-	"sersh.com/totaltube/frontend/types"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/dop251/goja"
+	"github.com/samber/lo"
+	"sersh.com/totaltube/frontend/geoip"
+	"sersh.com/totaltube/frontend/types"
 
 	"github.com/flosch/pongo2/v6"
 	"github.com/pkg/errors"
@@ -185,6 +188,16 @@ func ParseTemplate(name, path string, config *types.Config, customContext pongo2
 		}
 		ctx["cookies"] = cookies
 		ctx["headers"] = headers
+		ip := r.Context().Value("ip").(string)
+
+		ctx["ip"] = ip
+		ctx["country"] = func() string {
+			country, _ := geoip.Country(net.ParseIP(ip))
+			return country
+		}
+		ctx["country_group"] = func() types.CountryGroup {
+			return internal.DetectCountryGroup(net.ParseIP(ip))
+		}
 	}
 	// Adding custom functions to context
 	var addCustomFunctions = func(c pongo2.Context) {
@@ -228,12 +241,15 @@ func ParseTemplate(name, path string, config *types.Config, customContext pongo2
 					argsNameArray = append(argsNameArray, argName)
 				}
 				argsString = strings.Join(argsNameArray, ",")
-				program, err := getJsProgram("function:"+funcName, string(source)+" "+funcName+"("+argsString+")")
+				var program *goja.Program
+				var err error
+				program, err = getJsProgram("function:"+funcName, string(source)+" "+funcName+"("+argsString+")")
 				if err != nil {
 					log.Println(err)
 					return nil
 				}
-				v, err := vm.RunProgram(program)
+				var v goja.Value
+				v, err = vm.RunProgram(program)
 				if err != nil {
 					log.Println(err, path, name, config.Hostname)
 					return nil
@@ -263,7 +279,7 @@ func ParseTemplate(name, path string, config *types.Config, customContext pongo2
 		addCustomFunctions(c)
 		var template *pongo2.Template
 		template, err = GetTemplate(name, path)
-		if err != nil{
+		if err != nil {
 			if err != ErrTemplateNotFound {
 				log.Println(err, name, path, config.Hostname)
 			}
@@ -274,6 +290,7 @@ func ParseTemplate(name, path string, config *types.Config, customContext pongo2
 			log.Println(err, name, path, config.Hostname)
 			return
 		}
+		// выведем строку из result, которая содержит слово dynamic
 		if config.General.MinifyHtml {
 			result = helpers.MinifyBytes(result)
 		}

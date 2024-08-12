@@ -90,7 +90,7 @@ var ContentItem = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 					args = append(args, k, r.URL.Query().Get(k))
 				}
 				return nil, redirectErr{
-					url: site.GetLink("content", config, hostName, langId, false, args...),
+					url:  site.GetLink("content", config, hostName, langId, false, args...),
 					code: 301,
 				}
 			}
@@ -122,13 +122,14 @@ var ContentItem = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 	render.HTML(w, r, string(parsed))
 })
 
-func getContentItemFunc(hostName string, langId string, groupId int64) func(args ...interface{}) *types.ContentItemResult {
+func getContentItemFunc(hostName string, config *types.Config, langId string, groupId int64, nocache bool) func(args ...interface{}) *types.ContentItemResult {
 	return func(args ...interface{}) *types.ContentItemResult {
 		parsingName := true
 		var id int64
 		var slug string
-		var orfl bool
-		var relatedAmount int64
+		orfl := !config.General.FakeVideoPage
+		var relatedAmount = int64(config.General.ContentRelatedAmount)
+		var cacheTime = time.Minute * 60
 		curName := ""
 		for k := range args {
 			if parsingName {
@@ -151,17 +152,30 @@ func getContentItemFunc(hostName string, langId string, groupId int64) func(args
 				orfl, _ = strconv.ParseBool(val)
 			case "group_id":
 				groupId, _ = strconv.ParseInt(val, 10, 32)
+			case "cache":
+				cacheTime = types.ParseHumanDuration(val)
 			}
 		}
 		if id == 0 && slug == "" {
 			log.Println("can't get content item: no id or slug", hostName)
 			return nil
 		}
-		results, err := api.ContentItem(hostName, langId, slug, id, orfl, relatedAmount, groupId)
+		cacheKey := "content-item:" + helpers.Md5Hash(
+			fmt.Sprintf("%s:%s:%d:%s:%v:%d:%d", hostName, langId, id, slug, orfl, relatedAmount, groupId),
+		)
+		results, err := db.GetCachedTimeout(cacheKey+":data", cacheTime, cacheTime, func() ([]byte, error) {
+			return api.ContentItemRaw(hostName, langId, slug, id, orfl, relatedAmount, groupId)
+		}, nocache)
 		if err != nil {
 			log.Println("can't get content item:", err, hostName)
 			return nil
 		}
-		return results
+		var result = new(types.ContentItemResult)
+		err = json.Unmarshal(results, result)
+		if err != nil {
+			log.Println("can't get content item:", err, hostName)
+			return nil
+		}
+		return result
 	}
 }

@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dgraph-io/badger/v3"
+	"github.com/dgraph-io/badger/v4"
 
 	"sersh.com/totaltube/frontend/internal"
 )
@@ -31,6 +31,14 @@ var recreateQueue chan recreateInfo
 var innerRecreateQueue chan recreateInfo // extra queue for requests inside recreate functions to avoid deadlock
 
 func recreateJob(job recreateInfo) {
+	if internal.Config.Database.Engine == "pebble" {
+		recreateJobPebble(job)
+		return
+	}
+	if internal.Config.Database.Engine == "bolt" {
+		recreateJobBolt(job)
+		return
+	}
 	defer func() {
 		if job.doneChannel != nil {
 			defer func() {
@@ -95,6 +103,12 @@ func launchCacheWorkers() {
 }
 
 func GetCachedTimeout(cacheKey string, timeout time.Duration, extendedTimeout time.Duration, recreate func() ([]byte, error), bypassCache bool) (result []byte, err error) {
+	if internal.Config.Database.Engine == "pebble" {
+		return GetCachedTimeoutPebble(cacheKey, timeout, extendedTimeout, recreate, bypassCache)
+	}
+	if internal.Config.Database.Engine == "bolt" {
+		return GetCachedTimeoutBolt(cacheKey, timeout, extendedTimeout, recreate, bypassCache)
+	}
 	key := []byte(cachePrefix + cacheKey)
 	expireKey := []byte(cachePrefix + "_exp_" + cacheKey)
 	found := false
@@ -202,7 +216,7 @@ func GetCachedTimeout(cacheKey string, timeout time.Duration, extendedTimeout ti
 		recreateQueue <- info
 	}
 	err = <-done
-	elapsed := time.Now().Sub(startTime)
+	elapsed := time.Since(startTime)
 	if elapsed > time.Second*5 {
 		log.Println(cacheKey, "too long time to recreate: ", elapsed, err)
 	}
@@ -223,6 +237,12 @@ func GetCachedTimeout(cacheKey string, timeout time.Duration, extendedTimeout ti
 var clearCacheMutex sync.Mutex
 
 func ClearCacheByPrefix(prefix string) (err error) {
+	if internal.Config.Database.Engine == "pebble" {
+		return ClearCacheByPrefixPebble(prefix)
+	}
+	if internal.Config.Database.Engine == "bolt" {
+		return ClearCacheByPrefixBolt(prefix)
+	}
 	var Prefix = []byte(cachePrefix + prefix)
 	clearCacheMutex.Lock()
 	defer clearCacheMutex.Unlock()

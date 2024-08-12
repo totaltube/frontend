@@ -2,8 +2,6 @@ package handlers
 
 import (
 	"fmt"
-	"github.com/mileusna/useragent"
-	"github.com/samber/lo"
 	"log"
 	"net"
 	"net/http"
@@ -12,6 +10,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/mileusna/useragent"
+	"github.com/samber/lo"
 
 	"github.com/flosch/pongo2/v6"
 	"github.com/go-chi/chi/v5"
@@ -266,7 +267,7 @@ func generateCustomContext(w http.ResponseWriter, r *http.Request, templateName 
 		"country_group":       countryGroup,
 		"group_id":            countryGroup.Id,
 		"refreshTranslations": refreshTranslations,
-		"parse_ua":            func(ua ...string) useragent.UserAgent {
+		"parse_ua": func(ua ...string) useragent.UserAgent {
 			if len(ua) > 0 {
 				return useragent.Parse(ua[0])
 			}
@@ -275,7 +276,7 @@ func generateCustomContext(w http.ResponseWriter, r *http.Request, templateName 
 		"get_content":         getContentFunc(hostName, langId, userAgent, ip, groupId),
 		"get_top_content":     getTopContentFunc(hostName, langId, groupId),
 		"get_top_categories":  getTopCategoriesFunc(hostName, langId, groupId),
-		"get_content_item":    getContentItemFunc(hostName, langId, groupId),
+		"get_content_item":    getContentItemFunc(hostName, config, langId, groupId, nocache),
 		"get_models_list":     getModelsListFunc(hostName, langId, int64(config.General.ModelsPerPage), groupId),
 		"get_categories_list": getCategoriesListFunc(hostName, langId, 100, groupId),
 		"get_channels_list":   getChannelsListFunc(hostName, langId, 100, groupId),

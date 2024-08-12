@@ -254,11 +254,11 @@ func (f *FetchRequest) Do() (response []byte, err error) {
 		err = errors.New(fmt.Sprintf("wrong status code: %d", resp.StatusCode))
 		log.Println(f.url, err, request.Host)
 	}
-	resp.Header.Get("Accept")
 	if strings.Contains(request.Header.Get("Accept"), "application/json") {
 		if !strings.Contains(resp.Header.Get("Content-Type"), "/json") {
 			err = errors.New(fmt.Sprintf("wrong content type: %s", resp.Header.Get("Content-Type")))
-			log.Println(err)
+			resp, _ := io.ReadAll(resp.Body)
+			log.Println(err, string(resp))
 			return
 		}
 	}
