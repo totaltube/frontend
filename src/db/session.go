@@ -5,9 +5,10 @@ import (
 	"log"
 	"time"
 
-	"github.com/dgraph-io/badger/v3"
+	"github.com/dgraph-io/badger/v4"
 
 	"sersh.com/totaltube/frontend/helpers"
+	"sersh.com/totaltube/frontend/internal"
 )
 
 const (
@@ -26,6 +27,12 @@ type Session struct {
 }
 
 func GetSession(ip string) (session *Session) {
+	if internal.Config.Database.Engine == "pebble" {
+		return GetSessionPebble(ip)
+	}
+	if internal.Config.Database.Engine == "bolt" {
+		return GetSessionBolt(ip)
+	}
 	helpers.KeyMutex.Lock(ip)
 	key := []byte(sessionPrefix + ip)
 	_ = bdb.View(func(txn *badger.Txn) error {
@@ -48,6 +55,14 @@ func GetSession(ip string) (session *Session) {
 }
 
 func SaveSession(ip string, session *Session) {
+	if internal.Config.Database.Engine == "pebble" {
+		SaveSessionPebble(ip, session)
+		return
+	}
+	if internal.Config.Database.Engine == "bolt" {
+		SaveSessionBolt(ip, session)
+		return
+	}
 	defer helpers.KeyMutex.Unlock(ip)
 	if session == nil {
 		return
