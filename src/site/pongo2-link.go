@@ -92,14 +92,40 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 		what = linkContext.Public["page_template"].(string)
 		if what == "search" && contextLang != lang {
 			// For search pages we can't change the lang in the link, because it will change the search results, so we will redirect to another page
-			if config.Routes.TopCategories == "/" {
+			var found = false
+			for k, v := range config.Routes.Custom {
+				if v == "/" {
+					what = "custom." + k
+					found = true
+					break
+				}
+			}
+			if !found && config.Routes.TopCategories == "/" {
 				what = "top_categories"
-			} else if config.Routes.New != "" && config.Routes.New != "-" {
+				found = true
+			}
+			if !found && config.Routes.New == "/" {
 				what = "new"
-			} else if config.Routes.Popular != "" && config.Routes.Popular != "-" {
+				found = true
+			}
+			if !found && config.Routes.Popular == "/" {
 				what = "popular"
-			} else {
+				found = true
+			}
+			if !found && config.Routes.TopContent == "/" {
 				what = "top_content"
+				found = true
+			}
+			if !found {
+				if config.Routes.TopCategories == "/" {
+					what = "top_categories"
+				} else if config.Routes.New != "" && config.Routes.New != "-" {
+					what = "new"
+				} else if config.Routes.Popular != "" && config.Routes.Popular != "-" {
+					what = "popular"
+				} else {
+					what = "top_content"
+				}
 			}
 		} else {
 			currentParams := linkContext.Public["params"].(map[string]string)
