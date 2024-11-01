@@ -59,12 +59,13 @@ type (
 		RouteRedirectContentItem string   `toml:"route_redirect_content_item"`
 	}
 	Database struct {
-		Path              string `toml:"path"`
-		LowMemory         bool   `toml:"low_memory"`
-		BackupPath        string `toml:"backup_path"`
-		RestoreFromBackup bool   `toml:"restore_from_backup"`
-		DebugBadger       bool   `toml:"debug_badger"`
-		Engine            string `toml:"engine"`
+		Path                       string `toml:"path"`
+		LowMemory                  bool   `toml:"low_memory"`
+		BackupPath                 string `toml:"backup_path"`
+		RestoreFromBackup          bool   `toml:"restore_from_backup"`
+		DebugBadger                bool   `toml:"debug_badger"`
+		Engine                     string `toml:"engine"`
+		NoTranslationsAccessUpdate bool   `toml:"no_translations_access_update"`
 	}
 	Mail struct {
 		Secure       bool

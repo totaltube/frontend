@@ -1,12 +1,15 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
-	"sersh.com/totaltube/frontend/api"
-	"sersh.com/totaltube/frontend/site"
-	"sersh.com/totaltube/frontend/types"
 	"strconv"
 	"strings"
+
+	"sersh.com/totaltube/frontend/api"
+	"sersh.com/totaltube/frontend/internal"
+	"sersh.com/totaltube/frontend/site"
+	"sersh.com/totaltube/frontend/types"
 )
 
 var RedirectToContentItem = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -30,5 +33,7 @@ var RedirectToContentItem = http.HandlerFunc(func(w http.ResponseWriter, r *http
 	}
 	link := site.GetLink("content-item", config, hostName, langId, false, "slug", results.Slug, "id", results.Id, "categories", results.Categories)
 	http.Redirect(w, r, link, http.StatusFound)
-	return
+	if internal.Config.General.EnableAccessLog {
+		log.Println(hostName, http.StatusFound, link)
+	}
 })

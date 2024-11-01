@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -198,6 +199,61 @@ func ParseTemplate(name, path string, config *types.Config, customContext pongo2
 		ctx["country_group"] = func() types.CountryGroup {
 			return internal.DetectCountryGroup(net.ParseIP(ip))
 		}
+		ctx["redirect_to"] = func(params ...interface{}) {
+			var url string
+			var code = http.StatusFound
+			if len(params) == 0 {
+				return
+			}
+			if len(params) >= 1 {
+				url = fmt.Sprintf("%v", params[0])
+			}
+			if len(params) >= 2 {
+				code1, _ := strconv.ParseInt(fmt.Sprintf("%v", params[1]), 10, 32)
+				code = int(code1)
+				if code < 300 || code > 399 {
+					code = http.StatusFound
+				}
+			}
+			http.Redirect(w, r, url, code)
+			if internal.Config.General.EnableAccessLog {
+				log.Println("Redirected to", url)
+			}
+		}
+		ctx["custom_send"] = func(params ...any) {
+			if len(params) == 0 {
+				return
+			}
+			var data string
+			var code = http.StatusOK
+			var headers = make(map[string]string)
+			if len(params) >= 1 {
+				data = fmt.Sprintf("%v", params[0])
+			}
+			k := ""
+			v := ""
+			for i := 1; i < len(params); i += 2 {
+				if i+1 < len(params) {
+					k = fmt.Sprintf("%v", params[i])
+					v = fmt.Sprintf("%v", params[i+1])
+					if k == "status" {
+						code1, _ := strconv.ParseInt(v, 10, 32)
+						code = int(code1)
+						continue
+					}
+					headers[k] = v
+				}
+			}
+			if len(params) >= 2 {
+				code1, _ := strconv.ParseInt(fmt.Sprintf("%v", params[1]), 10, 32)
+				code = int(code1)
+			}
+			for k := range headers {
+				w.Header().Add(k, headers[k])
+			}
+			w.WriteHeader(code)
+			_, _ = w.Write([]byte(data))
+		}
 	}
 	// Adding custom functions to context
 	var addCustomFunctions = func(c pongo2.Context) {
@@ -305,10 +361,7 @@ func ParseTemplate(name, path string, config *types.Config, customContext pongo2
 	c := generateContext(name, path, customContext)
 	addCustomFunctions(c)
 	addDynamicFunctions(c)
-	parsed, err = InsertDynamic(cached, path, c)
-	if err != nil {
-		log.Println(err, path, name, config.Hostname)
-		return
-	}
+	parsed = InsertDynamic(cached, path, c)
+	parsed = postHook(parsed, name, path, config, c, nocache)
 	return
 }

@@ -10,6 +10,7 @@ import (
 
 	"github.com/dgraph-io/badger/v4"
 
+	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/internal"
 )
 
@@ -33,12 +34,14 @@ func InitDB() {
 			bdb, err = badger.Open(
 				badger.DefaultOptions(internal.Config.Database.Path).
 					WithDetectConflicts(false).
-					WithValueLogFileSize(50 << 20). // 50 MB
-					WithIndexCacheSize(10 << 20).   // 10 MB
-					WithBlockCacheSize(10 << 20).   // 10 MB
+					WithValueLogFileSize(500 << 20). // 500 MB
+					WithIndexCacheSize(50 << 20).    // 50 MB
+					WithBlockCacheSize(10 << 20).    // 10 MB
+					WithValueThreshold(10 << 10).    // 10 KB
 					WithNumMemtables(2).
 					WithSyncWrites(false).
-					WithLoggingLevel(badger.WARNING),
+					WithLoggingLevel(badger.WARNING).
+					WithVerifyValueChecksum(true),
 			)
 		} else {
 			bdb, err = badger.Open(
@@ -55,7 +58,8 @@ func InitDB() {
 					WithNumLevelZeroTablesStall(2).
 					//WithNumLevelZeroTablesStall(2).
 					WithValueThreshold(10 << 10). // 10 KB
-					WithLoggingLevel(badger.INFO),
+					WithLoggingLevel(badger.WARNING).
+					WithVerifyValueChecksum(true),
 			)
 		}
 		if err != nil {
@@ -73,24 +77,30 @@ func InitDB() {
 			internal.Config.Database.Path, "if nothing helps")
 	}
 	if internal.Config.Database.RestoreFromBackup {
-		var file *os.File
-		file, err = os.Open(filepath.Join(internal.Config.Database.BackupPath, "current.backup"))
-		if err != nil {
-			log.Println(err)
-		} else {
-			err = bdb.Load(file, 16)
+		go func() {
+			helpers.KeyMutex.Lock("db_operations_lock")
+			defer helpers.KeyMutex.Unlock("db_operations_lock")
+			var file *os.File
+			file, err = os.Open(filepath.Join(internal.Config.Database.BackupPath, "current.backup"))
 			if err != nil {
 				log.Println(err)
 			} else {
-				log.Println("Restored from backup file", file.Name())
+				err = bdb.Load(file, 16)
+				if err != nil {
+					log.Println(err)
+				} else {
+					log.Println("Restored from backup file", file.Name())
+				}
 			}
-		}
+		}()
 	}
 	// Garbage collector
 	go func() {
 		for {
-			time.Sleep(time.Second*30 + time.Second*time.Duration(rand.Intn(60)))
+			time.Sleep(time.Second*30 + time.Second*time.Duration(rand.Intn(10)))
 			func() {
+				helpers.KeyMutex.Lock("db_operations_lock")
+				defer helpers.KeyMutex.Unlock("db_operations_lock")
 				defer func() {
 					if r := recover(); r != nil {
 						log.Println("recover in badger db maintenance", r)
@@ -98,10 +108,8 @@ func InitDB() {
 				}()
 				// Запускаем GC до тех пор, пока он не вернёт ошибку badger.ErrNoRewrite
 				for {
-					log.Println("запускаем badger GC")
-					err := bdb.RunValueLogGC(0.5)
+					err := bdb.RunValueLogGC(0.01)
 					if err == badger.ErrNoRewrite {
-						log.Println("badger очищен")
 						break
 					}
 					if err != nil {
@@ -133,7 +141,31 @@ func InitDB() {
 	if internal.Config.Database.DebugBadger {
 		go func() {
 			log.Println("Badger DB debug started")
-			prefixStats := make(map[string]struct {
+			log.Println("Histogram for all keys")
+			bdb.PrintHistogram(nil)
+			log.Println("Histogram for s_ prefix")
+			bdb.PrintHistogram([]byte("s_"))
+			log.Println("Histogram for c_ prefix")
+			bdb.PrintHistogram([]byte("c_"))
+			log.Println("Histogram for tr_ prefix")
+			bdb.PrintHistogram([]byte("tr_"))
+			log.Println("Histogram for tra_ prefix")
+			bdb.PrintHistogram([]byte("tra_"))
+			log.Println("Histogram for trd_ prefix")
+			bdb.PrintHistogram([]byte("trd_"))
+			log.Println("Histogram for trt_ prefix")
+			bdb.PrintHistogram([]byte("trt_"))
+			log.Println("Levels")
+			helpers.DumpJSON(bdb.Levels())
+			onDisk, uncompressed := bdb.EstimateSize([]byte("c_"))
+			log.Println("Size of c_ prefix on disk:", onDisk, "uncompressed:", uncompressed)
+			//err := bdb.Flatten(10)
+			/*prefixStats := make(map[string]struct {
+				Count   int
+				Expired int
+				Size    int64
+			})
+			prefixStatsAll := make(map[string]struct {
 				Count   int
 				Expired int
 				Size    int64
@@ -148,20 +180,31 @@ func InitDB() {
 				for it.Rewind(); it.Valid(); it.Next() {
 					item := it.Item()
 					key := item.Key()
+					expire := item.ExpiresAt()
 					prefix := "_"
 					// Находим префикс до первого символа '_'
 					prefixEnd := strings.IndexByte(string(key), '_')
 					if prefixEnd != -1 {
 						prefix = string(key[:prefixEnd+1])
 					}
-					// Обновляем статистику для префикса
-					stats := prefixStats[prefix]
-					stats.Count++
-					stats.Size += int64(len(key)) + int64(item.EstimatedSize())
-					if item.IsDeletedOrExpired() {
-						stats.Expired++
+					if expire == 0 || time.Unix(int64(expire), 0).After(time.Now().Add(time.Hour*2+time.Minute*30)) {
+						// Обновляем статистику для префикса
+						stats := prefixStats[prefix]
+						stats.Count++
+						stats.Size += int64(item.EstimatedSize())
+						if item.IsDeletedOrExpired() {
+							stats.Expired++
+						}
+						prefixStats[prefix] = stats
+						//log.Println("Key", string(key), "expires at", time.Unix(int64(expire), 0).Format(time.RFC3339))
 					}
-					prefixStats[prefix] = stats
+					statsAll := prefixStatsAll[prefix]
+					statsAll.Count++
+					statsAll.Size += int64(item.EstimatedSize())
+					if item.IsDeletedOrExpired() {
+						statsAll.Expired++
+					}
+					prefixStatsAll[prefix] = statsAll
 				}
 				return nil
 			})
@@ -171,8 +214,12 @@ func InitDB() {
 			}
 			// Выводим результаты
 			for prefix, stats := range prefixStats {
-				log.Printf("Prefix: %s, Count: %d, Expired: %d, Size: %d bytes\n", prefix, stats.Count, stats.Expired, stats.Size)
+				log.Printf("Prefix: %s, Count: %d, Expired: %d, Size: %.2f mbytes\n", prefix, stats.Count, stats.Expired, float64(stats.Size)/1024/1024)
 			}
+			log.Println("All keys:")
+			for prefix, stats := range prefixStatsAll {
+				log.Printf("Prefix: %s, Count: %d, Expired: %d, Size: %.2f mbytes\n", prefix, stats.Count, stats.Expired, float64(stats.Size)/1024/1024)
+			}*/
 		}()
 	}
 }

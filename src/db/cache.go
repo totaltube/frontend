@@ -58,7 +58,7 @@ func recreateJob(job recreateInfo) {
 	defer recreatingNow.Delete(job.cacheKey)
 	result, err := job.recreateFunction()
 	if err != nil {
-		if !strings.Contains(err.Error(), "not found") {
+		if !strings.Contains(err.Error(), "not found") && err.Error() != "custom response" {
 			log.Println(err)
 		}
 	} else {
@@ -101,6 +101,12 @@ func launchCacheWorkers() {
 		go innerRecreateWorker()
 	}
 }
+
+type cacheUpdate struct {
+	done chan struct{}
+}
+
+var cacheUpdates sync.Map
 
 func GetCachedTimeout(cacheKey string, timeout time.Duration, extendedTimeout time.Duration, recreate func() ([]byte, error), bypassCache bool) (result []byte, err error) {
 	if internal.Config.Database.Engine == "pebble" {
@@ -186,20 +192,34 @@ func GetCachedTimeout(cacheKey string, timeout time.Duration, extendedTimeout ti
 		}
 		return
 	}
-	// if not found cached value, just recreate it right now, but let's check if we already trying this and wait for another thread to done with it
-	waited := false
-	for {
-		if _, loaded := recreatingNow.LoadOrStore(cacheKey, time.Now()); !loaded {
-			break
-		}
-		waited = true
-		time.Sleep(time.Millisecond * 10)
-	}
-	if waited {
-		// trying to get recreated by another thread cached value
-		recreatingNow.Delete(cacheKey)
+	if update, loaded := cacheUpdates.LoadOrStore(cacheKey, &cacheUpdate{done: make(chan struct{})}); loaded {
+		// Ждем, пока другая горутина завершит обновление
+		<-update.(*cacheUpdate).done
+		// После завершения пытаемся получить значение из кэша
 		return GetCachedTimeout(cacheKey, timeout, extendedTimeout, recreate, false)
 	}
+	defer func() {
+		// Уведомляем другие горутины о завершении обновления
+		if update, ok := cacheUpdates.Load(cacheKey); ok {
+			close(update.(*cacheUpdate).done)
+			cacheUpdates.Delete(cacheKey)
+		}
+	}()
+	/*
+		waited := false
+		for {
+			if _, loaded := recreatingNow.LoadOrStore(cacheKey, time.Now()); !loaded {
+				break
+			}
+			waited = true
+			time.Sleep(time.Millisecond * 10)
+		}
+		if waited {
+			// trying to get recreated by another thread cached value
+			recreatingNow.Delete(cacheKey)
+			return GetCachedTimeout(cacheKey, timeout, extendedTimeout, recreate, false)
+		}
+	*/
 	// recreating
 	var done = make(chan error)
 	var info = recreateInfo{

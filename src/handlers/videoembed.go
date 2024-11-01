@@ -19,6 +19,7 @@ import (
 	"sersh.com/totaltube/frontend/db"
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/internal"
+	"sersh.com/totaltube/frontend/middlewares"
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
 )
@@ -34,6 +35,9 @@ var VideoEmbed = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	if id == 0 && slug == "" {
 		Output404(w, r, "content item not found")
 		return
+	}
+	if id > 0 && config.Routes.IdXorKey > 0 {
+		id = id ^ config.Routes.IdXorKey
 	}
 	ip := r.Context().Value("ip").(string)
 	groupId := internal.DetectCountryGroup(net.ParseIP(ip)).Id
@@ -85,6 +89,9 @@ var VideoEmbed = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		Output500(w, r, err)
+		return
+	}
+	if middlewares.HeadersSent(w) {
 		return
 	}
 	w.Header().Set("X-Robots-Tag", "noindex")

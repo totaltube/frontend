@@ -283,6 +283,13 @@ func generateCustomContext(w http.ResponseWriter, r *http.Request, templateName 
 		"get_category_top":    getCategoryTopFunc(hostName, langId, groupId),
 		"get_category":        getCategoryFunc(hostName, langId),
 		"get_model":           getModelFunc(hostName, langId, groupId),
+		"xor_id": func(id *pongo2.Value) int64 {
+			idInt := int64(id.Integer())
+			if idInt > 0 && config.Routes.IdXorKey > 0 {
+				return idInt ^ config.Routes.IdXorKey
+			}
+			return idInt
+		},
 		"add_random_content": func(items []*types.ContentResult, amount ...interface{}) []*types.ContentResult {
 			var amt int64 = 0
 			if len(amount) > 0 {

@@ -19,6 +19,7 @@ import (
 	"sersh.com/totaltube/frontend/db"
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/internal"
+	"sersh.com/totaltube/frontend/middlewares"
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
 )
@@ -45,6 +46,9 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	if categoryId == 0 && categorySlug == "" {
 		Output404(w, r, "category not found")
 		return
+	}
+	if categoryId > 0 && config.Routes.IdXorKey > 0 {
+		categoryId = categoryId ^ config.Routes.IdXorKey
 	}
 	sortBy := r.URL.Query().Get(config.Params.SortBy)
 	if sortBy == config.Params.SortByDate {
@@ -92,7 +96,9 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				return rawResponse, err
 			}, nocache)
 			if err != nil {
-				log.Println(err, config.Hostname)
+				if !strings.Contains(err.Error(), "favicon.ico") {
+					log.Println(err, config.Hostname)
+				}
 				return ctx, err
 			}
 			categoryInfo := new(types.CategoryResult)
@@ -163,6 +169,9 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					}
 					link := site.GetLink("search", config, hostName, langId, false, "search_query", strings.ReplaceAll(categorySlug, "-", "+"))
 					http.Redirect(w, r, link, redirectType)
+					if internal.Config.General.EnableAccessLog {
+						log.Printf("Redirected to search: %s", link)
+					}
 					return
 				}
 				Output404(w, r, err.Error())
@@ -170,6 +179,9 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		Output500(w, r, err)
+		return
+	}
+	if middlewares.HeadersSent(w) {
 		return
 	}
 	render.HTML(w, r, string(parsed))

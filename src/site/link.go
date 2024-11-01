@@ -41,9 +41,13 @@ func GetLink(route string, config *types.Config, host string, langId string, cha
 	}
 	var isCustomRoute = false
 	var isFullUrl = false
-	if fullUrl, index, ok := lo.FindIndexOf(params, func(p linkParam) bool { return p.Type == "full_url" }); ok {
-		isFullUrl, _ = strconv.ParseBool(fmt.Sprintf("%v", fullUrl.Value))
-		params = fastRemove(params, index)
+	for {
+		if fullUrl, index, ok := lo.FindIndexOf(params, func(p linkParam) bool { return p.Type == "full_url" }); ok {
+			isFullUrl, _ = strconv.ParseBool(fmt.Sprintf("%v", fullUrl.Value))
+			params = fastRemove(params, index)
+		} else {
+			break
+		}
 	}
 	langTemplate := config.Routes.LanguageTemplate
 	multiLanguage := config.General.MultiLanguage
@@ -115,7 +119,11 @@ func GetLink(route string, config *types.Config, host string, langId string, cha
 			params = fastRemove(params, index)
 		}
 		if idParam, index, ok := lo.FindIndexOf(params, func(p linkParam) bool { return p.Type == "id" }); ok {
-			link = strings.ReplaceAll(link, "{id}", fmt.Sprintf("%v", idParam.Value))
+			numericId, _ := strconv.ParseInt(fmt.Sprintf("%v", idParam.Value), 10, 64)
+			if numericId > 0 && config.Routes.IdXorKey > 0 {
+				numericId = numericId ^ config.Routes.IdXorKey
+			}
+			link = strings.ReplaceAll(link, "{id}", fmt.Sprintf("%d", numericId))
 			params = fastRemove(params, index)
 		}
 		var categories []types.TaxonomyResult
@@ -141,7 +149,11 @@ func GetLink(route string, config *types.Config, host string, langId string, cha
 			params = fastRemove(params, index)
 		}
 		if idParam, index, ok := lo.FindIndexOf(params, func(p linkParam) bool { return p.Type == "id" }); ok {
-			link = strings.ReplaceAll(link, "{id}", fmt.Sprintf("%v", idParam.Value))
+			numericId, _ := strconv.ParseInt(fmt.Sprintf("%v", idParam.Value), 10, 64)
+			if numericId > 0 && config.Routes.IdXorKey > 0 {
+				numericId = numericId ^ config.Routes.IdXorKey
+			}
+			link = strings.ReplaceAll(link, "{id}", fmt.Sprintf("%d", numericId))
 			params = fastRemove(params, index)
 		}
 		var categories []types.TaxonomyResult
@@ -170,7 +182,11 @@ func GetLink(route string, config *types.Config, host string, langId string, cha
 			params = fastRemove(params, index)
 		}
 		if idParam, index, ok := lo.FindIndexOf(params, func(p linkParam) bool { return p.Type == "id" }); ok {
-			link = strings.ReplaceAll(link, "{id}", fmt.Sprintf("%v", idParam.Value))
+			numericId, _ := strconv.ParseInt(fmt.Sprintf("%v", idParam.Value), 10, 64)
+			if numericId > 0 && config.Routes.IdXorKey > 0 {
+				numericId = numericId ^ config.Routes.IdXorKey
+			}
+			link = strings.ReplaceAll(link, "{id}", fmt.Sprintf("%d", numericId))
 			params = fastRemove(params, index)
 		}
 	case "category":
@@ -183,7 +199,11 @@ func GetLink(route string, config *types.Config, host string, langId string, cha
 			params = fastRemove(params, index)
 		}
 		if idParam, index, ok := lo.FindIndexOf(params, func(p linkParam) bool { return p.Type == "id" }); ok {
-			link = strings.ReplaceAll(link, "{id}", fmt.Sprintf("%v", idParam.Value))
+			numericId, _ := strconv.ParseInt(fmt.Sprintf("%v", idParam.Value), 10, 64)
+			if numericId > 0 && config.Routes.IdXorKey > 0 {
+				numericId = numericId ^ config.Routes.IdXorKey
+			}
+			link = strings.ReplaceAll(link, "{id}", fmt.Sprintf("%d", numericId))
 			params = fastRemove(params, index)
 		}
 	case "channel":
@@ -196,7 +216,11 @@ func GetLink(route string, config *types.Config, host string, langId string, cha
 			params = fastRemove(params, index)
 		}
 		if idParam, index, ok := lo.FindIndexOf(params, func(p linkParam) bool { return p.Type == "id" }); ok {
-			link = strings.ReplaceAll(link, "{id}", fmt.Sprintf("%v", idParam.Value))
+			numericId, _ := strconv.ParseInt(fmt.Sprintf("%v", idParam.Value), 10, 64)
+			if numericId > 0 && config.Routes.IdXorKey > 0 {
+				numericId = numericId ^ config.Routes.IdXorKey
+			}
+			link = strings.ReplaceAll(link, "{id}", fmt.Sprintf("%d", numericId))
 			params = fastRemove(params, index)
 		}
 	case "content", "content-item", "content_item":
@@ -211,7 +235,11 @@ func GetLink(route string, config *types.Config, host string, langId string, cha
 			params = fastRemove(params, index)
 		}
 		if idParam, index, ok := lo.FindIndexOf(params, func(p linkParam) bool { return p.Type == "id" }); ok {
-			link = strings.ReplaceAll(link, "{id}", fmt.Sprintf("%v", idParam.Value))
+			numericId, _ := strconv.ParseInt(fmt.Sprintf("%v", idParam.Value), 10, 64)
+			if numericId > 0 && config.Routes.IdXorKey > 0 {
+				numericId = numericId ^ config.Routes.IdXorKey
+			}
+			link = strings.ReplaceAll(link, "{id}", fmt.Sprintf("%d", numericId))
 			params = fastRemove(params, index)
 		}
 		if categoryParam, index, ok := lo.FindIndexOf(params, func(p linkParam) bool { return p.Type == "category" }); ok {
@@ -286,23 +314,44 @@ func GetLink(route string, config *types.Config, host string, langId string, cha
 	urlParams := url.Values{}
 	for _, p := range params {
 		key := p.Type
+		s := fmt.Sprintf("%v", p.Value)
 		switch key {
 		case "content_id":
 			key = config.Params.ContentId
+			numericValue, _ := strconv.ParseInt(s, 10, 64)
+			if numericValue > 0 && config.Routes.IdXorKey > 0 {
+				numericValue = numericValue ^ config.Routes.IdXorKey
+			}
+			s = fmt.Sprintf("%d", numericValue)
 		case "content_slug":
 			key = config.Params.ContentSlug
 		case "category_slug":
 			key = config.Params.CategorySlug
 		case "category_id":
 			key = config.Params.CategoryId
+			numericValue, _ := strconv.ParseInt(s, 10, 64)
+			if numericValue > 0 && config.Routes.IdXorKey > 0 {
+				numericValue = numericValue ^ config.Routes.IdXorKey
+			}
+			s = fmt.Sprintf("%d", numericValue)
 		case "model_slug":
 			key = config.Params.ModelSlug
 		case "model_id":
 			key = config.Params.ModelId
+			numericValue, _ := strconv.ParseInt(s, 10, 64)
+			if numericValue > 0 && config.Routes.IdXorKey > 0 {
+				numericValue = numericValue ^ config.Routes.IdXorKey
+			}
+			s = fmt.Sprintf("%d", numericValue)
 		case "channel_slug":
 			key = config.Params.ChannelSlug
 		case "channel_id":
 			key = config.Params.ChannelId
+			numericValue, _ := strconv.ParseInt(s, 10, 64)
+			if numericValue > 0 && config.Routes.IdXorKey > 0 {
+				numericValue = numericValue ^ config.Routes.IdXorKey
+			}
+			s = fmt.Sprintf("%d", numericValue)
 		case "duration_gte":
 			key = config.Params.DurationGte
 		case "duration_lt":
@@ -334,7 +383,6 @@ func GetLink(route string, config *types.Config, host string, langId string, cha
 				key = config.Params.Like
 			}
 		}
-		s := fmt.Sprintf("%v", p.Value)
 		if key == config.Params.SortBy {
 			switch s {
 			case "views":
@@ -412,6 +460,9 @@ func GetLink(route string, config *types.Config, host string, langId string, cha
 			if canonicalUrl == "" {
 				canonicalUrl = "https://" + host
 			}
+			if extractDomain(canonicalUrl) != host {
+				canonicalUrl = "https://" + host
+			}
 			link = canonicalUrl + link
 		}
 		return
@@ -433,7 +484,18 @@ func GetLink(route string, config *types.Config, host string, langId string, cha
 		if canonicalUrl == "" {
 			canonicalUrl = "https://" + host
 		}
+		if extractDomain(canonicalUrl) != host {
+			canonicalUrl = "https://" + host
+		}
 		link = canonicalUrl + link
 	}
 	return
+}
+
+func extractDomain(u string) string {
+	parsed, err := url.Parse(u)
+	if err != nil {
+		return ""
+	}
+	return parsed.Host
 }

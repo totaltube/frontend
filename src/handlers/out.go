@@ -50,10 +50,12 @@ var Out = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			http.Redirect(w, r, redirectUrl, 302)
+			if internal.Config.General.EnableAccessLog {
+				log.Println(hostName, 302, redirectUrl)
+			}
 			return
 		}
 		render.JSON(w, r, M{"success": true})
-		return
 	}
 	if botDetector.IsBot(r.Header.Get("User-Agent")) {
 		// Do not count anything for bots
@@ -62,7 +64,13 @@ var Out = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	}
 	// All calculations are done in background
 	categoryId, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.CategoryId), 10, 32)
+	if categoryId > 0 && config.Routes.IdXorKey > 0 {
+		categoryId = categoryId ^ config.Routes.IdXorKey
+	}
 	contentId, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.ContentId), 10, 64)
+	if contentId > 0 && config.Routes.IdXorKey > 0 {
+		contentId = contentId ^ config.Routes.IdXorKey
+	}
 	// by default, we count also view on corresponding category or content, but if you set not to count the view, it will not be counted
 	countView := true
 	if len(r.URL.Query().Get(config.Params.CountView)) > 0 {

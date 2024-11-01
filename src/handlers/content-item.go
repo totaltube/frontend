@@ -20,6 +20,7 @@ import (
 	"sersh.com/totaltube/frontend/db"
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/internal"
+	"sersh.com/totaltube/frontend/middlewares"
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
 )
@@ -45,11 +46,15 @@ var ContentItem = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 		Output404(w, r, "content item not found")
 		return
 	}
+	if id > 0 && config.Routes.IdXorKey > 0 {
+		id = id ^ config.Routes.IdXorKey
+	}
 	orfl := !config.General.FakeVideoPage
 	relatedAmount := config.General.ContentRelatedAmount
 	ip := r.Context().Value("ip").(string)
 	groupId := internal.DetectCountryGroup(net.ParseIP(ip)).Id
 	customContext := generateCustomContext(w, r, "content-item")
+	params := customContext["params"].(map[string]string)
 	cacheKey := "content-item:" + helpers.Md5Hash(
 		fmt.Sprintf("%s:%s:%d:%s:%v:%d:%d", hostName, langId, id, slug, orfl, relatedAmount, groupId),
 	)
@@ -103,6 +108,18 @@ var ContentItem = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 			results.ThumbType = format.Type
 			results.ThumbWidth = results.ThumbsWidth
 			results.ThumbHeight = results.ThumbsHeight
+			if len(results.Categories) > 0 {
+				params["category"] = results.Categories[0].Slug
+			} else {
+				params["category"] = "default"
+			}
+			id := results.Id
+			if config.Routes.IdXorKey > 0 {
+				id = id ^ config.Routes.IdXorKey
+			}
+			params["id"] = strconv.FormatInt(id, 10)
+			params["slug"] = results.Slug
+			ctx["params"] = params
 			ctx["content_item"] = results
 			ctx["related"] = results.Related
 			return ctx, nil
@@ -110,13 +127,20 @@ var ContentItem = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		if rErr, ok := err.(redirectErr); ok {
 			http.Redirect(w, r, rErr.url, rErr.code)
+			if internal.Config.General.EnableAccessLog {
+				log.Printf("Redirected to %s", rErr.url)
+			}
 			return
 		}
 		if strings.Contains(err.Error(), "not found") {
+			log.Println("content item not found", slug, id, hostName)
 			Output404(w, r, err.Error())
 			return
 		}
 		Output500(w, r, err)
+		return
+	}
+	if middlewares.HeadersSent(w) {
 		return
 	}
 	render.HTML(w, r, string(parsed))

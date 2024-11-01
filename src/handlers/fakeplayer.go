@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"strconv"
@@ -18,6 +19,7 @@ import (
 	"sersh.com/totaltube/frontend/db"
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/internal"
+	"sersh.com/totaltube/frontend/middlewares"
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
 )
@@ -34,6 +36,9 @@ var FakePlayer = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		Output404(w, r, "content item not found")
 		return
 	}
+	if id > 0 && config.Routes.IdXorKey > 0 {
+		id = id ^ config.Routes.IdXorKey
+	}
 	orfl := !config.General.FakeVideoPage
 	relatedAmount := config.General.ContentRelatedAmount
 	customContext := generateCustomContext(w, r, "fake-player")
@@ -43,6 +48,7 @@ var FakePlayer = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	cacheKey := "fake-player:" + helpers.Md5Hash(
 		fmt.Sprintf("%s:%s:%d:%s:%v:%d:%d", hostName, langId, id, slug, orfl, relatedAmount, groupId),
 	)
+
 	cacheTtl := time.Minute * 30
 	parsed, err := site.ParseTemplate("fake-player", path, config, customContext, nocache, cacheKey, cacheTtl,
 		func() (pongo2.Context, error) {
@@ -92,12 +98,21 @@ var FakePlayer = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			} else {
 				params["category"] = "default"
 			}
+			id := results.Id
+			if config.Routes.IdXorKey > 0 {
+				id = id ^ config.Routes.IdXorKey
+			}
+			params["id"] = strconv.FormatInt(id, 10)
+			params["slug"] = results.Slug
 			ctx["params"] = params
 			return ctx, nil
 		}, w, r)
 	if err != nil {
 		if rErr, ok := err.(redirectErr); ok {
 			http.Redirect(w, r, rErr.url, rErr.code)
+			if internal.Config.General.EnableAccessLog {
+				log.Printf("Redirected to %s", rErr.url)
+			}
 			return
 		}
 		if strings.Contains(err.Error(), "not found") {
@@ -105,6 +120,10 @@ var FakePlayer = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		Output500(w, r, err)
+		return
+	}
+	
+	if middlewares.HeadersSent(w) {
 		return
 	}
 	//w.Header().Set("X-Robots-Tag", "noindex")

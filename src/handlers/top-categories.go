@@ -19,6 +19,7 @@ import (
 	"sersh.com/totaltube/frontend/db"
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/internal"
+	"sersh.com/totaltube/frontend/middlewares"
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
 )
@@ -84,7 +85,10 @@ var TopCategories = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 							if qs := r.URL.RawQuery; qs != "" {
 								redirectUrl = redirectUrl + "?" + qs
 							}
-							http.Redirect(w, r, redirectUrl, 302)
+							http.Redirect(w, r, redirectUrl, http.StatusFound)
+							if internal.Config.General.EnableAccessLog {
+								log.Println(hostName, 302, redirectUrl)
+							}
 							return
 						}
 					}
@@ -133,6 +137,9 @@ var TopCategories = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 			return
 		}
 		Output500(w, r, err)
+		return
+	}
+	if middlewares.HeadersSent(w) {
 		return
 	}
 	render.HTML(w, r, string(parsed))

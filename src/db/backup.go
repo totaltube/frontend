@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
+	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/internal"
 )
 
@@ -36,6 +37,8 @@ func doBackups() {
 	if internal.Config.Database.BackupPath == "" {
 		return
 	}
+	helpers.KeyMutex.Lock("db_operations_lock")
+	defer helpers.KeyMutex.Unlock("db_operations_lock")
 	err := os.MkdirAll(internal.Config.Database.BackupPath, 0755)
 	if err != nil {
 		log.Println(err)

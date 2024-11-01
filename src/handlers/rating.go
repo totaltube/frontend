@@ -1,14 +1,15 @@
 package handlers
 
 import (
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/render"
 	"log"
 	"net/http"
 	"net/url"
+	"strconv"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/render"
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/types"
-	"strconv"
 )
 
 var Rating = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -20,6 +21,9 @@ var Rating = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	if id == 0 && slug == "" {
 		Output404(w, r, "content item not found")
 		return
+	}
+	if id > 0 && config.Routes.IdXorKey > 0 {
+		id = id ^ config.Routes.IdXorKey
 	}
 	var like bool
 	if r.URL.Query().Get(config.Params.Like) != "" {

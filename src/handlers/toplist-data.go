@@ -3,17 +3,19 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/go-chi/render"
-	"github.com/samber/lo"
 	"log"
 	"net"
 	"net/http"
+	"strconv"
+	"time"
+
+	"github.com/go-chi/render"
+	"github.com/samber/lo"
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/db"
 	"sersh.com/totaltube/frontend/internal"
+	"sersh.com/totaltube/frontend/middlewares"
 	"sersh.com/totaltube/frontend/types"
-	"strconv"
-	"time"
 )
 
 var mapToplistRes = func(item *types.ContentResult, _ int) types.ToplistItem {
@@ -106,6 +108,9 @@ var ToplistData = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		render.Status(r, http.StatusInternalServerError)
 		render.JSON(w, r, M{"success": false, "error": err.Error()})
+		return
+	}
+	if middlewares.HeadersSent(w) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

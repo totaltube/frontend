@@ -19,7 +19,7 @@ func GetSEBotRanges() (ranges []string, err error) {
 	var resultRaw []byte
 	resultRaw, err = GetCachedTimeout("se_bot_ranges", time.Hour*24, time.Hour*100500, func() (result []byte, err error) {
 		var ipRanges = make([]string, 0, 10000)
-		for _, u := range []string{"https://developers.google.com/search/apis/ipranges/googlebot.json", "https://www.bing.com/toolbox/bingbot.json"} {
+		for _, u := range []string{"https://developers.google.com/search/apis/ipranges/googlebot.json", "https://developers.google.com/static/search/apis/ipranges/special-crawlers.json", "https://www.bing.com/toolbox/bingbot.json"} {
 			var req *http.Request
 			req, _ = http.NewRequest("GET", u, nil)
 			req.Header.Set("Accept", "application/json")
@@ -73,9 +73,7 @@ func GetSEBotRanges() (ranges []string, err error) {
 			log.Println(err)
 			return
 		}
-		for _, r := range whitelistData {
-			ipRanges = append(ipRanges, r)
-		}
+		ipRanges = append(ipRanges, whitelistData...)
 		result = helpers.ToJSON(ipRanges)
 		return
 	}, false)

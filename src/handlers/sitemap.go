@@ -3,21 +3,23 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/beevik/etree"
-	"github.com/flosch/pongo2/v6"
-	"github.com/pkg/errors"
-	"github.com/samber/lo"
 	"log"
 	"math/rand"
 	"net/http"
 	"net/url"
+	"strconv"
+	"time"
+
+	"github.com/beevik/etree"
+	"github.com/flosch/pongo2/v6"
+	"github.com/pkg/errors"
+	"github.com/samber/lo"
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/db"
 	"sersh.com/totaltube/frontend/internal"
+	"sersh.com/totaltube/frontend/middlewares"
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
-	"strconv"
-	"time"
 )
 
 var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -53,7 +55,12 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				for _, lang := range internal.GetLanguages() {
 					var hostname = config.Hostname
 					if d, ok := config.LanguageDomains[lang.Id]; ok && d != "" {
-						hostname = d
+						matches := urlRegex.FindStringSubmatch(d)
+						if len(matches) > 2 {
+							hostname = matches[2]
+						} else {
+							hostname = d
+						}
 					}
 					altLink := site.GetLink(uri, config, hostName, lang.Id, true)
 					if altLink != link {
@@ -449,6 +456,9 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	doc.Indent(2)
+	if middlewares.HeadersSent(w) {
+		return
+	}
 	w.Header().Add("Content-Type", "application/xml; charset=utf-8")
 	w.Header().Add("Cache-Control", "max-age=0, no-cache, no-store, must-revalidate")
 	w.Header().Add("Expires", time.Now().Add(-time.Hour*24).Format(http.TimeFormat))

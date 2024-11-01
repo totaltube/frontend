@@ -72,6 +72,8 @@ func ContentRaw(siteDomain string, params ContentParams) (rawResponse json.RawMe
 	var data = url.Values{}
 	if params.Ip != nil {
 		data.Add("ip", params.Ip.String())
+	} else {
+		data.Add("ip", "127.0.0.1")
 	}
 	if params.Lang != "" {
 		data.Add("lang", params.Lang)

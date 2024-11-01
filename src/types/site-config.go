@@ -54,6 +54,7 @@ type (
 		Rating                  string            `toml:"rating"`
 		Comments                string            `toml:"comments"`
 		Custom                  map[string]string `toml:"custom"`
+		IdXorKey                int64             `toml:"id_xor_key"`
 	}
 	ConfigParams struct {
 		ContentSlug            string `toml:"content_slug"`

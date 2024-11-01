@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"strconv"
 
 	"github.com/dlclark/regexp2"
 	"github.com/flosch/pongo2/v6"
@@ -14,7 +15,8 @@ import (
 )
 
 var httpRegex = regexp.MustCompile(`(?i)^(https?://|//)`)
-//language=Regexp
+
+// language=Regexp
 var paramRegex = regexp2.MustCompile(`\{([\w_]+)\}`, regexp2.None)
 
 type tagLinkNode struct {
@@ -82,6 +84,10 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 		}
 		args = append(args, name, value.Interface())
 	}
+	if d, ok := config.LanguageDomains[lang]; ok && d != "" {
+		hostName = d
+		args = append(args, "full_url", true)
+	}
 	if what == "current" {
 		what = linkContext.Public["page_template"].(string)
 		if what == "search" && contextLang != lang {
@@ -98,6 +104,13 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 		} else {
 			currentParams := linkContext.Public["params"].(map[string]string)
 			for k, v := range currentParams {
+				if k == "id" && config.Routes.IdXorKey > 0 {
+					numericId, _ := strconv.ParseInt(v, 10, 64)
+					if numericId > 0 {
+						numericId = numericId ^ config.Routes.IdXorKey
+					}
+					v = strconv.FormatInt(numericId, 10)
+				}
 				args = append(args, k, v)
 			}
 			queryParams := url.Values(http.Header(linkContext.Public["canonical_query"].(url.Values)).Clone())

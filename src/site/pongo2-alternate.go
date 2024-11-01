@@ -14,6 +14,7 @@ import (
 type tagAlternateNode struct {
 	lang pongo2.IEvaluator
 }
+
 func paginationRoute(route string, config *types.Config) string {
 	switch route {
 	case config.Routes.Category:

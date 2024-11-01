@@ -2,22 +2,27 @@ package handlers
 
 import (
 	"context"
-	"github.com/samber/lo"
+	"log"
 	"net"
 	"net/http"
 	"net/url"
+	"path"
 	"regexp"
-	"sersh.com/totaltube/frontend/middlewares"
-	"sersh.com/totaltube/frontend/types"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/samber/lo"
+	"sersh.com/totaltube/frontend/middlewares"
+	"sersh.com/totaltube/frontend/types"
 
 	"github.com/go-chi/chi/v5"
 
 	"sersh.com/totaltube/frontend/db"
 	"sersh.com/totaltube/frontend/internal"
 )
+
+var urlRegex = regexp.MustCompile(`^https?://([^/]+)`)
 
 // LangHandlers Function creates language routes like /ru/someroute, /en/someroute etc.
 func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler http.Handler) {
@@ -44,6 +49,38 @@ func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler h
 			preparedRoute = strings.TrimSuffix(preparedRoute, "/")
 		}
 		hr.Handle(preparedRoute, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if d, ok := siteConfig.LanguageDomains[langId]; ok {
+				matches := urlRegex.FindStringSubmatch(d)
+				var scheme = "https://"
+				var uri = "/"
+				if len(matches) > 1 {
+					u, _ := url.Parse(d)
+					scheme = u.Scheme + "://"
+					uri = u.Path
+					d = u.Hostname()
+				}
+				if d != r.Context().Value("hostName") {
+					uriToRedirect := path.Join(uri, r.URL.Path)
+					if r.URL.RawQuery != "" {
+						uriToRedirect += "?" + r.URL.RawQuery
+					}
+					http.Redirect(w, r, scheme+d+uriToRedirect, http.StatusMovedPermanently)
+					return
+				}
+			} else if siteConfig.General.CanonicalUrl != "" {
+				// detect canonicalDomain
+				canonicalParsed, _ := url.Parse(siteConfig.General.CanonicalUrl)
+				canonicalDomain := canonicalParsed.Hostname()
+				canonicalDomain = strings.TrimPrefix(canonicalDomain, "www.")
+				if canonicalDomain != r.Context().Value("hostName") {
+					uriToRedirect := r.URL.Path
+					if r.URL.RawQuery != "" {
+						uriToRedirect += "?" + r.URL.RawQuery
+					}
+					http.Redirect(w, r, "https://"+canonicalParsed.Host+uriToRedirect, http.StatusMovedPermanently)
+					return
+				}
+			}
 			ctx := context.WithValue(r.Context(), "lang", langId)
 			ctx = context.WithValue(ctx, "isXDefault", false)
 			cookie := &http.Cookie{
@@ -68,12 +105,18 @@ func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler h
 					w.Header().Add("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
 					w.Header().Add("Pragma", "no-cache")
 					http.Redirect(w, r, matches[1], http.StatusMovedPermanently)
+					if internal.Config.General.EnableAccessLog {
+						log.Println(r.Context().Value("hostName").(string), 301, matches[1])
+					}
 					return
 				}
 				if len(matches) > 0 {
 					w.Header().Add("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
 					w.Header().Add("Pragma", "no-cache")
 					http.Redirect(w, r, route, http.StatusMovedPermanently)
+					if internal.Config.General.EnableAccessLog {
+						log.Println(r.Context().Value("hostName").(string), 301, route)
+					}
 					return
 				}
 			}
@@ -121,13 +164,20 @@ func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler h
 								if strings.Contains(s, t) {
 									redirectUrl := strings.ReplaceAll(redirectUri, "{route}", siteConfig.Routes.Category)
 									redirectUrl = strings.ReplaceAll(redirectUrl, "{slug}", cat.Slug)
-									redirectUrl = strings.ReplaceAll(redirectUrl, "{id}", strconv.FormatInt(int64(cat.Id), 10))
+									catId := int64(cat.Id)
+									if siteConfig.Routes.IdXorKey > 0 {
+										catId = catId ^ siteConfig.Routes.IdXorKey
+									}
+									redirectUrl = strings.ReplaceAll(redirectUrl, "{id}", strconv.FormatInt(catId, 10))
 									if qs := r.URL.RawQuery; qs != "" {
 										redirectUrl = redirectUrl + "?" + qs
 									}
 									w.Header().Add("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
 									w.Header().Add("Pragma", "no-cache")
-									http.Redirect(w, r, redirectUrl, 302)
+									http.Redirect(w, r, redirectUrl, http.StatusFound)
+									if internal.Config.General.EnableAccessLog {
+										log.Println(hostName, 302, redirectUrl)
+									}
 									return
 								}
 							}
@@ -147,8 +197,10 @@ func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler h
 			}
 			w.Header().Add("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
 			w.Header().Add("Pragma", "no-cache")
-			http.Redirect(w, r, redirectUri, 302)
-			return
+			http.Redirect(w, r, redirectUri, http.StatusFound)
+			if internal.Config.General.EnableAccessLog {
+				log.Println("Redirected", hostName, 302, redirectUri)
+			}
 		}))
 	} else {
 		hr.Handle(route, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -158,23 +210,25 @@ func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler h
 				langValue = langCookie.Value
 			}
 			lang := internal.DetectLanguage(langValue, siteConfig.General.DefaultLanguage, r.Header.Get("Accept-Language"))
-			if siteConfig.General.NoRedirectDefaultLanguage && lang.Id == siteConfig.General.DefaultLanguage {
+			var redirectUri string
+			redirectUri = strings.ReplaceAll(langTemplate, "{lang}", lang.Id)
+			var uri = r.URL.Path
+			redirectUri = strings.ReplaceAll(redirectUri, "{route}", uri)
+			if siteConfig.General.NoRedirectDefaultLanguage && lang.Id == siteConfig.General.DefaultLanguage || redirectUri == uri {
 				ctx := context.WithValue(r.Context(), "lang", lang.Id)
 				ctx = context.WithValue(ctx, "isXDefault", true)
 				middlewares.BadBotMiddleware(handler).ServeHTTP(w, r.WithContext(ctx))
 				return
 			}
-			var redirectUri string
-			redirectUri = strings.ReplaceAll(langTemplate, "{lang}", lang.Id)
-			var uri = r.URL.Path
-			redirectUri = strings.ReplaceAll(redirectUri, "{route}", uri)
 			if r.URL.RawQuery != "" {
 				redirectUri += "?" + r.URL.RawQuery
 			}
 			w.Header().Add("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
 			w.Header().Add("Pragma", "no-cache")
-			http.Redirect(w, r, redirectUri, 302)
-			return
+			http.Redirect(w, r, redirectUri, http.StatusFound)
+			if internal.Config.General.EnableAccessLog {
+				log.Println("Redirected to ", redirectUri)
+			}
 		}))
 	}
 }

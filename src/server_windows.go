@@ -1,3 +1,4 @@
+//go:build windows
 // +build windows
 
 package main
@@ -62,6 +63,6 @@ func server(_ overseer.State) {
 	geoip.ExitCleanup()
 }
 
-func startChild() {
+func startChild(_ bool) {
 	log.Fatalln("this command is not for windows")
 }

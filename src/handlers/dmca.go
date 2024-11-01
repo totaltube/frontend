@@ -15,10 +15,10 @@ import (
 	"sersh.com/totaltube/frontend/db"
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/internal"
+	"sersh.com/totaltube/frontend/middlewares"
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
 )
-
 
 var Dmca = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	path := r.Context().Value("path").(string)
@@ -26,7 +26,7 @@ var Dmca = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	hostName := r.Context().Value("hostName").(string)
 	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))
 	langId := r.Context().Value("lang").(string)
-	customContext := generateCustomContext(w,r, "dmca")
+	customContext := generateCustomContext(w, r, "dmca")
 	cacheTtl := time.Minute * 15
 	isOk := false
 	var ip = r.Context().Value("ip").(string)
@@ -41,8 +41,11 @@ var Dmca = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		params := types.DmcaParams{}
 		err := json.NewDecoder(r.Body).Decode(&params)
 		if err != nil {
-			render.JSON(w, r, M{"success": false, "value": "wrong parameters: "+err.Error()})
+			render.JSON(w, r, M{"success": false, "value": "wrong parameters: " + err.Error()})
 			return
+		}
+		if params.ContentId > 0 && config.Routes.IdXorKey > 0 {
+			params.ContentId = params.ContentId ^ config.Routes.IdXorKey
 		}
 		isWhitelisted := false
 		for _, e := range internal.Config.Frontend.CaptchaWhiteList {
@@ -63,9 +66,8 @@ var Dmca = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				}).Json()
 			verifyOk := false
 			if success, ok := response["success"].(bool); ok && success {
-				if h, ok := response["hostname"].(string);
-					ok && strings.TrimPrefix(h, "www.") ==
-						strings.TrimPrefix(strings.Split(r.URL.Hostname(), ":")[0], "www.") {
+				if h, ok := response["hostname"].(string); ok && strings.TrimPrefix(h, "www.") ==
+					strings.TrimPrefix(strings.Split(r.URL.Hostname(), ":")[0], "www.") {
 					verifyOk = true
 				} else {
 					log.Println("wrong hostname for hCaptcha!", strings.Split(r.URL.Hostname(), ":")[0], response["hostname"])
@@ -98,9 +100,12 @@ var Dmca = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx["ok"] = isOk
 			ctx["render_captcha"] = renderCaptcha
 			return ctx, nil
-		}, w,r)
+		}, w, r)
 	if err != nil {
 		render.JSON(w, r, M{"success": false, "value": err.Error()})
+		return
+	}
+	if middlewares.HeadersSent(w) {
 		return
 	}
 	render.HTML(w, r, string(parsed))

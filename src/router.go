@@ -2,13 +2,14 @@ package main
 
 import (
 	"context"
-	"github.com/samber/lo"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/samber/lo"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -24,9 +25,13 @@ type hostRouter struct {
 	path       string
 	handler    http.Handler
 }
-func fixPageRoute(pageRoute string) string {
-	return strings.ReplaceAll(pageRoute,"{page}", "{page:[0-9]+}")
+
+func fixPageAndIdRoute(pageRoute string) string {
+	res := strings.ReplaceAll(pageRoute, "{page}", "{page:[0-9]+}")
+	res = strings.ReplaceAll(res, "{id}", "{id:[0-9]+}")
+	return res
 }
+
 func InitRouter() http.Handler {
 	hosts := map[string]*hostRouter{}
 	defaultSiteOk := false
@@ -60,15 +65,16 @@ func InitRouter() http.Handler {
 		hr.Use(middleware.GetHead)
 		if internal.Config.General.EnableAccessLog {
 			hr.Use(middleware.Logger)
+			log.Println("Using access log")
 		}
 		hr.Use(middleware.StripSlashes)
 		hr.Use(func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				ctx := context.WithValue(r.Context(), "config", internal.GetConfig(configPath))
-				ctx = context.WithValue(ctx, "path", h.path)
-				ctx = context.WithValue(ctx, "hostName", hostName)
-				ctx = context.WithValue(ctx, "lang", "en")
-				next.ServeHTTP(w, r.WithContext(ctx))
+				r = r.WithContext(context.WithValue(r.Context(), "config", internal.GetConfig(configPath)))
+				r = r.WithContext(context.WithValue(r.Context(), "path", h.path))
+				r = r.WithContext(context.WithValue(r.Context(), "hostName", hostName))
+				r = r.WithContext(context.WithValue(r.Context(), "lang", "en"))
+				next.ServeHTTP(w, r)
 			})
 		})
 		dir := http.Dir(filepath.Join(m, "public"))
@@ -85,153 +91,155 @@ func InitRouter() http.Handler {
 				next.ServeHTTP(w, r)
 			})
 		})
+		// Can check if headers are sent
+		hr.Use(middlewares.HeadersSentMiddleware)
 		if config.Routes.Rating != "" && config.Routes.Rating != "-" {
-			hr.Handle(fixPageRoute(config.Routes.Rating), middlewares.BadBotMiddleware(handlers.Rating))
+			hr.Handle(fixPageAndIdRoute(config.Routes.Rating), middlewares.BadBotMiddleware(handlers.Rating))
 		}
 		if config.Routes.Comments != "" && config.Routes.Comments != "-" {
-			hr.Handle(fixPageRoute(config.Routes.Comments), middlewares.BadBotMiddleware(handlers.Comments))
+			hr.Handle(fixPageAndIdRoute(config.Routes.Comments), middlewares.BadBotMiddleware(handlers.Comments))
 		}
 		if config.Routes.Autocomplete != "" && config.Routes.Autocomplete != "-" {
 			if config.General.MultiLanguage {
-				handlers.LangHandlers(hr, fixPageRoute(config.Routes.Autocomplete), config, handlers.Autocomplete)
+				handlers.LangHandlers(hr, fixPageAndIdRoute(config.Routes.Autocomplete), config, handlers.Autocomplete)
 			} else {
-				hr.Handle(fixPageRoute(config.Routes.Autocomplete), middlewares.BadBotMiddleware(handlers.Autocomplete))
+				hr.Handle(fixPageAndIdRoute(config.Routes.Autocomplete), middlewares.BadBotMiddleware(handlers.Autocomplete))
 			}
 		}
 		if config.Routes.Search != "" && config.Routes.Search != "-" {
 			if config.General.MultiLanguage {
-				handlers.LangHandlers(hr, fixPageRoute(config.Routes.Search), config, handlers.Search)
+				handlers.LangHandlers(hr, fixPageAndIdRoute(config.Routes.Search), config, handlers.Search)
 				if config.Routes.SearchPagination != "" && config.Routes.SearchPagination != "-" {
-					handlers.LangHandlers(hr, fixPageRoute(config.Routes.SearchPagination), config, handlers.Search)
+					handlers.LangHandlers(hr, fixPageAndIdRoute(config.Routes.SearchPagination), config, handlers.Search)
 				}
 			} else {
-				hr.Handle(fixPageRoute(config.Routes.Search), middlewares.BadBotMiddleware(handlers.Search))
+				hr.Handle(fixPageAndIdRoute(config.Routes.Search), middlewares.BadBotMiddleware(handlers.Search))
 				if config.Routes.SearchPagination != "" && config.Routes.SearchPagination != "-" {
-					hr.Handle(fixPageRoute(config.Routes.SearchPagination), middlewares.BadBotMiddleware(handlers.Search))
+					hr.Handle(fixPageAndIdRoute(config.Routes.SearchPagination), middlewares.BadBotMiddleware(handlers.Search))
 				}
 			}
 		}
 		if config.Routes.Category != "" && config.Routes.Category != "-" {
 			if config.General.MultiLanguage {
-				handlers.LangHandlers(hr, fixPageRoute(config.Routes.Category), config, handlers.Category)
+				handlers.LangHandlers(hr, fixPageAndIdRoute(config.Routes.Category), config, handlers.Category)
 				if config.Routes.CategoryPagination != "" && config.Routes.CategoryPagination != "-" {
-					handlers.LangHandlers(hr, fixPageRoute(config.Routes.CategoryPagination), config, handlers.Category)
+					handlers.LangHandlers(hr, fixPageAndIdRoute(config.Routes.CategoryPagination), config, handlers.Category)
 				}
 			} else {
-				hr.Handle(fixPageRoute(config.Routes.Category), middlewares.BadBotMiddleware(handlers.Category))
+				hr.Handle(fixPageAndIdRoute(config.Routes.Category), middlewares.BadBotMiddleware(handlers.Category))
 				if config.Routes.CategoryPagination != "" && config.Routes.CategoryPagination != "-" {
-					hr.Handle(fixPageRoute(config.Routes.CategoryPagination), middlewares.BadBotMiddleware(handlers.Category))
+					hr.Handle(fixPageAndIdRoute(config.Routes.CategoryPagination), middlewares.BadBotMiddleware(handlers.Category))
 				}
 			}
 		}
 		if config.Routes.TopCategories != "" && config.Routes.TopCategories != "-" {
 			if config.General.MultiLanguage {
-				handlers.LangHandlers(hr, fixPageRoute(config.Routes.TopCategories), config, handlers.TopCategories)
+				handlers.LangHandlers(hr, fixPageAndIdRoute(config.Routes.TopCategories), config, handlers.TopCategories)
 				if config.Routes.TopCategoriesPagination != "" && config.Routes.TopCategoriesPagination != "-" {
-					handlers.LangHandlers(hr, fixPageRoute(config.Routes.TopCategoriesPagination), config, handlers.TopCategories)
+					handlers.LangHandlers(hr, fixPageAndIdRoute(config.Routes.TopCategoriesPagination), config, handlers.TopCategories)
 				}
 			} else {
-				hr.Handle(fixPageRoute(config.Routes.TopCategories), middlewares.BadBotMiddleware(handlers.TopCategories))
+				hr.Handle(fixPageAndIdRoute(config.Routes.TopCategories), middlewares.BadBotMiddleware(handlers.TopCategories))
 				if config.Routes.TopCategoriesPagination != "" && config.Routes.TopCategoriesPagination != "-" {
-					hr.Handle(fixPageRoute(config.Routes.TopCategoriesPagination), middlewares.BadBotMiddleware(handlers.TopCategories))
+					hr.Handle(fixPageAndIdRoute(config.Routes.TopCategoriesPagination), middlewares.BadBotMiddleware(handlers.TopCategories))
 				}
 			}
 		}
 		if config.Routes.TopContent != "" && config.Routes.TopContent != "-" {
 			if config.General.MultiLanguage {
-				handlers.LangHandlers(hr, fixPageRoute(config.Routes.TopContent), config, handlers.TopContent)
+				handlers.LangHandlers(hr, fixPageAndIdRoute(config.Routes.TopContent), config, handlers.TopContent)
 				if config.Routes.TopContentPagination != "" && config.Routes.TopContentPagination != "-" {
-					handlers.LangHandlers(hr, fixPageRoute(config.Routes.TopContentPagination), config, handlers.TopContent)
+					handlers.LangHandlers(hr, fixPageAndIdRoute(config.Routes.TopContentPagination), config, handlers.TopContent)
 				}
 			} else {
-				hr.Handle(fixPageRoute(config.Routes.TopContent), middlewares.BadBotMiddleware(handlers.TopContent))
+				hr.Handle(fixPageAndIdRoute(config.Routes.TopContent), middlewares.BadBotMiddleware(handlers.TopContent))
 				if config.Routes.TopContentPagination != "" && config.Routes.TopContentPagination != "-" {
-					hr.Handle(fixPageRoute(config.Routes.TopContentPagination), middlewares.BadBotMiddleware(handlers.TopContent))
+					hr.Handle(fixPageAndIdRoute(config.Routes.TopContentPagination), middlewares.BadBotMiddleware(handlers.TopContent))
 				}
 			}
 		}
 		if config.Routes.Model != "" && config.Routes.Model != "-" {
 			if config.General.MultiLanguage {
-				handlers.LangHandlers(hr, fixPageRoute(config.Routes.Model), config, handlers.Model)
+				handlers.LangHandlers(hr, fixPageAndIdRoute(config.Routes.Model), config, handlers.Model)
 				if config.Routes.ModelPagination != "" && config.Routes.ModelPagination != "-" {
-					handlers.LangHandlers(hr, fixPageRoute(config.Routes.ModelPagination), config, handlers.Model)
+					handlers.LangHandlers(hr, fixPageAndIdRoute(config.Routes.ModelPagination), config, handlers.Model)
 				}
 			} else {
-				hr.Handle(fixPageRoute(config.Routes.Model), middlewares.BadBotMiddleware(handlers.Model))
+				hr.Handle(fixPageAndIdRoute(config.Routes.Model), middlewares.BadBotMiddleware(handlers.Model))
 				if config.Routes.ModelPagination != "" && config.Routes.ModelPagination != "-" {
-					hr.Handle(fixPageRoute(config.Routes.ModelPagination), middlewares.BadBotMiddleware(handlers.Model))
+					hr.Handle(fixPageAndIdRoute(config.Routes.ModelPagination), middlewares.BadBotMiddleware(handlers.Model))
 				}
 			}
 		}
 		if config.Routes.Channel != "" && config.Routes.Channel != "-" {
 			if config.General.MultiLanguage {
-				handlers.LangHandlers(hr, fixPageRoute(config.Routes.Channel), config, handlers.Channel)
+				handlers.LangHandlers(hr, fixPageAndIdRoute(config.Routes.Channel), config, handlers.Channel)
 				if config.Routes.ChannelPagination != "" && config.Routes.ChannelPagination != "-" {
-					handlers.LangHandlers(hr, fixPageRoute(config.Routes.ChannelPagination), config, handlers.Channel)
+					handlers.LangHandlers(hr, fixPageAndIdRoute(config.Routes.ChannelPagination), config, handlers.Channel)
 				}
 			} else {
-				hr.Handle(fixPageRoute(config.Routes.Channel), middlewares.BadBotMiddleware(handlers.Channel))
+				hr.Handle(fixPageAndIdRoute(config.Routes.Channel), middlewares.BadBotMiddleware(handlers.Channel))
 				if config.Routes.ChannelPagination != "" && config.Routes.ChannelPagination != "-" {
-					hr.Handle(fixPageRoute(config.Routes.ChannelPagination), middlewares.BadBotMiddleware(handlers.Channel))
+					hr.Handle(fixPageAndIdRoute(config.Routes.ChannelPagination), middlewares.BadBotMiddleware(handlers.Channel))
 				}
 			}
 		}
 		if config.Routes.ContentItem != "" && config.Routes.ContentItem != "-" {
 			if config.General.MultiLanguage {
-				handlers.LangHandlers(hr, fixPageRoute(config.Routes.ContentItem), config, handlers.ContentItem)
+				handlers.LangHandlers(hr, fixPageAndIdRoute(config.Routes.ContentItem), config, handlers.ContentItem)
 			} else {
-				hr.Handle(fixPageRoute(config.Routes.ContentItem), middlewares.BadBotMiddleware(handlers.ContentItem))
+				hr.Handle(fixPageAndIdRoute(config.Routes.ContentItem), middlewares.BadBotMiddleware(handlers.ContentItem))
 			}
 		}
 		if config.Routes.New != "" && config.Routes.New != "-" {
 			if config.General.MultiLanguage {
-				handlers.LangHandlers(hr, fixPageRoute(config.Routes.New), config, handlers.New)
+				handlers.LangHandlers(hr, fixPageAndIdRoute(config.Routes.New), config, handlers.New)
 				if config.Routes.NewPagination != "" && config.Routes.NewPagination != "-" {
-					handlers.LangHandlers(hr, fixPageRoute(config.Routes.NewPagination), config, handlers.New)
+					handlers.LangHandlers(hr, fixPageAndIdRoute(config.Routes.NewPagination), config, handlers.New)
 				}
 			} else {
-				hr.Handle(fixPageRoute(config.Routes.New), middlewares.BadBotMiddleware(handlers.New))
+				hr.Handle(fixPageAndIdRoute(config.Routes.New), middlewares.BadBotMiddleware(handlers.New))
 				if config.Routes.NewPagination != "" && config.Routes.NewPagination != "-" {
-					hr.Handle(fixPageRoute(config.Routes.NewPagination), middlewares.BadBotMiddleware(handlers.New))
+					hr.Handle(fixPageAndIdRoute(config.Routes.NewPagination), middlewares.BadBotMiddleware(handlers.New))
 				}
 			}
 		}
 		if config.Routes.Long != "" && config.Routes.Long != "-" {
 			if config.General.MultiLanguage {
-				handlers.LangHandlers(hr, fixPageRoute(config.Routes.Long), config, handlers.Long)
+				handlers.LangHandlers(hr, fixPageAndIdRoute(config.Routes.Long), config, handlers.Long)
 				if config.Routes.LongPagination != "" && config.Routes.LongPagination != "-" {
-					handlers.LangHandlers(hr, fixPageRoute(config.Routes.LongPagination), config, handlers.Long)
+					handlers.LangHandlers(hr, fixPageAndIdRoute(config.Routes.LongPagination), config, handlers.Long)
 				}
 			} else {
-				hr.Handle(fixPageRoute(config.Routes.Long), middlewares.BadBotMiddleware(handlers.Long))
+				hr.Handle(fixPageAndIdRoute(config.Routes.Long), middlewares.BadBotMiddleware(handlers.Long))
 				if config.Routes.LongPagination != "" && config.Routes.LongPagination != "-" {
-					hr.Handle(fixPageRoute(config.Routes.LongPagination), middlewares.BadBotMiddleware(handlers.Long))
+					hr.Handle(fixPageAndIdRoute(config.Routes.LongPagination), middlewares.BadBotMiddleware(handlers.Long))
 				}
 			}
 		}
 		if config.Routes.Popular != "" && config.Routes.Popular != "-" {
 			if config.General.MultiLanguage {
-				handlers.LangHandlers(hr, fixPageRoute(config.Routes.Popular), config, handlers.Popular)
+				handlers.LangHandlers(hr, fixPageAndIdRoute(config.Routes.Popular), config, handlers.Popular)
 				if config.Routes.PopularPagination != "" && config.Routes.PopularPagination != "-" {
-					handlers.LangHandlers(hr, fixPageRoute(config.Routes.PopularPagination), config, handlers.Popular)
+					handlers.LangHandlers(hr, fixPageAndIdRoute(config.Routes.PopularPagination), config, handlers.Popular)
 				}
 			} else {
-				hr.Handle(fixPageRoute(config.Routes.Popular), middlewares.BadBotMiddleware(handlers.Popular))
+				hr.Handle(fixPageAndIdRoute(config.Routes.Popular), middlewares.BadBotMiddleware(handlers.Popular))
 				if config.Routes.PopularPagination != "" && config.Routes.PopularPagination != "-" {
-					hr.Handle(fixPageRoute(config.Routes.PopularPagination), middlewares.BadBotMiddleware(handlers.Popular))
+					hr.Handle(fixPageAndIdRoute(config.Routes.PopularPagination), middlewares.BadBotMiddleware(handlers.Popular))
 				}
 			}
 		}
 		if config.Routes.Models != "" && config.Routes.Models != "-" {
 			if config.General.MultiLanguage {
-				handlers.LangHandlers(hr, fixPageRoute(config.Routes.Models), config, handlers.Models)
+				handlers.LangHandlers(hr, fixPageAndIdRoute(config.Routes.Models), config, handlers.Models)
 				if config.Routes.ModelsPagination != "" && config.Routes.ModelsPagination != "-" {
-					handlers.LangHandlers(hr, fixPageRoute(config.Routes.ModelsPagination), config, handlers.Models)
+					handlers.LangHandlers(hr, fixPageAndIdRoute(config.Routes.ModelsPagination), config, handlers.Models)
 				}
 			} else {
-				hr.Handle(fixPageRoute(config.Routes.Models), middlewares.BadBotMiddleware(handlers.Models))
+				hr.Handle(fixPageAndIdRoute(config.Routes.Models), middlewares.BadBotMiddleware(handlers.Models))
 				if config.Routes.ModelsPagination != "" && config.Routes.ModelsPagination != "-" {
-					hr.Handle(fixPageRoute(config.Routes.ModelsPagination), middlewares.BadBotMiddleware(handlers.Models))
+					hr.Handle(fixPageAndIdRoute(config.Routes.ModelsPagination), middlewares.BadBotMiddleware(handlers.Models))
 				}
 			}
 		}
@@ -274,23 +282,23 @@ func InitRouter() http.Handler {
 				paginationRoute, isCustomPaginationTemplate := config.Routes.Custom[tName+"_pagination"]
 				_, isCustomMultilangTemplate := config.Routes.Custom[tName+"_multilang"]
 				if config.General.MultiLanguage && (strings.Contains(routePath, "{lang}") || isCustomMultilangTemplate) {
-					handlers.LangHandlers(hr, fixPageRoute(routePath), config, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					handlers.LangHandlers(hr, fixPageAndIdRoute(routePath), config, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 						ctx := context.WithValue(r.Context(), "custom_template_name", tName)
 						middlewares.BadBotMiddleware(handlers.Custom).ServeHTTP(w, r.WithContext(ctx))
 					}))
 					if isCustomPaginationTemplate && paginationRoute != "" && paginationRoute != "-" {
-						handlers.LangHandlers(hr, fixPageRoute(paginationRoute), config, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						handlers.LangHandlers(hr, fixPageAndIdRoute(paginationRoute), config, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 							ctx := context.WithValue(r.Context(), "custom_template_name", tName)
 							middlewares.BadBotMiddleware(handlers.Custom).ServeHTTP(w, r.WithContext(ctx))
 						}))
 					}
 				} else {
-					hr.Handle(fixPageRoute(routePath), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					hr.Handle(fixPageAndIdRoute(routePath), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 						ctx := context.WithValue(r.Context(), "custom_template_name", tName)
 						middlewares.BadBotMiddleware(handlers.Custom).ServeHTTP(w, r.WithContext(ctx))
 					}))
 					if isCustomPaginationTemplate && paginationRoute != "" && paginationRoute != "-" {
-						hr.Handle(fixPageRoute(paginationRoute), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						hr.Handle(fixPageAndIdRoute(paginationRoute), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 							ctx := context.WithValue(r.Context(), "custom_template_name", tName)
 							middlewares.BadBotMiddleware(handlers.Custom).ServeHTTP(w, r.WithContext(ctx))
 						}))
@@ -330,9 +338,6 @@ func InitRouter() http.Handler {
 			"not present in", internal.Config.Frontend.SitesPath)
 	}
 	r := chi.NewRouter()
-	if internal.Config.General.Development {
-		r.Use(middleware.Logger)
-	}
 	r.Use(middleware.Recoverer)
 	r.Use(middlewares.Timeout(10 * time.Second))
 	if internal.Config.General.DebugRoute != "" {
@@ -341,6 +346,9 @@ func InitRouter() http.Handler {
 	r.Mount("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hostName := strings.TrimPrefix(strings.ToLower(r.Host), "www.")
 		host := hosts[hostName]
+		if host == nil {
+			host = hosts[strings.Split(hostName, ":")[0]]
+		}
 		if host == nil {
 			log.Println("can't find hostname", hostName, ", defaulting to", internal.Config.Frontend.DefaultSite)
 			host = hosts[internal.Config.Frontend.DefaultSite]
@@ -353,9 +361,14 @@ func InitRouter() http.Handler {
 		if ip == "" || len(ip) < 7 {
 			ip = "127.0.0.1"
 		}
-		ctx := context.WithValue(r.Context(), "ip", ip)
-		host.handler.ServeHTTP(w, r.WithContext(ctx))
-		return
+		if strings.HasPrefix(ip, "127.0.0.1") {
+			ip = "127.0.0.1"
+		}
+		if ip == "127.0.0.1" && internal.Config.General.Development {
+			ip = "89.23.44.10"
+		}
+		r = r.WithContext(context.WithValue(r.Context(), "ip", ip))
+		host.handler.ServeHTTP(w, r)
 	}))
 	if os.Getenv("GO_ENV") == "debug" {
 		r.Mount("/_debug", middleware.Profiler())

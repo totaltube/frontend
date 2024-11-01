@@ -15,8 +15,14 @@ import (
 func Base64(data []byte) string {
 	return base64.StdEncoding.EncodeToString(data)
 }
+func FromBase64(data string) ([]byte, error) {
+	return base64.StdEncoding.DecodeString(data)
+}
 func Base64Url(data []byte) string {
 	return base64.URLEncoding.EncodeToString(data)
+}
+func FromBase64Url(data string) ([]byte, error) {
+	return base64.URLEncoding.DecodeString(data)
 }
 
 func Flate(data []byte) []byte {

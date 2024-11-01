@@ -5,6 +5,8 @@
 example/
 database
 database-backup
+hrulik
+julia
 bin/
 tmp/
 __debug*

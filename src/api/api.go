@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/url"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -148,7 +149,9 @@ func Request(siteDomain string, method Method, uri ApiUri, data interface{}) (re
 		var errorString string
 		_ = json.Unmarshal(r.Value, &errorString)
 		err = errors.New("error from api: " + errorString + ", " + string(method) + ", " + string(uri))
-		log.Printf("error from api: %s, %s, %s, %s, %v", errorString, siteDomain, method, uri, data)
+		if !strings.Contains(errorString, "favicon.ico") {
+			log.Printf("error from api: %s, %s, %s, %s, %v", errorString, siteDomain, method, uri, data)
+		}
 		return
 	}
 	response = r.Value
