@@ -40,9 +40,7 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		urlSet.CreateAttr("xmlns:video", `http://www.google.com/schemas/sitemap-video/1.1`)
 		urlSet.CreateAttr("xmlns:xhtml", `http://www.w3.org/1999/xhtml`)
 		mainUrls := []string{"top_categories", "top_content", "new", "long", "popular"}
-		for _, c := range config.Sitemap.AdditionalLinks {
-			mainUrls = append(mainUrls, c)
-		}
+		mainUrls = append(mainUrls, config.Sitemap.AdditionalLinks...)
 		for _, uri := range mainUrls {
 			link := site.GetLink(uri, config, hostName, config.General.DefaultLanguage, false)
 			if link == "" {

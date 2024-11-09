@@ -78,14 +78,22 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	)
 	filtered := channelId > 0 || channelSlug != "" || modelId > 0 || modelSlug != "" || sortBy != "" ||
 		durationTo > 0 || durationFrom > 0
-	cacheTtl := time.Second * 5
+	cacheTtl := time.Second * 15
 	if page > 1 || filtered {
 		cacheTtl = time.Minute * 5
 	}
 	ip := net.ParseIP(r.Context().Value("ip").(string))
 	groupId := internal.DetectCountryGroup(ip).Id
 	userAgent := r.Header.Get("User-Agent")
-	parsed, err := site.ParseTemplate("category", path, config, customContext, nocache, cacheKey, cacheTtl,
+	pageTtl := 0 * time.Second
+	randomizeRatio := config.General.RandomizeRatio
+	if randomizeRatio < 0 {
+		randomizeRatio = internal.Config.General.RandomizeRatio
+	}
+	if randomizeRatio <= 0 {
+		pageTtl = time.Second * 15
+	}
+	parsed, err := site.ParseTemplate("category", path, config, customContext, nocache, cacheKey, pageTtl,
 		func() (pongo2.Context, error) {
 			ctx := pongo2.Context{}
 			// getting category information from cache or from api
@@ -149,6 +157,9 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			}
 			if len(results.Items) == 0 && page > 1 {
 				return ctx, fmt.Errorf("not found")
+			}
+			if page == 1 && randomizeRatio > 0 {
+				helpers.RandomizeItems(results.Items, randomizeRatio)
 			}
 			ctx["category"] = categoryInfo
 			ctx["content"] = results
@@ -222,7 +233,7 @@ func getCategoryFunc(hostName string, langId string) func(args ...interface{}) *
 		}
 	}
 }
-func getCategoryTopFunc(hostName string, langId string, groupId int64) func(args ...interface{}) *types.ContentResults {
+func getCategoryTopFunc(hostName string, langId string, groupId int64, config *types.Config) func(args ...interface{}) *types.ContentResults {
 	return func(args ...interface{}) *types.ContentResults {
 		parsingName := true
 		var categoryId int64
@@ -258,6 +269,15 @@ func getCategoryTopFunc(hostName string, langId string, groupId int64) func(args
 			log.Println("error getting category top content: ", err)
 			return nil
 		} else {
+			if page == 1 {
+				randomizeRatio := config.General.RandomizeRatio
+				if randomizeRatio < 0 {
+					randomizeRatio = internal.Config.General.RandomizeRatio
+				}
+				if randomizeRatio > 0 {
+					helpers.RandomizeItems(results.Items, randomizeRatio)
+				}
+			}
 			return results
 		}
 	}

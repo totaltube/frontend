@@ -24,7 +24,7 @@ import (
 	"sersh.com/totaltube/frontend/types"
 )
 
-func getTopCategoriesFunc(hostName string, langId string, groupId int64) func(args ...interface{}) *types.CategoryResults {
+func getTopCategoriesFunc(hostName string, langId string, groupId int64, config *types.Config) func(args ...interface{}) *types.CategoryResults {
 	return func(args ...interface{}) *types.CategoryResults {
 		parsingName := true
 		var page int64 = 1
@@ -50,6 +50,15 @@ func getTopCategoriesFunc(hostName string, langId string, groupId int64) func(ar
 		if err != nil {
 			log.Println("can't get top categories:", err)
 			return nil
+		}
+		if page == 1 {
+			randomizeRatio := config.General.RandomizeRatio
+			if randomizeRatio < 0 {
+				randomizeRatio = internal.Config.General.RandomizeRatio
+			}
+			if randomizeRatio > 0 {
+				helpers.RandomizeItems(results.Items, randomizeRatio)
+			}
 		}
 		return results
 	}
@@ -99,11 +108,19 @@ var TopCategories = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))
 	customContext := generateCustomContext(w, r, "top-categories")
 	cacheKey := fmt.Sprintf("top-categories:%s:%s:%d:%d", hostName, langId, page, groupId)
-	cacheTtl := time.Second * 5
+	cacheTtl := time.Second * 15
 	if page > 1 {
 		cacheTtl = time.Minute * 5
 	}
-	parsed, err := site.ParseTemplate("top-categories", path, config, customContext, nocache, cacheKey, cacheTtl,
+	pageTtl := 0 * time.Second
+	randomizeRatio := config.General.RandomizeRatio
+	if randomizeRatio < 0 {
+		randomizeRatio = internal.Config.General.RandomizeRatio
+	}
+	if randomizeRatio <= 0 {
+		pageTtl = time.Second * 15
+	}
+	parsed, err := site.ParseTemplate("top-categories", path, config, customContext, nocache, cacheKey, pageTtl,
 		func() (pongo2.Context, error) {
 			ctx := pongo2.Context{}
 			var results = new(types.CategoryResults)
@@ -122,6 +139,9 @@ var TopCategories = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 			}
 			if len(results.Items) == 0 && page > 1 {
 				return ctx, fmt.Errorf("not found")
+			}
+			if page == 1 && randomizeRatio > 0 {
+				helpers.RandomizeItems(results.Items, randomizeRatio)
 			}
 			ctx["top_categories"] = results
 			ctx["total"] = int64(results.Total)

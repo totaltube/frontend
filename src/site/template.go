@@ -330,7 +330,7 @@ func ParseTemplate(name, path string, config *types.Config, customContext pongo2
 	for k, v := range customContext {
 		customContextCopy[k] = v
 	}
-	cached, err = db.GetCachedTimeout(cacheKey, cacheTtl, extendedTtl, func() (result []byte, err error) {
+	recreateFunc := func() (result []byte, err error) {
 		c := generateContext(name, path, customContextCopy)
 		addCustomFunctions(c)
 		var template *pongo2.Template
@@ -351,7 +351,12 @@ func ParseTemplate(name, path string, config *types.Config, customContext pongo2
 			result = helpers.MinifyBytes(result)
 		}
 		return
-	}, nocache)
+	}
+	if cacheTtl > 0 {
+		cached, err = db.GetCachedTimeout(cacheKey, cacheTtl, extendedTtl, recreateFunc, nocache)
+	} else {
+		cached, err = recreateFunc()
+	}
 	if err != nil {
 		if !strings.Contains(err.Error(), "not found") {
 			log.Println(err, path, name, config.Hostname)

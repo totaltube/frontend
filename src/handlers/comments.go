@@ -1,8 +1,9 @@
 package handlers
 
 import (
-	"github.com/go-chi/render"
 	"net/http"
+
+	"github.com/go-chi/render"
 )
 
 var Comments = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -12,5 +13,4 @@ var Comments = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	slug, _ := url.PathUnescape(chi.URLParam(r, "slug"))
 	*/
 	render.JSON(w, r, M{"success": true})
-	return
 })

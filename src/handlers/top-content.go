@@ -37,11 +37,19 @@ var TopContent = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	customContext := generateCustomContext(w, r, "top-content")
 	var groupId = internal.DetectCountryGroup(net.ParseIP(ip)).Id
 	cacheKey := fmt.Sprintf("top-content:%s:%s:%d:%d", hostName, langId, page, groupId)
-	cacheTtl := time.Second * 5
+	cacheTtl := time.Second * 15
 	if page > 1 {
 		cacheTtl = time.Minute * 5
 	}
-	parsed, err := site.ParseTemplate("top-content", path, config, customContext, nocache, cacheKey, cacheTtl,
+	pageTtl := 0 * time.Second
+	randomizeRatio := config.General.RandomizeRatio
+	if randomizeRatio < 0 {
+		randomizeRatio = internal.Config.General.RandomizeRatio
+	}
+	if randomizeRatio <= 0 {
+		pageTtl = time.Second * 15
+	}
+	parsed, err := site.ParseTemplate("top-content", path, config, customContext, nocache, cacheKey, pageTtl,
 		func() (pongo2.Context, error) {
 			ctx := pongo2.Context{}
 			var results = new(types.ContentResults)
@@ -65,6 +73,9 @@ var TopContent = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if page == 1 {
 				ctx["count"] = true
 			}
+			if page == 1 && randomizeRatio > 0 {
+				helpers.RandomizeItems(results.Items, randomizeRatio)
+			}
 			ctx["content"] = results
 			ctx["total"] = results.Total
 			ctx["from"] = int64(results.From)
@@ -87,7 +98,7 @@ var TopContent = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	render.HTML(w, r, string(parsed))
 })
 
-func getTopContentFunc(hostName string, langId string, groupId int64) func(args ...interface{}) *types.ContentResults {
+func getTopContentFunc(hostName string, langId string, groupId int64, config *types.Config) func(args ...interface{}) *types.ContentResults {
 	return func(args ...interface{}) *types.ContentResults {
 		parsingName := true
 		var page int64 = 1
@@ -113,6 +124,13 @@ func getTopContentFunc(hostName string, langId string, groupId int64) func(args 
 		if err != nil {
 			log.Println("can't get top content:", err)
 			return nil
+		}
+		randomizeRatio := config.General.RandomizeRatio
+		if randomizeRatio < 0 {
+			randomizeRatio = internal.Config.General.RandomizeRatio
+		}
+		if randomizeRatio > 0 {
+			helpers.RandomizeItems(results.Items, randomizeRatio)
 		}
 		return results
 	}

@@ -46,6 +46,7 @@ type (
 		EnableAccessLog                    bool           `toml:"enable_access_log"`
 		DeletedTaxonomiesToSearch          bool           `toml:"deleted_taxonomies_to_search"`
 		DeletedTaxonomiesToSearchPermanent bool           `toml:"deleted_taxonomies_to_search_permanent"`
+		RandomizeRatio                     float64        `toml:"randomize_ratio"`
 		DebugRoute                         string         `toml:"debug_route"`
 	}
 	Frontend struct {
@@ -119,6 +120,14 @@ func InitConfig(configPath string) {
 	}
 	if !lo.Contains([]string{"badger", "bolt", "pebble"}, Config.Database.Engine) {
 		log.Fatalln("Unsupported database engine:", Config.Database.Engine)
+	}
+	if Config.General.RandomizeRatio < 0 {
+		Config.General.RandomizeRatio = 0
+		log.Println("Randomize ratio can't be negative, set to 0")
+	}
+	if Config.General.RandomizeRatio > 1 {
+		Config.General.RandomizeRatio = 1
+		log.Println("Randomize ratio can't be more than 1, set to 1")
 	}
 	matches := apiVersionRegex.FindStringSubmatch(Config.General.ApiUrl)
 	if matches != nil {

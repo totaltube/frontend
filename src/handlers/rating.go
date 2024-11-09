@@ -32,7 +32,6 @@ var Rating = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	returnFunc := func() {
 		// Function which return json at the end.
 		render.JSON(w, r, M{"success": true})
-		return
 	}
 	if botDetector.IsBot(r.Header.Get("User-Agent")) {
 		// Do not count anything for bots

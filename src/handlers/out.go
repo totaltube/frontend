@@ -49,7 +49,7 @@ var Out = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("X-Accel-Redirect", redirectUrl)
 				return
 			}
-			http.Redirect(w, r, redirectUrl, 302)
+			http.Redirect(w, r, redirectUrl, http.StatusFound)
 			if internal.Config.General.EnableAccessLog {
 				log.Println(hostName, 302, redirectUrl)
 			}
