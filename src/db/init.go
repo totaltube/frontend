@@ -19,48 +19,50 @@ var bdb *badger.DB
 func InitDB() {
 	rand.Seed(time.Now().UnixNano())
 	launchCacheWorkers()
-	if internal.Config.Database.Engine == "pebble" {
-		InitPebble()
-		return
-	}
-	if internal.Config.Database.Engine == "bolt" {
-		InitBolt()
-		return
-	}
 	var err error
 	for {
 		if internal.Config.Database.LowMemory {
 			// low memory options
-			bdb, err = badger.Open(
-				badger.DefaultOptions(internal.Config.Database.Path).
-					WithDetectConflicts(false).
-					WithValueLogFileSize(500 << 20). // 500 MB
-					WithIndexCacheSize(50 << 20).    // 50 MB
-					WithBlockCacheSize(10 << 20).    // 10 MB
-					WithValueThreshold(10 << 10).    // 10 KB
-					WithNumMemtables(2).
-					WithSyncWrites(false).
-					WithLoggingLevel(badger.WARNING).
-					WithVerifyValueChecksum(true),
-			)
+			options := badger.DefaultOptions(internal.Config.Database.Path).
+				WithDetectConflicts(false).
+				WithValueLogFileSize(500 << 20). // 500 MB
+				WithIndexCacheSize(50 << 20).    // 50 MB
+				WithBlockCacheSize(10 << 20).    // 10 MB
+				WithValueThreshold(10 << 10).    // 10 KB
+				WithNumMemtables(2).
+				WithSyncWrites(false).
+				WithLoggingLevel(badger.WARNING).
+				WithVerifyValueChecksum(true)
+			if internal.Config.Database.SyncWrites {
+				options = options.WithSyncWrites(true)
+			}
+			if internal.Config.Database.DetectConflicts {
+				options = options.WithDetectConflicts(true)
+			}
+			bdb, err = badger.Open(options)
 		} else {
-			bdb, err = badger.Open(
-				badger.DefaultOptions(internal.Config.Database.Path).
-					WithDetectConflicts(false).
-					WithSyncWrites(false).
-					// WithValueLogMaxEntries(100000).
-					//WithValueLogFileSize(250 << 20). // 250 MB
-					WithIndexCacheSize(2000 << 20). // 2 GB
-					//WithBlockCacheSize(100 << 20).   // 100 MB
-					WithMemTableSize(1 << 20). // 1 MB
-					WithNumMemtables(2).
-					WithNumLevelZeroTables(1).
-					WithNumLevelZeroTablesStall(2).
-					//WithNumLevelZeroTablesStall(2).
-					WithValueThreshold(10 << 10). // 10 KB
-					WithLoggingLevel(badger.WARNING).
-					WithVerifyValueChecksum(true),
-			)
+			options := badger.DefaultOptions(internal.Config.Database.Path).
+				WithDetectConflicts(false).
+				WithSyncWrites(false).
+				// WithValueLogMaxEntries(100000).
+				//WithValueLogFileSize(250 << 20). // 250 MB
+				WithIndexCacheSize(2000 << 20). // 2 GB
+				//WithBlockCacheSize(100 << 20).   // 100 MB
+				WithMemTableSize(1 << 20). // 1 MB
+				WithNumMemtables(2).
+				WithNumLevelZeroTables(1).
+				WithNumLevelZeroTablesStall(2).
+				//WithNumLevelZeroTablesStall(2).
+				WithValueThreshold(10 << 10). // 10 KB
+				WithLoggingLevel(badger.WARNING).
+				WithVerifyValueChecksum(true)
+			if internal.Config.Database.SyncWrites {
+				options = options.WithSyncWrites(true)
+			}
+			if internal.Config.Database.DetectConflicts {
+				options = options.WithDetectConflicts(true)
+			}
+			bdb, err = badger.Open(options)
 		}
 		if err != nil {
 			// Waiting until not closed process will close the database.
@@ -124,9 +126,9 @@ func InitDB() {
 	// Translations
 	go func() {
 		for {
-			time.Sleep(time.Millisecond * 1000)
+			time.Sleep(time.Millisecond * 100)
 			doTranslations()
-			time.Sleep(time.Millisecond*2000 + time.Millisecond*time.Duration(rand.Intn(3000)))
+			time.Sleep(time.Millisecond*100 + time.Millisecond*time.Duration(rand.Intn(100)))
 		}
 	}()
 	// Backups
@@ -225,10 +227,6 @@ func InitDB() {
 }
 
 func BeforeClose() {
-	if internal.Config.Database.Engine == "pebble" {
-		BeforeClosePebble()
-		return
-	}
 	if bdb != nil {
 		err := bdb.Close()
 		if err != nil {

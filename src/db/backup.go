@@ -27,13 +27,6 @@ func DoBackup(file *os.File, since uint64) (err error) {
 }
 
 func doBackups() {
-	if internal.Config.Database.Engine == "pebble" {
-		doBackupsPebble()
-	}
-	if internal.Config.Database.Engine == "bolt" {
-		doBackupsBolt()
-		return
-	}
 	if internal.Config.Database.BackupPath == "" {
 		return
 	}

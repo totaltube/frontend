@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"regexp"
+	"sync"
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
@@ -38,12 +39,6 @@ type translationDoc struct {
 }
 
 func GetTranslation(from, to, text string) (translation string) {
-	if internal.Config.Database.Engine == "pebble" {
-		return GetTranslationPebble(from, to, text)
-	}
-	if internal.Config.Database.Engine == "bolt" {
-		return GetTranslationBolt(from, to, text)
-	}
 	keyStr := translationsPrefix + from + "_" + to + "_" + helpers.Md5Hash(text)
 	key := []byte(keyStr)
 	keyAccess := []byte(translationAccessedPrefix + keyStr)
@@ -80,14 +75,6 @@ func GetTranslation(from, to, text string) (translation string) {
 }
 
 func DeleteTranslation(from, to, text string) {
-	if internal.Config.Database.Engine == "pebble" {
-		DeleteTranslationPebble(from, to, text)
-		return
-	}
-	if internal.Config.Database.Engine == "bolt" {
-		DeleteTranslationBolt(from, to, text)
-		return
-	}
 	keyStr := translationsPrefix + from + "_" + to + "_" + helpers.Md5Hash(text)
 	key := []byte(keyStr)
 	keyExists := []byte(translationsDeferredPrefix + from + "_" + to + "_" + helpers.Md5Hash(text))
@@ -103,14 +90,6 @@ func DeleteTranslation(from, to, text string) {
 }
 
 func SaveTranslation(from, to, text, translation string) {
-	if internal.Config.Database.Engine == "pebble" {
-		SaveTranslationPebble(from, to, text, translation)
-		return
-	}
-	if internal.Config.Database.Engine == "bolt" {
-		SaveTranslationBolt(from, to, text, translation)
-		return
-	}
 	key := []byte(translationsPrefix + from + "_" + to + "_" + helpers.Md5Hash(text))
 	_ = bdb.Update(func(txn *badger.Txn) error {
 		if internal.Config.Database.NoTranslationsAccessUpdate {
@@ -123,14 +102,6 @@ func SaveTranslation(from, to, text, translation string) {
 var ErrExists = errors.New("translation already added")
 
 func SaveDeferredTranslation(from, to, text, Type string) {
-	if internal.Config.Database.Engine == "pebble" {
-		SaveDeferredTranslationPebble(from, to, text, Type)
-		return
-	}
-	if internal.Config.Database.Engine == "bolt" {
-		SaveDeferredTranslationBolt(from, to, text, Type)
-		return
-	}
 	now := time.Now().Format(time.RFC3339)
 	keyExists := []byte(translationsDeferredPrefix + from + "_" + to + "_" + helpers.Md5Hash(text))
 	key := []byte(translationsDeferredPrefix + now + "_" + from + "_" + to + "_" + helpers.Md5Hash(text))
@@ -175,24 +146,16 @@ func TryAgainTranslation(from, to, text string) {
 }
 
 func doTranslations() {
-	if internal.Config.Database.Engine == "pebble" {
-		doTranslationsPebble()
-		return
-	}
-	if internal.Config.Database.Engine == "bolt" {
-		doTranslationsBolt()
-		return
-	}
 	defer func() {
 		if r := recover(); r != nil {
 			log.Println("recover in doTranslations:", r)
 		}
 	}()
+	var toTranslate = make([]toTranslateT, 0, 1000)
 	_ = bdb.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer it.Close()
 		prefix := []byte(translationsDeferredPrefix)
-		var toTranslate = make([]toTranslateT, 0, 500)
 		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
 			item := it.Item()
 			k := item.Key()
@@ -246,12 +209,24 @@ func doTranslations() {
 						Type: Type,
 					},
 				})
-				if len(toTranslate) >= 500 {
+				if len(toTranslate) >= 1000 {
+					log.Println("toTranslate >= 1000")
 					break
 				}
 			}
 		}
-		for _, t := range toTranslate {
+		return nil
+	})
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, internal.Config.General.TranslateStreams) // limit to internal.Config.General.TranslateStreams
+	var mu sync.Mutex
+	for _, t := range toTranslate {
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(t toTranslateT) {
+			defer wg.Done()
+			defer func() { <-sem }()
+
 			translation, err := api.Translate("", t.translate)
 			if err != nil {
 				log.Printf("Error translating '%s' from %s to %s: %s", t.translate.Text, t.translate.From, t.translate.To, err.Error())
@@ -260,12 +235,15 @@ func doTranslations() {
 				SaveTranslation(t.translate.From, t.translate.To, t.translate.Text, translation)
 			}
 			keyExists := []byte(translationsDeferredPrefix + t.translate.From + "_" + t.translate.To + "_" + helpers.Md5Hash(t.translate.Text))
+			mu.Lock()
+			defer mu.Unlock()
 			_ = bdb.Update(func(txn *badger.Txn) error {
 				_ = txn.Delete(t.key)
 				_ = txn.Delete(keyExists)
 				return nil
 			})
-		}
-		return nil
-	})
+		}(t)
+	}
+
+	wg.Wait()
 }

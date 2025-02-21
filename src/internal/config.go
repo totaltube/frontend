@@ -48,6 +48,7 @@ type (
 		DeletedTaxonomiesToSearchPermanent bool           `toml:"deleted_taxonomies_to_search_permanent"`
 		RandomizeRatio                     float64        `toml:"randomize_ratio"`
 		DebugRoute                         string         `toml:"debug_route"`
+		TranslateStreams                   uint16         `toml:"translate_streams"` // number of simultaneous streams for translation
 	}
 	Frontend struct {
 		SitesPath                string   `toml:"sites_path"`
@@ -67,6 +68,8 @@ type (
 		DebugBadger                bool   `toml:"debug_badger"`
 		Engine                     string `toml:"engine"`
 		NoTranslationsAccessUpdate bool   `toml:"no_translations_access_update"`
+		SyncWrites                 bool   `toml:"sync_writes"`
+		DetectConflicts            bool   `toml:"detect_conflicts"`
 	}
 	Mail struct {
 		Secure       bool
@@ -97,6 +100,7 @@ func InitConfig(configPath string) {
 			InnerRecreateWorkers: 20,
 			ToplistDataUrl:       "/_toplist_data.json",
 			ApiTimeout:           types.Duration(time.Second * 20),
+			TranslateStreams:     1,
 		},
 		Frontend: Frontend{
 			MaxDmcaMinute:            5,
@@ -134,4 +138,7 @@ func InitConfig(configPath string) {
 		Config.General.ApiUrl = matches[1] + "/"
 	}
 	Config.MainPath = filepath.Dir(configPath)
+	if Config.General.TranslateStreams < 1 || Config.General.TranslateStreams > 1000 {
+		Config.General.TranslateStreams = 1
+	}
 }

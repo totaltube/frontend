@@ -521,17 +521,21 @@ func getSitemapVideos(hostName string, amount int64, page int64) (results *types
 		})
 		return rawResponse, err
 	}, false); err != nil {
+		log.Println(err)
 		return
 	}
 	results = new(types.ContentResults)
 	err = json.Unmarshal(cached, results)
+	if err != nil {
+		log.Println(err)
+	}
 	return
 }
 
 func getSitemapSearches(hostName string, lang string, amount int64) (results []types.TopSearch, err error) {
-	var ttl = time.Hour*24 + time.Duration(rand.Intn(3600*10))*time.Second
+	var ttl = time.Hour + time.Duration(rand.Intn(3600))*time.Second
 	var cached []byte
-	if cached, err = db.GetCachedTimeout(fmt.Sprintf("sitemap:%s:%s:top-searches-%d", hostName, lang, amount), ttl, time.Hour*20, func() ([]byte, error) {
+	if cached, err = db.GetCachedTimeout(fmt.Sprintf("sitemap:%s:%s:top-searches-%d", hostName, lang, amount), ttl, ttl, func() ([]byte, error) {
 		var rawResponse json.RawMessage
 		_, rawResponse, err = api.TopSearches(hostName, lang, amount)
 		return rawResponse, err

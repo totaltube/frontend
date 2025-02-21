@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/flosch/pongo2/v6"
-	"golang.org/x/net/html"
 	"sersh.com/totaltube/frontend/helpers"
 )
 
@@ -22,7 +21,8 @@ func (node *tagNocacheNode) Execute(_ *pongo2.ExecutionContext, writer pongo2.Te
 			return &pongo2.Error{Sender: "tag:dynamic", OrigError: err}
 		}
 	} else {
-		_, err = writer.WriteString(fmt.Sprintf(`<data class="_dynamic" value="%s"></data>`, html.EscapeString(node.expression)))
+
+		_, err = writer.WriteString(fmt.Sprintf(`<data class="_dynamic" value="short">%s</data>`, helpers.Base64([]byte(node.expression))))
 		if err != nil {
 			return &pongo2.Error{Sender: "tag:dynamic", OrigError: err}
 		}

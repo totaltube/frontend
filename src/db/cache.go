@@ -1,7 +1,6 @@
 package db
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"runtime/debug"
@@ -31,14 +30,6 @@ var recreateQueue chan recreateInfo
 var innerRecreateQueue chan recreateInfo // extra queue for requests inside recreate functions to avoid deadlock
 
 func recreateJob(job recreateInfo) {
-	if internal.Config.Database.Engine == "pebble" {
-		recreateJobPebble(job)
-		return
-	}
-	if internal.Config.Database.Engine == "bolt" {
-		recreateJobBolt(job)
-		return
-	}
 	defer func() {
 		if job.doneChannel != nil {
 			defer func() {
@@ -49,7 +40,7 @@ func recreateJob(job recreateInfo) {
 			log.Println("recover in cache recreate worker: ", r)
 			debug.PrintStack()
 			if job.doneChannel != nil {
-				job.doneChannel <- errors.New(fmt.Sprintf("%s", r))
+				job.doneChannel <- fmt.Errorf("%s", r)
 			}
 		}
 	}()
@@ -108,205 +99,224 @@ type cacheUpdate struct {
 
 var cacheUpdates sync.Map
 
-func GetCachedTimeout(cacheKey string, timeout time.Duration, extendedTimeout time.Duration, recreate func() ([]byte, error), bypassCache bool) (result []byte, err error) {
-	if internal.Config.Database.Engine == "pebble" {
-		return GetCachedTimeoutPebble(cacheKey, timeout, extendedTimeout, recreate, bypassCache)
+func readFromBadgerCache(key, expireKey []byte) (data []byte, found bool, expired bool, err error) {
+	var expire time.Time
+
+	err = bdb.View(func(txn *badger.Txn) error {
+		item, e := txn.Get(key)
+		if e == badger.ErrKeyNotFound {
+			return e // ключ не найден
+		}
+		if e != nil {
+			return e // любая другая ошибка Badger
+		}
+		val, e2 := item.ValueCopy(nil)
+		if e2 != nil {
+			return e2
+		}
+		data = val
+
+		// Читаем expireKey, если он есть
+		itemExp, e3 := txn.Get(expireKey)
+		if e3 == badger.ErrKeyNotFound {
+			// значит, TTL не ставили
+			return nil
+		}
+		if e3 != nil {
+			return e3
+		}
+		expBytes, e4 := itemExp.ValueCopy(nil)
+		if e4 != nil {
+			return e4
+		}
+		t, e5 := time.Parse(time.RFC3339, string(expBytes))
+		if e5 == nil {
+			expire = t
+		}
+		return nil
+	})
+	if err == badger.ErrKeyNotFound {
+		// Ключа (или expireKey) нет в базе
+		return nil, false, false, nil
 	}
-	if internal.Config.Database.Engine == "bolt" {
-		return GetCachedTimeoutBolt(cacheKey, timeout, extendedTimeout, recreate, bypassCache)
+	if err != nil {
+		// Любая другая ошибка
+		return nil, false, false, err
+	}
+
+	// Если дошли сюда, значит данные найдены
+	found = true
+	// Проверяем, не просрочены ли
+	if !expire.IsZero() && time.Now().After(expire) {
+		expired = true
+	}
+	return data, found, expired, nil
+}
+
+// storeToBadgerCache открывает Update-транзакцию и записывает данные с учётом TTL.
+// timeout + extendedTime = реальная длительность хранения в Badger.
+// Кроме того, в expireKey записываем дату "предварительного" окончания (timeout),
+// чтобы понимать, когда данные «начнут считаться устаревшими» внутри приложения.
+func storeToBadgerCache(key, expireKey []byte, data []byte, timeout, extendedTime time.Duration) error {
+	return bdb.Update(func(txn *badger.Txn) error {
+		// TTL в Badger будет timeout + extendedTime
+		ttl := timeout + extendedTime
+
+		entry := badger.NewEntry(key, data).WithTTL(ttl)
+		if err := txn.SetEntry(entry); err != nil {
+			return err
+		}
+
+		expireTime := time.Now().Add(timeout) // Когда данные «протухнут» для нашего кода
+		expEntry := badger.NewEntry(expireKey, []byte(expireTime.Format(time.RFC3339))).
+			WithTTL(ttl)
+
+		return txn.SetEntry(expEntry)
+	})
+}
+
+func GetCachedTimeout(
+	cacheKey string,
+	timeout, extendedTimeout time.Duration,
+	recreate func() ([]byte, error),
+	bypassCache bool,
+) (result []byte, err error) {
+
+	key := []byte(cachePrefix + cacheKey)
+	expireKey := []byte(cachePrefix + "_exp_" + cacheKey)
+
+	// 1. Проверяем, не занята ли уже кем-то реконструкция кэша
+	updatePtr, loaded := cacheUpdates.LoadOrStore(cacheKey, &cacheUpdate{done: make(chan struct{})})
+	update := updatePtr.(*cacheUpdate)
+
+	if loaded {
+		// Значит, другая горутина занимается обновлением этого ключа
+		<-update.done // Ждём, пока она закончит
+
+		// Затем пытаемся прочитать из кэша (или пересоздать, если нет)
+		if !bypassCache {
+			data, found, expired, err := readFromBadgerCache(key, expireKey)
+			if err != nil {
+				return nil, err
+			}
+			if found && !expired {
+				// У нас есть валидные данные — сразу возвращаем
+				return data, nil
+			}
+		}
+		// Если ничего нет — пересоздаем
+		return recreateAndStore(cacheKey, timeout, extendedTimeout, recreate)
+	}
+
+	// Мы "первые" — берём на себя обновление
+	defer func() {
+		// В любом случае по выходу разблокируем других
+		close(update.done)
+		cacheUpdates.Delete(cacheKey)
+	}()
+
+	// 2. Сразу читаем из кэша, если bypassCache = false
+	if !bypassCache {
+		data, found, expired, _ := readFromBadgerCache(key, expireKey)
+		if found && !expired {
+			// Кэш актуален
+			return data, nil
+		}
+		// Иначе надо пересоздавать (либо не найден, либо просрочен)
+	}
+
+	// 3. Пересоздаём и записываем в кэш
+	return recreateAndStore(cacheKey, timeout, extendedTimeout, recreate)
+}
+
+func recreateAndStore(
+	cacheKey string,
+	timeout, extendedTimeout time.Duration,
+	recreate func() ([]byte, error),
+) ([]byte, error) {
+	result, err := recreate()
+	if err != nil {
+		return nil, err
 	}
 	key := []byte(cachePrefix + cacheKey)
 	expireKey := []byte(cachePrefix + "_exp_" + cacheKey)
-	found := false
-	var expire time.Time
-	_ = bdb.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(key)
-		if err != nil {
-			return err
-		}
-		result, err = item.ValueCopy(nil)
-		if err != nil {
-			return err
-		}
-		item, err = txn.Get(expireKey)
-		if err != nil {
-			return err
-		}
-		var expireBytes []byte
-		expireBytes, err = item.ValueCopy(nil)
-		if err != nil {
-			return err
-		}
-		expire, err = time.Parse(time.RFC3339, string(expireBytes))
-		if err != nil {
-			return err
-		}
-		found = true
-		return nil
-	})
-	if found && !bypassCache {
-		if expire.After(time.Now()) { // there are some time for expiration, just return found cached value
-			return
-		}
-		if extendedTimeout == 0 {
-			// recreating in place
-			result, err = recreate()
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			// Saving to cache
-			err = bdb.Update(func(txn *badger.Txn) error {
-				entry := badger.NewEntry(key, result).WithTTL(timeout + extendedTimeout)
-				err = txn.SetEntry(entry)
-				if err != nil {
-					return err
-				}
-				expireEntry := badger.NewEntry(expireKey, []byte(time.Now().Add(timeout).Format(time.RFC3339))).
-					WithTTL(timeout + extendedTimeout)
-				err = txn.SetEntry(expireEntry)
-				return err
-			})
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			return
-		}
-		// need to recreate found cached value. But let's check if we already have recreate job for this
-		if _, loaded := recreatingNow.LoadOrStore(cacheKey, time.Now()); loaded {
-			// currently we recreating value, so, just return old one cached
-			return
-		}
-		// recreating in background
-		var info = recreateInfo{
-			recreateFunction: recreate,
-			cacheKey:         cacheKey,
-			timeout:          timeout,
-			extendedTimeout:  extendedTimeout,
-		}
-		if strings.HasPrefix(cacheKey, "in:") {
-			innerRecreateQueue <- info
-		} else {
-			recreateQueue <- info
-		}
-		return
+
+	// Записываем в Badger
+	storeErr := storeToBadgerCache(key, expireKey, result, timeout, extendedTimeout)
+	if storeErr != nil {
+		log.Println("error storing to cache:", storeErr)
 	}
-	if update, loaded := cacheUpdates.LoadOrStore(cacheKey, &cacheUpdate{done: make(chan struct{})}); loaded {
-		// Ждем, пока другая горутина завершит обновление
-		<-update.(*cacheUpdate).done
-		// После завершения пытаемся получить значение из кэша
-		return GetCachedTimeout(cacheKey, timeout, extendedTimeout, recreate, false)
-	}
-	defer func() {
-		// Уведомляем другие горутины о завершении обновления
-		if update, ok := cacheUpdates.Load(cacheKey); ok {
-			close(update.(*cacheUpdate).done)
-			cacheUpdates.Delete(cacheKey)
-		}
-	}()
-	/*
-		waited := false
-		for {
-			if _, loaded := recreatingNow.LoadOrStore(cacheKey, time.Now()); !loaded {
-				break
-			}
-			waited = true
-			time.Sleep(time.Millisecond * 10)
-		}
-		if waited {
-			// trying to get recreated by another thread cached value
-			recreatingNow.Delete(cacheKey)
-			return GetCachedTimeout(cacheKey, timeout, extendedTimeout, recreate, false)
-		}
-	*/
-	// recreating
-	var done = make(chan error)
-	var info = recreateInfo{
-		recreateFunction: recreate,
-		cacheKey:         cacheKey,
-		timeout:          timeout,
-		extendedTimeout:  extendedTimeout,
-		doneChannel:      done,
-	}
-	startTime := time.Now()
-	if strings.HasPrefix(cacheKey, "in:") {
-		innerRecreateQueue <- info
-	} else {
-		recreateQueue <- info
-	}
-	err = <-done
-	elapsed := time.Since(startTime)
-	if elapsed > time.Second*5 {
-		log.Println(cacheKey, "too long time to recreate: ", elapsed, err)
-	}
-	if err != nil {
-		// Removing old cache
-		if found {
-			_ = bdb.Update(func(txn *badger.Txn) error {
-				_ = txn.Delete(key)
-				_ = txn.Delete(expireKey)
-				return nil
-			})
-		}
-		return
-	}
-	return GetCachedTimeout(cacheKey, timeout, extendedTimeout, recreate, false)
+	return result, err
 }
 
 var clearCacheMutex sync.Mutex
 
 func ClearCacheByPrefix(prefix string) (err error) {
-	if internal.Config.Database.Engine == "pebble" {
-		return ClearCacheByPrefixPebble(prefix)
-	}
-	if internal.Config.Database.Engine == "bolt" {
-		return ClearCacheByPrefixBolt(prefix)
-	}
-	var Prefix = []byte(cachePrefix + prefix)
 	clearCacheMutex.Lock()
 	defer clearCacheMutex.Unlock()
-	deleteKeys := func(keysForDelete [][]byte) error {
-		if err := bdb.Update(func(txn *badger.Txn) error {
-			for _, key := range keysForDelete {
+
+	var (
+		Prefix      = []byte(cachePrefix + prefix)
+		collectSize = 10000
+	)
+
+	opts := badger.DefaultIteratorOptions
+	opts.AllVersions = false
+	opts.PrefetchValues = false
+
+	startKey := Prefix
+	for {
+		var keysToDelete [][]byte
+
+		// Read up to 10,000 keys in a View transaction
+		err = bdb.View(func(txn *badger.Txn) error {
+			it := txn.NewIterator(opts)
+			defer it.Close()
+
+			it.Seek(startKey)
+			count := 0
+			for it.ValidForPrefix(Prefix) && count < collectSize {
+				key := it.Item().KeyCopy(nil)
+				keysToDelete = append(keysToDelete, key)
+				count++
+				it.Next()
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+
+		// If there are no keys, exit
+		if len(keysToDelete) == 0 {
+			break
+		}
+
+		// Delete collected keys
+		err = bdb.Update(func(txn *badger.Txn) error {
+			for _, key := range keysToDelete {
 				if err := txn.Delete(key); err != nil {
 					return err
 				}
 			}
 			return nil
-		}); err != nil {
+		})
+		if err != nil {
 			return err
 		}
-		return nil
+
+		// If we did not collect a full "batch" of 10,000 keys,
+		// it means the keys are finished — exit.
+		if len(keysToDelete) < collectSize {
+			break
+		}
+
+		// Otherwise, form a new startKey for the next iteration.
+		// Since all keys are sorted, we can take the last deleted key
+		// and add a 0x00 byte to it to guarantee moving forward.
+		lastKey := keysToDelete[len(keysToDelete)-1]
+		startKey = append(lastKey, 0x00)
 	}
-	collectSize := 10000
-	err = bdb.View(func(txn *badger.Txn) error {
-		opts := badger.DefaultIteratorOptions
-		opts.AllVersions = false
-		opts.PrefetchValues = false
-		it := txn.NewIterator(opts)
-		keysForDelete := make([][]byte, 0, collectSize)
-		keysCollected := 0
-		for it.Seek(Prefix); it.ValidForPrefix(Prefix); it.Next() {
-			key := it.Item().KeyCopy(nil)
-			keysForDelete = append(keysForDelete, key)
-			keysCollected++
-			if keysCollected == collectSize {
-				if err := deleteKeys(keysForDelete); err != nil {
-					it.Close()
-					return err
-				}
-				keysForDelete = make([][]byte, 0, collectSize)
-				keysCollected = 0
-			}
-		}
-		it.Close()
-		if keysCollected > 0 {
-			if err := deleteKeys(keysForDelete); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-	return
+
+	return nil
 }

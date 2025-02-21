@@ -18,11 +18,20 @@ func InsertDynamic(src []byte, path string, userCtx pongo2.Context) (result []by
 		var err error
 		matches := replaceDynamicRegex.FindSubmatch(match)
 		expression := html.UnescapeString(string(matches[1]))
+		if expression == "short" && string(matches[2]) != "" {
+			var expressionBytes []byte
+			expressionBytes, err = helpers.FromBase64(string(matches[2]))
+			if err != nil {
+				log.Println("Error rendering dynamic expression [ " + string(matches[2]) + " ]: " + err.Error())
+				return []byte("")
+			}
+			expression = string(expressionBytes)
+		}
 		if strings.HasPrefix(expression, "include ") {
 			var tpl *pongo2.Template
 			tpl, err = pongo2.FromString("{{" + strings.TrimPrefix(expression, "include ") + "}}")
 			if err != nil {
-				return []byte("Error rendering dynamic expression [ " + expression + " ]: " + err.Error())
+				return []byte("Error rendering dynamic expression [ " + expression + " ]: " + err.Error() + " " + string(matches[1]) + " - " + expression)
 			}
 			var templateName string
 			templateName, err = tpl.Execute(userCtx)
@@ -56,6 +65,7 @@ func InsertDynamic(src []byte, path string, userCtx pongo2.Context) (result []by
 			if err != nil {
 				return []byte("Error rendering dynamic expression [ " + expression + " ]: " + err.Error())
 			}
+			return
 		}
 		innerExpression := matches[2]
 		if string(innerExpression) != "" {

@@ -7,37 +7,19 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-chi/render"
 	"github.com/samber/lo"
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/db"
+	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/internal"
 	"sersh.com/totaltube/frontend/middlewares"
+	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
 )
-
-var mapToplistRes = func(item *types.ContentResult, _ int) types.ToplistItem {
-	description := ""
-	if item.Description != nil {
-		description = *item.Description
-	}
-	thumb := item.Thumb()
-	hiresThumb := item.HiresThumb()
-	if hiresThumb == thumb {
-		hiresThumb = ""
-	}
-	return types.ToplistItem{
-		Title:       item.Title,
-		Description: description,
-		Thumb:       thumb,
-		HiresThumb:  hiresThumb,
-		ContentData: types.ToplistContentData{
-			ContentId: item.Id,
-		},
-	}
-}
 
 // ToplistData will handle requests to get most clickable thumbs for trading with other sites
 var ToplistData = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -46,10 +28,44 @@ var ToplistData = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))
 	query := r.URL.Query().Get("query")
 	lang := r.URL.Query().Get("lang")
+	if lang == "" {
+		lang = "en"
+	}
+	lang = strings.ToLower(strings.Split(lang, "-")[0])
+	if lang == "zh" {
+		lang = "zh-Hans"
+	}
+	lang = internal.DetectLanguage(lang, config.General.DefaultLanguage, lang).Id
 	ip := r.Context().Value("ip").(string)
 	groupId := internal.DetectCountryGroup(net.ParseIP(ip)).Id
-	cacheKey := fmt.Sprintf(`toplist-data:%s`, query)
+	cacheKey := fmt.Sprintf(`td:%s`, helpers.Md5Hash(fmt.Sprintf(`%s-%s-%s-%d`, hostName, query, lang, groupId)))
 	cacheTtl := time.Minute * 30
+
+	var mapToplistRes = func(item *types.ContentResult, _ int) types.ToplistItem {
+		description := ""
+		if item.Description != nil {
+			description = *item.Description
+		}
+		thumb := item.Thumb()
+		hiresThumb := item.HiresThumb()
+		if hiresThumb == thumb {
+			hiresThumb = ""
+		}
+		category := "default"
+		if len(item.Categories) > 0 {
+			category = item.Categories[0].Slug
+		}
+		return types.ToplistItem{
+			Title:       item.Title,
+			Description: description,
+			Thumb:       thumb,
+			HiresThumb:  hiresThumb,
+			ContentData: types.ToplistContentData{
+				ContentId: item.Id,
+				Url:       site.GetLink("content-item", config, hostName, lang, false, "full_url", true, "id", item.Id, "slug", item.Slug, "category", category),
+			},
+		}
+	}
 	result, err := db.GetCachedTimeout(cacheKey, cacheTtl, cacheTtl/2, func() (result []byte, err error) {
 		var amount int64 = 50
 		var toplistResults types.ToplistResults
