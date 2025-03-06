@@ -18,10 +18,11 @@ import (
 )
 
 const (
-	translationsPrefix         = "tr_"
-	translationsDeferredPrefix = "trd_"
-	translationsTriedPrefix    = "trt_"
-	translationAccessedPrefix  = "tra_"
+	translationsPrefix             = "tr_"
+	translationsDeferredPrefix     = "trd_"
+	translationsDeferredPagePrefix = "trdp_"
+	translationsTriedPrefix        = "trt_"
+	translationAccessedPrefix      = "tra_"
 )
 
 const (
@@ -29,7 +30,7 @@ const (
 	expireAccessedTranslationsInterval = time.Hour * 24 * 30 * 6 // через 6 месяцев неиспользованные переводы удаляются
 )
 
-var timeRegex = regexp.MustCompile(`trd__?(.+?)(_|$)`)
+var timeRegex = regexp.MustCompile(`trdp?__?(.+?)(_|$)`)
 
 type translationDoc struct {
 	From string `json:"from"`
@@ -102,13 +103,23 @@ func SaveTranslation(from, to, text, translation string) {
 var ErrExists = errors.New("translation already added")
 
 func SaveDeferredTranslation(from, to, text, Type string) {
+	if !lo.Contains(types.TranslationTypes, Type) {
+		Type = "page-text"
+	}
 	now := time.Now().Format(time.RFC3339)
-	keyExists := []byte(translationsDeferredPrefix + from + "_" + to + "_" + helpers.Md5Hash(text))
-	key := []byte(translationsDeferredPrefix + now + "_" + from + "_" + to + "_" + helpers.Md5Hash(text))
-	triedKey := []byte(translationsTriedPrefix + from + "_" + to + "_" + helpers.Md5Hash(text))
+	var keyExists, key, triedKey []byte
+	if Type == "page-text" {
+		keyExists = []byte(translationsDeferredPagePrefix + from + "_" + to + "_" + helpers.Md5Hash(text))
+		key = []byte(translationsDeferredPagePrefix + now + "_" + from + "_" + to + "_" + helpers.Md5Hash(text))
+		triedKey = []byte(translationsTriedPrefix + from + "_" + to + "_" + helpers.Md5Hash(text))
+	} else {
+		keyExists = []byte(translationsDeferredPrefix + from + "_" + to + "_" + helpers.Md5Hash(text))
+		key = []byte(translationsDeferredPrefix + now + "_" + from + "_" + to + "_" + helpers.Md5Hash(text))
+		triedKey = []byte(translationsTriedPrefix + from + "_" + to + "_" + helpers.Md5Hash(text))
+	}
 	err := bdb.View(func(txn *badger.Txn) error {
 		if _, err := txn.Get(keyExists); err == nil {
-			// We already have this translation deffered. No need to add more
+			// We already have this translation deferred. No need to add more
 			return ErrExists
 		}
 		if _, err := txn.Get(triedKey); err == nil {
@@ -145,6 +156,8 @@ func TryAgainTranslation(from, to, text string) {
 	})
 }
 
+var ErrBreak = errors.New("break")
+
 func doTranslations() {
 	defer func() {
 		if r := recover(); r != nil {
@@ -155,8 +168,9 @@ func doTranslations() {
 	_ = bdb.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer it.Close()
-		prefix := []byte(translationsDeferredPrefix)
-		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+		prefix1 := []byte(translationsDeferredPagePrefix)
+		prefix2 := []byte(translationsDeferredPrefix)
+		process := func(it *badger.Iterator) (err error) {
 			item := it.Item()
 			k := item.Key()
 			now := time.Now()
@@ -166,21 +180,20 @@ func doTranslations() {
 				return nil
 			}
 			var t time.Time
-			var err error
 			t, err = time.Parse(time.RFC3339, string(matches[1]))
 			if err != nil {
 				t, err = time.Parse(time.RFC3339Nano, string(matches[1]))
 			}
 			if err != nil {
-				continue
+				return nil
 			}
 			if t.After(now) {
 				log.Println(t, now)
-				break // This will be translated in future
+				return ErrBreak // This will be translated in future
 			} else {
 				// translating
 				var doc translationDoc
-				err = item.Value(func(val []byte) error {
+				err = item.Value(func(val []byte) (err error) {
 					err = json.Unmarshal(val, &doc)
 					if err != nil {
 						log.Println(err)
@@ -193,12 +206,10 @@ func doTranslations() {
 					return err
 				}
 				Type := doc.Type
-				if !lo.Contains(types.TranslationTypes, Type) {
-					Type = "page-text"
-				}
+
 				if _, err := txn.Get([]byte(translationsTriedPrefix + doc.From + "_" + doc.To + "_" + helpers.Md5Hash(doc.Text))); err == nil {
 					// If we already tried to translate this, then not saving anything, waiting when last attempt ttl will expire
-					continue
+					return nil
 				}
 				toTranslate = append(toTranslate, toTranslateT{
 					key: k,
@@ -211,8 +222,22 @@ func doTranslations() {
 				})
 				if len(toTranslate) >= 1000 {
 					log.Println("toTranslate >= 1000")
-					break
+					return ErrBreak
 				}
+			}
+			return
+		}
+		for it.Seek(prefix1); it.ValidForPrefix(prefix1); it.Next() {
+			err := process(it)
+			if err == ErrBreak {
+				break
+			}
+		}
+		it.Rewind()
+		for it.Seek(prefix2); it.ValidForPrefix(prefix2); it.Next() {
+			err := process(it)
+			if err == ErrBreak {
+				break
 			}
 		}
 		return nil
@@ -226,7 +251,6 @@ func doTranslations() {
 		go func(t toTranslateT) {
 			defer wg.Done()
 			defer func() { <-sem }()
-
 			translation, err := api.Translate("", t.translate)
 			if err != nil {
 				log.Printf("Error translating '%s' from %s to %s: %s", t.translate.Text, t.translate.From, t.translate.To, err.Error())

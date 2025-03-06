@@ -6,11 +6,12 @@ type (
 		General         ConfigGeneral
 		Sitemap         ConfigSitemap
 		Params          ConfigParams
-		LanguageDomains map[string]string `toml:"language_domains"`
-		Javascript      ConfigJs          `json:"-"`
-		Scss            ConfigScss        `json:"-"`
-		Custom          map[string]string `json:"-"`
-		Hostname        string            `json:"-"`
+		LanguageDomains map[string]string            `toml:"language_domains"`
+		Translations    map[string]map[string]string `toml:"translations"`
+		Javascript      ConfigJs                     `json:"-"`
+		Scss            ConfigScss                   `json:"-"`
+		Custom          map[string]string            `json:"-"`
+		Hostname        string                       `json:"-"`
 	}
 	ConfigSitemap struct {
 		Route            string   `toml:"route"`
@@ -209,6 +210,7 @@ func NewConfig() *Config {
 			Like:                   "like",
 		},
 		LanguageDomains: make(map[string]string),
+		Translations:    make(map[string]map[string]string),
 	}
 	return &n
 }

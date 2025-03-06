@@ -80,16 +80,16 @@ func generateContext(name string, sitePath string, customContext pongo2.Context)
 		"time8601":     helpers.Time8601,
 		"duration8601": helpers.Duration8601,
 		"translate": func(text interface{}) interface{} {
-			return deferredTranslate("en", customContext["lang"].(*types.Language).Id, text, "page-text", refreshTranslations)
+			return deferredTranslate("en", customContext["lang"].(*types.Language).Id, text, "page-text", refreshTranslations, customContext["config"].(*types.Config))
 		},
 		"translate_title": func(text interface{}) interface{} {
-			return deferredTranslate("en", customContext["lang"].(*types.Language).Id, text, "content-title", refreshTranslations)
+			return deferredTranslate("en", customContext["lang"].(*types.Language).Id, text, "content-title", refreshTranslations, customContext["config"].(*types.Config))
 		},
 		"translate_description": func(text interface{}) interface{} {
-			return deferredTranslate("en", customContext["lang"].(*types.Language).Id, text, "content-description", refreshTranslations)
+			return deferredTranslate("en", customContext["lang"].(*types.Language).Id, text, "content-description", refreshTranslations, customContext["config"].(*types.Config))
 		},
 		"translate_query": func(text interface{}) interface{} {
-			return deferredTranslate("en", customContext["lang"].(*types.Language).Id, text, "query", refreshTranslations)
+			return deferredTranslate("en", customContext["lang"].(*types.Language).Id, text, "query", refreshTranslations, customContext["config"].(*types.Config))
 		},
 		"static": func(filePaths ...string) string {
 			filePath := strings.Join(filePaths, "")

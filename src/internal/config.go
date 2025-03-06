@@ -100,7 +100,7 @@ func InitConfig(configPath string) {
 			InnerRecreateWorkers: 20,
 			ToplistDataUrl:       "/_toplist_data.json",
 			ApiTimeout:           types.Duration(time.Second * 20),
-			TranslateStreams:     1,
+			TranslateStreams:     10,
 		},
 		Frontend: Frontend{
 			MaxDmcaMinute:            5,

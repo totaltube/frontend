@@ -24,26 +24,20 @@ func InitDB() {
 		if internal.Config.Database.LowMemory {
 			// low memory options
 			options := badger.DefaultOptions(internal.Config.Database.Path).
-				WithDetectConflicts(false).
+				WithDetectConflicts(internal.Config.Database.DetectConflicts).
 				WithValueLogFileSize(500 << 20). // 500 MB
 				WithIndexCacheSize(50 << 20).    // 50 MB
 				WithBlockCacheSize(10 << 20).    // 10 MB
 				WithValueThreshold(10 << 10).    // 10 KB
 				WithNumMemtables(2).
-				WithSyncWrites(false).
+				WithSyncWrites(internal.Config.Database.SyncWrites).
 				WithLoggingLevel(badger.WARNING).
 				WithVerifyValueChecksum(true)
-			if internal.Config.Database.SyncWrites {
-				options = options.WithSyncWrites(true)
-			}
-			if internal.Config.Database.DetectConflicts {
-				options = options.WithDetectConflicts(true)
-			}
 			bdb, err = badger.Open(options)
 		} else {
 			options := badger.DefaultOptions(internal.Config.Database.Path).
-				WithDetectConflicts(false).
-				WithSyncWrites(false).
+				WithDetectConflicts(internal.Config.Database.DetectConflicts).
+				WithSyncWrites(internal.Config.Database.SyncWrites).
 				// WithValueLogMaxEntries(100000).
 				//WithValueLogFileSize(250 << 20). // 250 MB
 				WithIndexCacheSize(2000 << 20). // 2 GB
@@ -56,12 +50,6 @@ func InitDB() {
 				WithValueThreshold(10 << 10). // 10 KB
 				WithLoggingLevel(badger.WARNING).
 				WithVerifyValueChecksum(true)
-			if internal.Config.Database.SyncWrites {
-				options = options.WithSyncWrites(true)
-			}
-			if internal.Config.Database.DetectConflicts {
-				options = options.WithDetectConflicts(true)
-			}
 			bdb, err = badger.Open(options)
 		}
 		if err != nil {
@@ -161,67 +149,6 @@ func InitDB() {
 			helpers.DumpJSON(bdb.Levels())
 			onDisk, uncompressed := bdb.EstimateSize([]byte("c_"))
 			log.Println("Size of c_ prefix on disk:", onDisk, "uncompressed:", uncompressed)
-			//err := bdb.Flatten(10)
-			/*prefixStats := make(map[string]struct {
-				Count   int
-				Expired int
-				Size    int64
-			})
-			prefixStatsAll := make(map[string]struct {
-				Count   int
-				Expired int
-				Size    int64
-			})
-			// Создаем транзакцию для чтения
-			err := bdb.View(func(txn *badger.Txn) error {
-				// Создаем итератор с опциями
-				opts := badger.DefaultIteratorOptions
-				opts.PrefetchValues = false // Чтобы не загружать значения сразу
-				it := txn.NewIterator(opts)
-				defer it.Close()
-				for it.Rewind(); it.Valid(); it.Next() {
-					item := it.Item()
-					key := item.Key()
-					expire := item.ExpiresAt()
-					prefix := "_"
-					// Находим префикс до первого символа '_'
-					prefixEnd := strings.IndexByte(string(key), '_')
-					if prefixEnd != -1 {
-						prefix = string(key[:prefixEnd+1])
-					}
-					if expire == 0 || time.Unix(int64(expire), 0).After(time.Now().Add(time.Hour*2+time.Minute*30)) {
-						// Обновляем статистику для префикса
-						stats := prefixStats[prefix]
-						stats.Count++
-						stats.Size += int64(item.EstimatedSize())
-						if item.IsDeletedOrExpired() {
-							stats.Expired++
-						}
-						prefixStats[prefix] = stats
-						//log.Println("Key", string(key), "expires at", time.Unix(int64(expire), 0).Format(time.RFC3339))
-					}
-					statsAll := prefixStatsAll[prefix]
-					statsAll.Count++
-					statsAll.Size += int64(item.EstimatedSize())
-					if item.IsDeletedOrExpired() {
-						statsAll.Expired++
-					}
-					prefixStatsAll[prefix] = statsAll
-				}
-				return nil
-			})
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			// Выводим результаты
-			for prefix, stats := range prefixStats {
-				log.Printf("Prefix: %s, Count: %d, Expired: %d, Size: %.2f mbytes\n", prefix, stats.Count, stats.Expired, float64(stats.Size)/1024/1024)
-			}
-			log.Println("All keys:")
-			for prefix, stats := range prefixStatsAll {
-				log.Printf("Prefix: %s, Count: %d, Expired: %d, Size: %.2f mbytes\n", prefix, stats.Count, stats.Expired, float64(stats.Size)/1024/1024)
-			}*/
 		}()
 	}
 }
