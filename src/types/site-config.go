@@ -101,31 +101,32 @@ type (
 		Minify      bool     `toml:"minify"`
 	}
 	ConfigGeneral struct {
-		CanonicalUrl                       string  `toml:"canonical_url"`
-		TradeUrlTemplate                   string  `toml:"trade_url_template"`
-		ModelsPerPage                      int     `toml:"models_per_page"`
-		DefaultResultsPerPage              int64   `toml:"default_results_per_page"`
-		SearchResultsPerPage               int64   `toml:"search_results_per_page"`
-		CategoryResultsPerPage             int64   `toml:"category_results_per_page"`
-		ChannelResultsPerPage              int64   `toml:"channel_results_per_page"`
-		ModelResultsPerPage                int64   `toml:"model_results_per_page"`
-		TopContentResultsPerPage           int64   `toml:"top_content_results_per_page"`
-		TopCategoriesResultsPerPage        int64   `toml:"top_categories_results_per_page"`
-		ContentRelatedAmount               int     `toml:"content_related_amount"`
-		FakeVideoPage                      bool    `toml:"fake_video_page"`
-		MultiLanguage                      bool    `toml:"multi_language"`
-		DefaultLanguage                    string  `toml:"default_language"`
-		NoRedirectDefaultLanguage          bool    `toml:"no_redirect_default_language"`
-		MinifyHtml                         bool    `toml:"minify_html" json:"-"`
-		PaginationMaxRenderedLinks         int     `toml:"pagination_max_rendered_links"`
-		DisableCategoriesRedirect          bool    `toml:"disable_categories_redirect"`
-		Debug                              bool    `toml:"debug"`
-		ApiUrl                             string  `toml:"api_url"`
-		ApiSecret                          string  `toml:"api_secret"`
-		ToplistDataUrl                     string  `toml:"toplist_data_url"` // url to json file with toplist data for trade scripts
-		DeletedTaxonomiesToSearch          bool    `toml:"deleted_taxonomies_to_search"`
-		DeletedTaxonomiesToSearchPermanent bool    `toml:"deleted_taxonomies_to_search_permanent"`
-		RandomizeRatio                     float64 `toml:"randomize_ratio"`
+		CanonicalUrl                       string   `toml:"canonical_url"`
+		TradeUrlTemplate                   string   `toml:"trade_url_template"`
+		ModelsPerPage                      int      `toml:"models_per_page"`
+		DefaultResultsPerPage              int64    `toml:"default_results_per_page"`
+		SearchResultsPerPage               int64    `toml:"search_results_per_page"`
+		CategoryResultsPerPage             int64    `toml:"category_results_per_page"`
+		ChannelResultsPerPage              int64    `toml:"channel_results_per_page"`
+		ModelResultsPerPage                int64    `toml:"model_results_per_page"`
+		TopContentResultsPerPage           int64    `toml:"top_content_results_per_page"`
+		TopCategoriesResultsPerPage        int64    `toml:"top_categories_results_per_page"`
+		ContentRelatedAmount               int      `toml:"content_related_amount"`
+		FakeVideoPage                      bool     `toml:"fake_video_page"`
+		MultiLanguage                      bool     `toml:"multi_language"`
+		DefaultLanguage                    string   `toml:"default_language"`
+		NoRedirectDefaultLanguage          bool     `toml:"no_redirect_default_language"`
+		LanguagesAvailable                 []string `toml:"languages_available"`
+		MinifyHtml                         bool     `toml:"minify_html" json:"-"`
+		PaginationMaxRenderedLinks         int      `toml:"pagination_max_rendered_links"`
+		DisableCategoriesRedirect          bool     `toml:"disable_categories_redirect"`
+		Debug                              bool     `toml:"debug"`
+		ApiUrl                             string   `toml:"api_url"`
+		ApiSecret                          string   `toml:"api_secret"`
+		ToplistDataUrl                     string   `toml:"toplist_data_url"` // url to json file with toplist data for trade scripts
+		DeletedTaxonomiesToSearch          bool     `toml:"deleted_taxonomies_to_search"`
+		DeletedTaxonomiesToSearchPermanent bool     `toml:"deleted_taxonomies_to_search_permanent"`
+		RandomizeRatio                     float64  `toml:"randomize_ratio"`
 	}
 )
 

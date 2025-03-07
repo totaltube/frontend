@@ -70,10 +70,11 @@ func InitRouter() http.Handler {
 		hr.Use(middleware.StripSlashes)
 		hr.Use(func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				r = r.WithContext(context.WithValue(r.Context(), "config", internal.GetConfig(configPath)))
+				config := internal.GetConfig(configPath)
+				r = r.WithContext(context.WithValue(r.Context(), "config", config))
 				r = r.WithContext(context.WithValue(r.Context(), "path", h.path))
 				r = r.WithContext(context.WithValue(r.Context(), "hostName", hostName))
-				r = r.WithContext(context.WithValue(r.Context(), "lang", "en"))
+				r = r.WithContext(context.WithValue(r.Context(), "lang", config.General.DefaultLanguage))
 				next.ServeHTTP(w, r)
 			})
 		})

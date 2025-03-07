@@ -1,9 +1,10 @@
 package internal
 
 import (
+	"strings"
+
 	"golang.org/x/text/language"
 	"sersh.com/totaltube/frontend/types"
-	"strings"
 )
 
 var languages []types.Language
@@ -43,7 +44,16 @@ func InitLanguages(Languages []types.Language) {
 	matcher = language.NewMatcher(languageTags)
 }
 
-func GetLanguages() []types.Language {
+func GetLanguages(config *types.Config) []types.Language {
+	if len(config.General.LanguagesAvailable) > 0 {
+		langs := make([]types.Language, 0, len(config.General.LanguagesAvailable))
+		for _, l := range config.General.LanguagesAvailable {
+			if lang, ok := languagesMap[l]; ok {
+				langs = append(langs, *lang)
+			}
+		}
+		return langs
+	}
 	return languages
 }
 

@@ -252,7 +252,7 @@ func generateCustomContext(_ http.ResponseWriter, r *http.Request, templateName 
 		"uri":                 uri,
 		"user_agent":          userAgent,
 		"nocache":             nocache,
-		"languages":           internal.GetLanguages(),
+		"languages":           internal.GetLanguages(config),
 		"page":                page,
 		"host":                hostName,
 		"params":              params,

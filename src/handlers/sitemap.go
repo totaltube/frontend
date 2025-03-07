@@ -50,7 +50,7 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			route.CreateElement("loc").
 				CreateText("https://" + config.Hostname + link)
 			if config.General.MultiLanguage {
-				for _, lang := range internal.GetLanguages() {
+				for _, lang := range internal.GetLanguages(config) {
 					var hostname = config.Hostname
 					if d, ok := config.LanguageDomains[lang.Id]; ok && d != "" {
 						matches := urlRegex.FindStringSubmatch(d)
@@ -97,7 +97,7 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			route := urlSet.CreateElement("url")
 			route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink("category", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
 			if config.General.MultiLanguage {
-				for _, lang := range internal.GetLanguages() {
+				for _, lang := range internal.GetLanguages(config) {
 					alt := route.CreateElement("xhtml:link")
 					alt.CreateAttr("rel", "alternate")
 					alt.CreateAttr("hreflang", lang.Id)
@@ -140,7 +140,7 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			route := urlSet.CreateElement("url")
 			route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink("model", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
 			if config.General.MultiLanguage {
-				for _, lang := range internal.GetLanguages() {
+				for _, lang := range internal.GetLanguages(config) {
 					var hostname = config.Hostname
 					if d, ok := config.LanguageDomains[lang.Id]; ok && d != "" {
 						hostname = d
@@ -183,7 +183,7 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			route := urlSet.CreateElement("url")
 			route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink("channel", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
 			if config.General.MultiLanguage {
-				for _, lang := range internal.GetLanguages() {
+				for _, lang := range internal.GetLanguages(config) {
 					var hostname = config.Hostname
 					if d, ok := config.LanguageDomains[lang.Id]; ok && d != "" {
 						hostname = d
@@ -253,7 +253,7 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				"content_item", config, hostName, config.General.DefaultLanguage, false,
 				"slug", item.Slug, "id", item.Id, "categories", item.Categories))
 			if config.General.MultiLanguage {
-				for _, lang := range internal.GetLanguages() {
+				for _, lang := range internal.GetLanguages(config) {
 					var hostname = config.Hostname
 					if d, ok := config.LanguageDomains[lang.Id]; ok && d != "" {
 						hostname = d
@@ -425,7 +425,7 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if config.Sitemap.SearchesAmount > 0 && config.Routes.Search != "" && config.Routes.Search != "-" {
 			langs := []string{config.General.DefaultLanguage}
 			if config.General.MultiLanguage {
-				langs = lo.Map(internal.GetLanguages(), func(t types.Language, i int) string {
+				langs = lo.Map(internal.GetLanguages(config), func(t types.Language, i int) string {
 					return t.Id
 				})
 			}

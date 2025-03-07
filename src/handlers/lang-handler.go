@@ -26,7 +26,7 @@ var urlRegex = regexp.MustCompile(`^https?://([^/]+)`)
 
 // LangHandlers Function creates language routes like /ru/someroute, /en/someroute etc.
 func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler http.Handler) {
-	languages := internal.GetLanguages()
+	languages := internal.GetLanguages(siteConfig)
 	var langTemplate = siteConfig.Routes.LanguageTemplate
 	for k, v := range siteConfig.Routes.Custom {
 		if v == route {
