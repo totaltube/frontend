@@ -3,21 +3,23 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/beevik/etree"
-	"github.com/flosch/pongo2/v6"
-	"github.com/pkg/errors"
-	"github.com/samber/lo"
 	"log"
 	"math/rand"
 	"net/http"
 	"net/url"
+	"strconv"
+	"time"
+
+	"github.com/beevik/etree"
+	"github.com/flosch/pongo2/v6"
+	"github.com/pkg/errors"
+	"github.com/samber/lo"
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/db"
 	"sersh.com/totaltube/frontend/internal"
+	"sersh.com/totaltube/frontend/middlewares"
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
-	"strconv"
-	"time"
 )
 
 var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -38,9 +40,7 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		urlSet.CreateAttr("xmlns:video", `http://www.google.com/schemas/sitemap-video/1.1`)
 		urlSet.CreateAttr("xmlns:xhtml", `http://www.w3.org/1999/xhtml`)
 		mainUrls := []string{"top_categories", "top_content", "new", "long", "popular"}
-		for _, c := range config.Sitemap.AdditionalLinks {
-			mainUrls = append(mainUrls, c)
-		}
+		mainUrls = append(mainUrls, config.Sitemap.AdditionalLinks...)
 		for _, uri := range mainUrls {
 			link := site.GetLink(uri, config, hostName, config.General.DefaultLanguage, false)
 			if link == "" {
@@ -50,10 +50,15 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			route.CreateElement("loc").
 				CreateText("https://" + config.Hostname + link)
 			if config.General.MultiLanguage {
-				for _, lang := range internal.GetLanguages() {
+				for _, lang := range internal.GetLanguages(config) {
 					var hostname = config.Hostname
 					if d, ok := config.LanguageDomains[lang.Id]; ok && d != "" {
-						hostname = d
+						matches := urlRegex.FindStringSubmatch(d)
+						if len(matches) > 2 {
+							hostname = matches[2]
+						} else {
+							hostname = d
+						}
 					}
 					altLink := site.GetLink(uri, config, hostName, lang.Id, true)
 					if altLink != link {
@@ -92,7 +97,7 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			route := urlSet.CreateElement("url")
 			route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink("category", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
 			if config.General.MultiLanguage {
-				for _, lang := range internal.GetLanguages() {
+				for _, lang := range internal.GetLanguages(config) {
 					alt := route.CreateElement("xhtml:link")
 					alt.CreateAttr("rel", "alternate")
 					alt.CreateAttr("hreflang", lang.Id)
@@ -135,7 +140,7 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			route := urlSet.CreateElement("url")
 			route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink("model", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
 			if config.General.MultiLanguage {
-				for _, lang := range internal.GetLanguages() {
+				for _, lang := range internal.GetLanguages(config) {
 					var hostname = config.Hostname
 					if d, ok := config.LanguageDomains[lang.Id]; ok && d != "" {
 						hostname = d
@@ -178,7 +183,7 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			route := urlSet.CreateElement("url")
 			route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink("channel", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
 			if config.General.MultiLanguage {
-				for _, lang := range internal.GetLanguages() {
+				for _, lang := range internal.GetLanguages(config) {
 					var hostname = config.Hostname
 					if d, ok := config.LanguageDomains[lang.Id]; ok && d != "" {
 						hostname = d
@@ -248,7 +253,7 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				"content_item", config, hostName, config.General.DefaultLanguage, false,
 				"slug", item.Slug, "id", item.Id, "categories", item.Categories))
 			if config.General.MultiLanguage {
-				for _, lang := range internal.GetLanguages() {
+				for _, lang := range internal.GetLanguages(config) {
 					var hostname = config.Hostname
 					if d, ok := config.LanguageDomains[lang.Id]; ok && d != "" {
 						hostname = d
@@ -420,7 +425,7 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if config.Sitemap.SearchesAmount > 0 && config.Routes.Search != "" && config.Routes.Search != "-" {
 			langs := []string{config.General.DefaultLanguage}
 			if config.General.MultiLanguage {
-				langs = lo.Map(internal.GetLanguages(), func(t types.Language, i int) string {
+				langs = lo.Map(internal.GetLanguages(config), func(t types.Language, i int) string {
 					return t.Id
 				})
 			}
@@ -449,6 +454,9 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	doc.Indent(2)
+	if middlewares.HeadersSent(w) {
+		return
+	}
 	w.Header().Add("Content-Type", "application/xml; charset=utf-8")
 	w.Header().Add("Cache-Control", "max-age=0, no-cache, no-store, must-revalidate")
 	w.Header().Add("Expires", time.Now().Add(-time.Hour*24).Format(http.TimeFormat))
@@ -513,17 +521,21 @@ func getSitemapVideos(hostName string, amount int64, page int64) (results *types
 		})
 		return rawResponse, err
 	}, false); err != nil {
+		log.Println(err)
 		return
 	}
 	results = new(types.ContentResults)
 	err = json.Unmarshal(cached, results)
+	if err != nil {
+		log.Println(err)
+	}
 	return
 }
 
 func getSitemapSearches(hostName string, lang string, amount int64) (results []types.TopSearch, err error) {
-	var ttl = time.Hour*24 + time.Duration(rand.Intn(3600*10))*time.Second
+	var ttl = time.Hour + time.Duration(rand.Intn(3600))*time.Second
 	var cached []byte
-	if cached, err = db.GetCachedTimeout(fmt.Sprintf("sitemap:%s:%s:top-searches-%d", hostName, lang, amount), ttl, time.Hour*20, func() ([]byte, error) {
+	if cached, err = db.GetCachedTimeout(fmt.Sprintf("sitemap:%s:%s:top-searches-%d", hostName, lang, amount), ttl, ttl, func() ([]byte, error) {
 		var rawResponse json.RawMessage
 		_, rawResponse, err = api.TopSearches(hostName, lang, amount)
 		return rawResponse, err

@@ -8,35 +8,46 @@ import (
 	"strings"
 
 	"github.com/flosch/pongo2/v6"
+	"sersh.com/totaltube/frontend/helpers"
 )
 
-var replaceDynamicRegex = regexp.MustCompile(`<data class=["']?_dynamic["']? value=["']?([^"\\]*(?:\\.[^"\\]*)*)["']?></data>`)
+var replaceDynamicRegex = regexp.MustCompile(`<data class=["']?_dynamic["']? value=["']?(.*?)["']?/?>(.*?)</data>`)
 
-func InsertDynamic(src []byte, path string, userCtx pongo2.Context) (result []byte, err error) {
-	result = replaceDynamicRegex.ReplaceAllFunc(src, func(bytes []byte) []byte {
-		matches := replaceDynamicRegex.FindSubmatch(bytes)
+func InsertDynamic(src []byte, path string, userCtx pongo2.Context) (result []byte) {
+	result = replaceDynamicRegex.ReplaceAllFunc(src, func(match []byte) (result []byte) {
+		var err error
+		matches := replaceDynamicRegex.FindSubmatch(match)
 		expression := html.UnescapeString(string(matches[1]))
+		if expression == "short" && string(matches[2]) != "" {
+			var expressionBytes []byte
+			expressionBytes, err = helpers.FromBase64(string(matches[2]))
+			if err != nil {
+				log.Println("Error rendering dynamic expression [ " + string(matches[2]) + " ]: " + err.Error())
+				return []byte("")
+			}
+			expression = string(expressionBytes)
+		}
 		if strings.HasPrefix(expression, "include ") {
 			var tpl *pongo2.Template
-			tpl, err = pongo2.FromString("{{"+ strings.TrimPrefix(expression, "include ") + "}}")
+			tpl, err = pongo2.FromString("{{" + strings.TrimPrefix(expression, "include ") + "}}")
 			if err != nil {
-				return []byte("Error rendering dynamic expression [ "+expression+" ]: "+err.Error())
+				return []byte("Error rendering dynamic expression [ " + expression + " ]: " + err.Error() + " " + string(matches[1]) + " - " + expression)
 			}
 			var templateName string
 			templateName, err = tpl.Execute(userCtx)
 			if err != nil {
-				return []byte("Error rendering dynamic expression [ "+expression+" ]: "+err.Error())
+				return []byte("Error rendering dynamic expression [ " + expression + " ]: " + err.Error())
 			}
 			sp := strings.Split(templateName, ".")
 			if len(sp) > 1 && sp[len(sp)-1] == "twig" {
-				sp = sp[0:len(sp)-1]
+				sp = sp[0 : len(sp)-1]
 			}
 			tpl, err = GetTemplate(strings.Join(sp, "."), path)
 			if err != nil {
 				if err == ErrTemplateNotFound {
 					err = errors.New("wrong template name")
 				}
-				return []byte("Error rendering dynamic expression [ "+expression+" ]: "+err.Error())
+				return []byte("Error rendering dynamic expression [ " + expression + " ]: " + err.Error())
 			}
 			result, err = tpl.ExecuteBytes(userCtx)
 			if err != nil {
@@ -44,14 +55,34 @@ func InsertDynamic(src []byte, path string, userCtx pongo2.Context) (result []by
 			}
 			return result
 		}
-		var tpl *pongo2.Template
-		tpl, err = pongo2.FromString("{{" + expression + "}}")
-		if err != nil {
-			return []byte("Error rendering dynamic expression [ " + expression + " ]: " + err.Error())
+		if expression != "" && expression != "inner" {
+			var tpl *pongo2.Template
+			tpl, err = pongo2.FromString("{{" + expression + "}}")
+			if err != nil {
+				return []byte("Error rendering dynamic expression [ " + expression + " ]: " + err.Error())
+			}
+			result, err = tpl.ExecuteBytes(userCtx)
+			if err != nil {
+				return []byte("Error rendering dynamic expression [ " + expression + " ]: " + err.Error())
+			}
+			return
 		}
-		result, err = tpl.ExecuteBytes(userCtx)
-		if err != nil {
-			return []byte("Error rendering dynamic expression [ " + expression + " ]: " + err.Error())
+		innerExpression := matches[2]
+		if string(innerExpression) != "" {
+			templateCode, err := helpers.FromBase64(string(innerExpression))
+			if err != nil {
+				log.Println("Error rendering dynamic expression [ " + string(innerExpression) + " ]: " + err.Error())
+				return []byte("")
+			}
+			var tpl *pongo2.Template
+			tpl, err = pongo2.FromBytes(templateCode)
+			if err != nil {
+				return []byte("Error rendering dynamic expression [ " + string(templateCode) + " ]: " + err.Error())
+			}
+			result, err = tpl.ExecuteBytes(userCtx)
+			if err != nil {
+				return []byte("Error rendering dynamic expression [ " + string(templateCode) + " ]: " + err.Error())
+			}
 		}
 		return result
 	})

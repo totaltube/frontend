@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/samber/lo"
 
 	"sersh.com/totaltube/frontend/types"
 )
@@ -21,7 +22,10 @@ type (
 		Frontend     Frontend
 		Database     Database
 		Options      *Options
+		Mail         Mail
+		Comments     Comments
 		Translations map[string]map[string]string `toml:"translations"`
+		Custom       map[string]string            `toml:"custom"`
 	}
 	General struct {
 		Nginx                              bool `toml:"nginx"`
@@ -42,6 +46,9 @@ type (
 		EnableAccessLog                    bool           `toml:"enable_access_log"`
 		DeletedTaxonomiesToSearch          bool           `toml:"deleted_taxonomies_to_search"`
 		DeletedTaxonomiesToSearchPermanent bool           `toml:"deleted_taxonomies_to_search_permanent"`
+		RandomizeRatio                     float64        `toml:"randomize_ratio"`
+		DebugRoute                         string         `toml:"debug_route"`
+		TranslateStreams                   uint16         `toml:"translate_streams"` // number of simultaneous streams for translation
 	}
 	Frontend struct {
 		SitesPath                string   `toml:"sites_path"`
@@ -54,8 +61,29 @@ type (
 		RouteRedirectContentItem string   `toml:"route_redirect_content_item"`
 	}
 	Database struct {
-		Path      string `toml:"path"`
-		LowMemory bool   `toml:"low_memory"`
+		Path                       string `toml:"path"`
+		LowMemory                  bool   `toml:"low_memory"`
+		BackupPath                 string `toml:"backup_path"`
+		RestoreFromBackup          bool   `toml:"restore_from_backup"`
+		DebugBadger                bool   `toml:"debug_badger"`
+		Engine                     string `toml:"engine"`
+		NoTranslationsAccessUpdate bool   `toml:"no_translations_access_update"`
+		SyncWrites                 bool   `toml:"sync_writes"`
+		DetectConflicts            bool   `toml:"detect_conflicts"`
+	}
+	Mail struct {
+		Secure       bool
+		Port         int64
+		Hostname     string
+		User         string
+		Password     string
+		Timeout      uint
+		AddressFrom  string `toml:"address_from"`
+		AddressReply string `toml:"address_reply"`
+	}
+	Comments struct {
+		ItemsPerPage int `toml:"items_per_page"`
+		MaxReplies   int `toml:"max_replies"`
 	}
 )
 
@@ -72,19 +100,45 @@ func InitConfig(configPath string) {
 			InnerRecreateWorkers: 20,
 			ToplistDataUrl:       "/_toplist_data.json",
 			ApiTimeout:           types.Duration(time.Second * 20),
+			TranslateStreams:     10,
 		},
 		Frontend: Frontend{
-			MaxDmcaMinute: 5,
+			MaxDmcaMinute:            5,
 			RouteRedirectContentItem: "/_redirect_content_item",
 		},
+		Database: Database{
+			Engine: "badger",
+		},
 		Translations: make(map[string]map[string]string),
+		Mail: Mail{
+			Secure:  false,
+			Timeout: 30,
+		},
+		Comments: Comments{
+			ItemsPerPage: 30,
+			MaxReplies:   200,
+		},
 	}
 	if _, err := toml.DecodeFile(configPath, Config); err != nil {
 		log.Fatalln(configPath, ":", err)
+	}
+	if !lo.Contains([]string{"badger", "bolt", "pebble"}, Config.Database.Engine) {
+		log.Fatalln("Unsupported database engine:", Config.Database.Engine)
+	}
+	if Config.General.RandomizeRatio < 0 {
+		Config.General.RandomizeRatio = 0
+		log.Println("Randomize ratio can't be negative, set to 0")
+	}
+	if Config.General.RandomizeRatio > 1 {
+		Config.General.RandomizeRatio = 1
+		log.Println("Randomize ratio can't be more than 1, set to 1")
 	}
 	matches := apiVersionRegex.FindStringSubmatch(Config.General.ApiUrl)
 	if matches != nil {
 		Config.General.ApiUrl = matches[1] + "/"
 	}
 	Config.MainPath = filepath.Dir(configPath)
+	if Config.General.TranslateStreams < 1 || Config.General.TranslateStreams > 1000 {
+		Config.General.TranslateStreams = 1
+	}
 }

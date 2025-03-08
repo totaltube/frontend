@@ -3,11 +3,17 @@
 # Learn more about .gitignore:
 #     https://www.atlassian.com/git/tutorials/saving-changes/gitignore
 example/
+database
+database-backup
+hrulik
+julia
+bin/
+tmp/
+__debug*
 # Node artifact files
 node_modules/
 dist/
-sites/
-Makefile
+*.pid
 # Compiled Java class files
 *.class
 
@@ -49,4 +55,3 @@ Thumbs.db
 *.mov
 *.wmv
 
-.run

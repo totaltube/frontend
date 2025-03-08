@@ -3,9 +3,10 @@ package internal
 import (
 	"log"
 	"path/filepath"
-	"sersh.com/totaltube/frontend/types"
 	"sync"
 	"time"
+
+	"sersh.com/totaltube/frontend/types"
 
 	"github.com/BurntSushi/toml"
 	"github.com/rjeczalik/notify"
@@ -28,6 +29,11 @@ func GetConfigAndWatch(configPath string) *types.Config {
 	config.Hostname = filepath.Base(filepath.Dir(configPath))
 	if _, err := toml.DecodeFile(configPath, config); err != nil {
 		log.Fatalln("error reading site config at", configPath, err)
+	}
+	for k, v := range Config.Custom {
+		if _, ok := config.Custom[k]; !ok {
+			config.Custom[k] = v
+		}
 	}
 	configsMap[configPath] = config
 	go func() {
@@ -66,6 +72,11 @@ func GetConfigAndWatch(configPath string) *types.Config {
 						lastChange = time.Now()
 						var newConfig = types.NewConfig()
 						newConfig.Hostname = filepath.Base(filepath.Dir(configPath))
+						for k, v := range Config.Custom {
+							if _, ok := newConfig.Custom[k]; !ok {
+								newConfig.Custom[k] = v
+							}
+						}
 						if _, err := toml.DecodeFile(configPath, newConfig); err != nil {
 							log.Println("error reading site config at", configPath, err)
 						} else {

@@ -3,9 +3,12 @@ package handlers
 import (
 	"log"
 	"net/http"
-	"sersh.com/totaltube/frontend/types"
 	"strconv"
 	"strings"
+
+	"sersh.com/totaltube/frontend/internal"
+	"sersh.com/totaltube/frontend/middlewares"
+	"sersh.com/totaltube/frontend/types"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
@@ -20,7 +23,7 @@ var Custom = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))
 	hostName := r.Context().Value("hostName").(string)
 	templateName := r.Context().Value("custom_template_name").(string)
-	page, _ := strconv.ParseInt(helpers.FirstNotEmpty(chi.URLParam(r,"page"), r.URL.Query().Get(config.Params.Page), "1"), 10, 16)
+	page, _ := strconv.ParseInt(helpers.FirstNotEmpty(chi.URLParam(r, "page"), r.URL.Query().Get(config.Params.Page), "1"), 10, 16)
 	if page <= 0 {
 		page = 1
 	}
@@ -39,6 +42,9 @@ var Custom = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					err1.RedirectCode = 302
 				}
 				http.Redirect(w, r, err1.Redirect, err1.RedirectCode)
+				if internal.Config.General.EnableAccessLog {
+					log.Println(hostName, err1.RedirectCode, err1.Redirect)
+				}
 				return
 			}
 			if err1.JSON != nil {
@@ -59,6 +65,9 @@ var Custom = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		}
 		log.Println(hostName, err)
 		Output500(w, r, err)
+		return
+	}
+	if middlewares.HeadersSent(w) {
 		return
 	}
 	render.HTML(w, r, string(parsed))

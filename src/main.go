@@ -52,9 +52,11 @@ func main() {
 		if err != nil {
 			panic(errors.Wrap(err, "Can't get sites options"))
 		}
-		startChild()
+		startChild(true)
 	case "install":
 		Install()
+	case "backup":
+		Backup()
 	default:
 		fmt.Println("unknown command")
 	}

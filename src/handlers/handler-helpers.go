@@ -2,8 +2,6 @@ package handlers
 
 import (
 	"fmt"
-	"github.com/mileusna/useragent"
-	"github.com/samber/lo"
 	"log"
 	"net"
 	"net/http"
@@ -12,6 +10,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/mileusna/useragent"
+	"github.com/samber/lo"
 
 	"github.com/flosch/pongo2/v6"
 	"github.com/go-chi/chi/v5"
@@ -24,7 +25,7 @@ import (
 	"sersh.com/totaltube/frontend/types"
 )
 
-func generateCustomContext(w http.ResponseWriter, r *http.Request, templateName string) pongo2.Context {
+func generateCustomContext(_ http.ResponseWriter, r *http.Request, templateName string) pongo2.Context {
 	config := r.Context().Value("config").(*types.Config)
 	hostName := r.Context().Value("hostName").(string)
 	langId := r.Context().Value("lang").(string)
@@ -251,7 +252,7 @@ func generateCustomContext(w http.ResponseWriter, r *http.Request, templateName 
 		"uri":                 uri,
 		"user_agent":          userAgent,
 		"nocache":             nocache,
-		"languages":           internal.GetLanguages(),
+		"languages":           internal.GetLanguages(config),
 		"page":                page,
 		"host":                hostName,
 		"params":              params,
@@ -266,22 +267,29 @@ func generateCustomContext(w http.ResponseWriter, r *http.Request, templateName 
 		"country_group":       countryGroup,
 		"group_id":            countryGroup.Id,
 		"refreshTranslations": refreshTranslations,
-		"parse_ua":            func(ua ...string) useragent.UserAgent {
+		"parse_ua": func(ua ...string) useragent.UserAgent {
 			if len(ua) > 0 {
 				return useragent.Parse(ua[0])
 			}
 			return useragent.Parse(r.UserAgent())
 		},
 		"get_content":         getContentFunc(hostName, langId, userAgent, ip, groupId),
-		"get_top_content":     getTopContentFunc(hostName, langId, groupId),
-		"get_top_categories":  getTopCategoriesFunc(hostName, langId, groupId),
-		"get_content_item":    getContentItemFunc(hostName, langId, groupId),
+		"get_top_content":     getTopContentFunc(hostName, langId, groupId, config),
+		"get_top_categories":  getTopCategoriesFunc(hostName, langId, groupId, config),
+		"get_content_item":    getContentItemFunc(hostName, config, langId, groupId, nocache),
 		"get_models_list":     getModelsListFunc(hostName, langId, int64(config.General.ModelsPerPage), groupId),
 		"get_categories_list": getCategoriesListFunc(hostName, langId, 100, groupId),
 		"get_channels_list":   getChannelsListFunc(hostName, langId, 100, groupId),
-		"get_category_top":    getCategoryTopFunc(hostName, langId, groupId),
+		"get_category_top":    getCategoryTopFunc(hostName, langId, groupId, config),
 		"get_category":        getCategoryFunc(hostName, langId),
 		"get_model":           getModelFunc(hostName, langId, groupId),
+		"xor_id": func(id *pongo2.Value) int64 {
+			idInt := int64(id.Integer())
+			if idInt > 0 && config.Routes.IdXorKey > 0 {
+				return idInt ^ config.Routes.IdXorKey
+			}
+			return idInt
+		},
 		"add_random_content": func(items []*types.ContentResult, amount ...interface{}) []*types.ContentResult {
 			var amt int64 = 0
 			if len(amount) > 0 {

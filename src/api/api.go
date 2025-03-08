@@ -5,6 +5,9 @@ import (
 	"log"
 	"net/url"
 	"path/filepath"
+	"strings"
+	"sync"
+	"sync/atomic"
 
 	"github.com/pkg/errors"
 
@@ -15,6 +18,14 @@ import (
 type Data map[string]interface{}
 type Method string
 type ApiUri string
+
+var ApiHasTrouble atomic.Bool
+var ApiWriteHasTrouble atomic.Bool
+var apiCheckMutex sync.Mutex
+var apiWriteErrCount atomic.Int32
+var apiReadErrCount atomic.Int32
+var errsForTrouble = int32(10)
+var apiCheckRunning bool
 
 type apiResponse struct {
 	Success bool            `json:"success"`
@@ -42,6 +53,8 @@ const (
 	uriModelsList         ApiUri = "models-list"
 	uriModel              ApiUri = "model"
 	uriChannelsList       ApiUri = "channels-list"
+	uriCommentsGet        ApiUri = "comments"
+	uriCommentsReplies    ApiUri = "comments/replies"
 	uriTopSearches        ApiUri = "searches/top"
 	uriRandomSearches     ApiUri = "searches/random"
 	uriRelated            ApiUri = "related"
@@ -57,9 +70,19 @@ const (
 	uriBadBotsList        ApiUri = "badbots"
 	uriWhitelistBotsList  ApiUri = "bot-whitelist"
 	uriRating             ApiUri = "rating"
+	uriHealth             ApiUri = "health"
 )
 
+var ErrApiWriteTrouble = errors.New("api not available for write operations now. Try later")
+var ErrApiTrouble = errors.New("api not available now. Try later")
+
 func Request(siteDomain string, method Method, uri ApiUri, data interface{}) (response json.RawMessage, err error) {
+	if ApiHasTrouble.Load() {
+		//return nil, ErrApiTrouble
+	}
+	if method != methodGet && ApiWriteHasTrouble.Load() {
+		//return nil, ErrApiWriteTrouble
+	}
 	if siteDomain == "" {
 		siteDomain = internal.Config.Frontend.DefaultSite
 	}
@@ -81,7 +104,40 @@ func Request(siteDomain string, method Method, uri ApiUri, data interface{}) (re
 	resp, err = f.Do()
 	if err != nil {
 		err = errors.Wrap(err, "error getting "+internal.Config.General.ApiUrl+string(uri))
+		if method == methodGet {
+			errCount := apiReadErrCount.Add(1)
+			if errCount > errsForTrouble {
+				func() {
+					apiCheckMutex.Lock()
+					defer apiCheckMutex.Unlock()
+					if apiCheckRunning {
+						return
+					}
+					ApiHasTrouble.Store(true)
+					apiCheckRunning = true
+					go periodicCheckApi()
+				}()
+			}
+		} else {
+			errCount := apiWriteErrCount.Add(1)
+			if errCount > errsForTrouble {
+				func() {
+					apiCheckMutex.Lock()
+					defer apiCheckMutex.Unlock()
+					if apiCheckRunning {
+						return
+					}
+					ApiWriteHasTrouble.Store(true)
+					apiCheckRunning = true
+					go periodicCheckApi()
+				}()
+			}
+		}
 		return
+	} else if method == methodGet {
+		apiReadErrCount.Store(0)
+	} else {
+		apiWriteErrCount.Store(0)
 	}
 	var r apiResponse
 	err = json.Unmarshal(resp, &r)
@@ -93,9 +149,33 @@ func Request(siteDomain string, method Method, uri ApiUri, data interface{}) (re
 		var errorString string
 		_ = json.Unmarshal(r.Value, &errorString)
 		err = errors.New("error from api: " + errorString + ", " + string(method) + ", " + string(uri))
-		log.Printf("error from api: %s, %s, %s, %s, %v", errorString, siteDomain, method, uri, data)
+		if !strings.Contains(errorString, "favicon.ico") {
+			log.Printf("error from api: %s, %s, %s, %s, %v", errorString, siteDomain, method, uri, data)
+		}
 		return
 	}
 	response = r.Value
 	return
+}
+
+func periodicCheckApi() {
+	defer func() {
+		apiCheckMutex.Lock()
+		apiCheckRunning = false
+		apiCheckMutex.Unlock()
+	}()
+	for {
+		if ApiHasTrouble.Load() {
+			if _, err := Request("", methodGet, uriHealth, nil); err == nil {
+				ApiHasTrouble.Store(false)
+				apiReadErrCount.Store(0)
+				apiWriteErrCount.Store(0)
+			}
+		} else if ApiWriteHasTrouble.Load() {
+			if _, err := Request("", methodPost, uriHealth, nil); err == nil {
+				ApiWriteHasTrouble.Store(false)
+				apiWriteErrCount.Store(0)
+			}
+		}
+	}
 }

@@ -94,11 +94,11 @@ func InitPongo2() {
 		}
 		from := param.Integer()
 		totalSize := in.Len()
-		if from >= totalSize -1 {
-			out =  pongo2.AsValue([]interface{}{})
+		if from >= totalSize-1 {
+			out = pongo2.AsValue([]interface{}{})
 			return
 		}
-		var outSlice = make([]interface{}, 0, totalSize - from)
+		var outSlice = make([]interface{}, 0, totalSize-from)
 		in.Iterate(func(idx, count int, value, _ *pongo2.Value) bool {
 			if idx >= from {
 				outSlice = append(outSlice, value.Interface())
@@ -165,7 +165,7 @@ func InitPongo2() {
 				OrigError: errors.New("translate filter needs one param - language code to translate to"),
 			}
 		}
-		out = pongo2.AsValue(deferredTranslate("en", param.String(), in.String(), "page-text", false))
+		out = pongo2.AsValue(deferredTranslate("en", param.String(), in.String(), "page-text", false, nil))
 		return
 	})
 	if err != nil {

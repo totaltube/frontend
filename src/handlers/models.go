@@ -18,6 +18,7 @@ import (
 	"sersh.com/totaltube/frontend/db"
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/internal"
+	"sersh.com/totaltube/frontend/middlewares"
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
 )
@@ -52,7 +53,7 @@ var Models = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var err error
 			var response json.RawMessage
 			response, err = db.GetCachedTimeout(cacheKey+":data", cacheTtl, cacheTtl, func() ([]byte, error) {
-				return api.ModelsListRaw(hostName,langId, page, api.SortBy(sortBy), int64(amount), query, groupId )
+				return api.ModelsListRaw(hostName, langId, page, api.SortBy(sortBy), int64(amount), query, groupId)
 			}, nocache)
 			if err != nil {
 				return ctx, err
@@ -78,6 +79,9 @@ var Models = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		Output500(w, r, err)
+		return
+	}
+	if middlewares.HeadersSent(w) {
 		return
 	}
 	render.HTML(w, r, string(parsed))

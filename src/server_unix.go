@@ -13,15 +13,16 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strconv"
+	"sync"
+	"syscall"
+	"time"
+
 	"sersh.com/totaltube/frontend/db"
 	"sersh.com/totaltube/frontend/geoip"
 	"sersh.com/totaltube/frontend/handlers"
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/site"
-	"strconv"
-	"sync"
-	"syscall"
-	"time"
 
 	"sersh.com/totaltube/frontend/internal"
 )
@@ -56,6 +57,10 @@ func startServer() {
 		log.Fatalln("Can't save pid file:", err)
 	}
 	log.Printf("Starting master process on port %d. Master process PID is %d\n", internal.Config.General.Port, os.Getpid())
+	if os.Getenv("DEBUG") == "true" {
+		startChild(false)
+		return
+	}
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", internal.Config.General.Port))
 	if err != nil {
 		log.Printf("Error listening on %d: %s\n", internal.Config.General.Port, err)
@@ -226,7 +231,7 @@ func PidExists(pid int32) (bool, error) {
 	return false, err
 }
 
-func startChild() {
+func startChild(socket bool) {
 	log.Println("Initializing database...")
 	db.InitDB()
 	log.Println("Initializing languages...")
@@ -243,8 +248,14 @@ func startChild() {
 	geoip.InitGeoIP(internal.Config.Database.Path, internal.Config.General.GeoipUrl)
 	log.Println("Initializing router...")
 	app := InitRouter()
-	socketFile := filepath.Join(os.TempDir(), fmt.Sprintf("totaltube-frontend-%d.sock", os.Getpid()))
-	listener, err := net.Listen("unix", socketFile)
+	var listener net.Listener
+	var err error
+	if socket {
+		socketFile := filepath.Join(os.TempDir(), fmt.Sprintf("totaltube-frontend-%d.sock", os.Getpid()))
+		listener, err = net.Listen("unix", socketFile)
+	} else {
+		listener, err = net.Listen("tcp", fmt.Sprintf(":%d", internal.Config.General.Port))
+	}
 	if err != nil {
 		log.Fatalf("Failed to listen on unix socket: %v", err)
 	}

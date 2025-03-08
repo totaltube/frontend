@@ -19,11 +19,12 @@ import (
 	"sersh.com/totaltube/frontend/db"
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/internal"
+	"sersh.com/totaltube/frontend/middlewares"
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
 )
 
-func getTopCategoriesFunc(hostName string, langId string, groupId int64) func(args ...interface{}) *types.CategoryResults {
+func getTopCategoriesFunc(hostName string, langId string, groupId int64, config *types.Config) func(args ...interface{}) *types.CategoryResults {
 	return func(args ...interface{}) *types.CategoryResults {
 		parsingName := true
 		var page int64 = 1
@@ -50,6 +51,15 @@ func getTopCategoriesFunc(hostName string, langId string, groupId int64) func(ar
 			log.Println("can't get top categories:", err)
 			return nil
 		}
+		if page == 1 {
+			randomizeRatio := config.General.RandomizeRatio
+			if randomizeRatio < 0 {
+				randomizeRatio = internal.Config.General.RandomizeRatio
+			}
+			if randomizeRatio > 0 {
+				helpers.RandomizeItems(results.Items, randomizeRatio)
+			}
+		}
 		return results
 	}
 }
@@ -61,7 +71,11 @@ var TopCategories = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	langId := r.Context().Value("lang").(string)
 	ip := r.Context().Value("ip").(string)
 	groupId := internal.DetectCountryGroup(net.ParseIP(ip)).Id
-	if ref := r.Header.Get("Referer"); ref != "" && !config.General.DisableCategoriesRedirect {
+	page, _ := strconv.ParseInt(helpers.FirstNotEmpty(chi.URLParam(r, "page"), r.URL.Query().Get(config.Params.Page), "1"), 10, 16)
+	if page <= 0 {
+		page = 1
+	}
+	if ref := r.Header.Get("Referer"); ref != "" && page == 1 && !config.General.DisableCategoriesRedirect {
 		if u, err := url.Parse(ref); err == nil &&
 			strings.TrimPrefix(strings.ToLower(u.Hostname()), "www.") != hostName &&
 			!botDetector.IsBot(r.Header.Get("User-Agent")) {
@@ -80,7 +94,10 @@ var TopCategories = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 							if qs := r.URL.RawQuery; qs != "" {
 								redirectUrl = redirectUrl + "?" + qs
 							}
-							http.Redirect(w, r, redirectUrl, 302)
+							http.Redirect(w, r, redirectUrl, http.StatusFound)
+							if internal.Config.General.EnableAccessLog {
+								log.Println(hostName, 302, redirectUrl)
+							}
 							return
 						}
 					}
@@ -89,17 +106,21 @@ var TopCategories = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 		}
 	}
 	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))
-	page, _ := strconv.ParseInt(helpers.FirstNotEmpty(chi.URLParam(r, "page"), r.URL.Query().Get(config.Params.Page), "1"), 10, 16)
-	if page <= 0 {
-		page = 1
-	}
 	customContext := generateCustomContext(w, r, "top-categories")
 	cacheKey := fmt.Sprintf("top-categories:%s:%s:%d:%d", hostName, langId, page, groupId)
-	cacheTtl := time.Second * 5
+	cacheTtl := time.Second * 15
 	if page > 1 {
 		cacheTtl = time.Minute * 5
 	}
-	parsed, err := site.ParseTemplate("top-categories", path, config, customContext, nocache, cacheKey, cacheTtl,
+	pageTtl := 0 * time.Second
+	randomizeRatio := config.General.RandomizeRatio
+	if randomizeRatio < 0 {
+		randomizeRatio = internal.Config.General.RandomizeRatio
+	}
+	if randomizeRatio <= 0 {
+		pageTtl = time.Second * 15
+	}
+	parsed, err := site.ParseTemplate("top-categories", path, config, customContext, nocache, cacheKey, pageTtl,
 		func() (pongo2.Context, error) {
 			ctx := pongo2.Context{}
 			var results = new(types.CategoryResults)
@@ -119,6 +140,9 @@ var TopCategories = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 			if len(results.Items) == 0 && page > 1 {
 				return ctx, fmt.Errorf("not found")
 			}
+			if page == 1 && randomizeRatio > 0 {
+				helpers.RandomizeItems(results.Items, randomizeRatio)
+			}
 			ctx["top_categories"] = results
 			ctx["total"] = int64(results.Total)
 			ctx["from"] = int64(results.From)
@@ -133,6 +157,9 @@ var TopCategories = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 			return
 		}
 		Output500(w, r, err)
+		return
+	}
+	if middlewares.HeadersSent(w) {
 		return
 	}
 	render.HTML(w, r, string(parsed))

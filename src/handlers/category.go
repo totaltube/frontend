@@ -19,6 +19,7 @@ import (
 	"sersh.com/totaltube/frontend/db"
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/internal"
+	"sersh.com/totaltube/frontend/middlewares"
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
 )
@@ -46,6 +47,9 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		Output404(w, r, "category not found")
 		return
 	}
+	if categoryId > 0 && config.Routes.IdXorKey > 0 {
+		categoryId = categoryId ^ config.Routes.IdXorKey
+	}
 	sortBy := r.URL.Query().Get(config.Params.SortBy)
 	if sortBy == config.Params.SortByDate {
 		sortBy = "dated"
@@ -66,22 +70,31 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	durationFrom, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.DurationGte), 10, 64)
 	durationTo, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.DurationLt), 10, 64)
 	customContext := generateCustomContext(w, r, "category")
+	ip := net.ParseIP(r.Context().Value("ip").(string))
+	groupId := internal.DetectCountryGroup(ip).Id
 	amount := config.General.CategoryResultsPerPage
 	cacheKey := "category:" + helpers.Md5Hash(
-		fmt.Sprintf("%s:%s:%d:%s:%d:%s:%s:%s:%d:%d:%s:%d:%d:%d",
+		fmt.Sprintf("%s:%s:%d:%s:%d:%s:%s:%s:%d:%d:%s:%d:%d:%d:%d",
 			hostName, langId, categoryId, categorySlug, page, sortBy, sortByViewsTimeframe, channelSlug, channelId,
-			modelId, modelSlug, durationFrom, durationTo, amount),
+			modelId, modelSlug, durationFrom, durationTo, amount, groupId),
 	)
 	filtered := channelId > 0 || channelSlug != "" || modelId > 0 || modelSlug != "" || sortBy != "" ||
 		durationTo > 0 || durationFrom > 0
-	cacheTtl := time.Second * 5
+	cacheTtl := time.Second * 15
 	if page > 1 || filtered {
 		cacheTtl = time.Minute * 5
 	}
-	ip := net.ParseIP(r.Context().Value("ip").(string))
-	groupId := internal.DetectCountryGroup(ip).Id
+
 	userAgent := r.Header.Get("User-Agent")
-	parsed, err := site.ParseTemplate("category", path, config, customContext, nocache, cacheKey, cacheTtl,
+	pageTtl := 0 * time.Second
+	randomizeRatio := config.General.RandomizeRatio
+	if randomizeRatio < 0 {
+		randomizeRatio = internal.Config.General.RandomizeRatio
+	}
+	if randomizeRatio <= 0 {
+		pageTtl = time.Second * 15
+	}
+	parsed, err := site.ParseTemplate("category", path, config, customContext, nocache, cacheKey, pageTtl,
 		func() (pongo2.Context, error) {
 			ctx := pongo2.Context{}
 			// getting category information from cache or from api
@@ -92,7 +105,9 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				return rawResponse, err
 			}, nocache)
 			if err != nil {
-				log.Println(err, config.Hostname)
+				if !strings.Contains(err.Error(), "favicon.ico") {
+					log.Println(err, config.Hostname)
+				}
 				return ctx, err
 			}
 			categoryInfo := new(types.CategoryResult)
@@ -144,6 +159,9 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if len(results.Items) == 0 && page > 1 {
 				return ctx, fmt.Errorf("not found")
 			}
+			if page == 1 && randomizeRatio > 0 {
+				helpers.RandomizeItems(results.Items, randomizeRatio)
+			}
 			ctx["category"] = categoryInfo
 			ctx["content"] = results
 			ctx["total"] = results.Total
@@ -163,6 +181,9 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					}
 					link := site.GetLink("search", config, hostName, langId, false, "search_query", strings.ReplaceAll(categorySlug, "-", "+"))
 					http.Redirect(w, r, link, redirectType)
+					if internal.Config.General.EnableAccessLog {
+						log.Printf("Redirected to search: %s", link)
+					}
 					return
 				}
 				Output404(w, r, err.Error())
@@ -170,6 +191,9 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		Output500(w, r, err)
+		return
+	}
+	if middlewares.HeadersSent(w) {
 		return
 	}
 	render.HTML(w, r, string(parsed))
@@ -210,7 +234,7 @@ func getCategoryFunc(hostName string, langId string) func(args ...interface{}) *
 		}
 	}
 }
-func getCategoryTopFunc(hostName string, langId string, groupId int64) func(args ...interface{}) *types.ContentResults {
+func getCategoryTopFunc(hostName string, langId string, groupId int64, config *types.Config) func(args ...interface{}) *types.ContentResults {
 	return func(args ...interface{}) *types.ContentResults {
 		parsingName := true
 		var categoryId int64
@@ -246,6 +270,15 @@ func getCategoryTopFunc(hostName string, langId string, groupId int64) func(args
 			log.Println("error getting category top content: ", err)
 			return nil
 		} else {
+			if page == 1 {
+				randomizeRatio := config.General.RandomizeRatio
+				if randomizeRatio < 0 {
+					randomizeRatio = internal.Config.General.RandomizeRatio
+				}
+				if randomizeRatio > 0 {
+					helpers.RandomizeItems(results.Items, randomizeRatio)
+				}
+			}
 			return results
 		}
 	}

@@ -18,6 +18,7 @@ import (
 	"sersh.com/totaltube/frontend/db"
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/internal"
+	"sersh.com/totaltube/frontend/middlewares"
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
 )
@@ -33,11 +34,20 @@ var Popular = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		page = 1
 	}
 	modelId, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.ModelId), 10, 64)
+	if modelId > 0 && config.Routes.IdXorKey > 0 {
+		modelId = modelId ^ config.Routes.IdXorKey
+	}
 	modelSlug := r.URL.Query().Get(config.Params.ModelSlug)
 	categorySlug := r.URL.Query().Get(config.Params.CategorySlug)
 	categoryId, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.CategoryId), 10, 64)
+	if categoryId > 0 && config.Routes.IdXorKey > 0 {
+		categoryId = categoryId ^ config.Routes.IdXorKey
+	}
 	sortBy := "popular"
 	channelId, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.ChannelId), 10, 64)
+	if channelId > 0 && config.Routes.IdXorKey > 0 {
+		channelId = channelId ^ config.Routes.IdXorKey
+	}
 	channelSlug := r.URL.Query().Get(config.Params.ChannelSlug)
 	durationFrom, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.DurationGte), 10, 64)
 	durationTo, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.DurationLt), 10, 64)
@@ -104,6 +114,9 @@ var Popular = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		Output500(w, r, err)
+		return
+	}
+	if middlewares.HeadersSent(w) {
 		return
 	}
 	render.HTML(w, r, string(parsed))

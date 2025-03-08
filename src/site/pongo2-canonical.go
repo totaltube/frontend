@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"sersh.com/totaltube/frontend/types"
 	"strconv"
 	"strings"
+
+	"sersh.com/totaltube/frontend/types"
 
 	"github.com/flosch/pongo2/v6"
 )
@@ -29,8 +30,11 @@ func getCanonical(ctx pongo2.Context, page int64, q ...url.Values) string {
 	if route == config.Routes.VideoEmbed || route == config.Routes.FakePlayer {
 		route = config.Routes.ContentItem
 	}
-	isSearchPage := route == config.Routes.Search
+	//isSearchPage := route == config.Routes.Search
 	alternateQuery := url.Values(http.Header(ctx["canonical_query"].(url.Values)).Clone())
+	if page > 1 {
+		route = paginationRoute(route, config)
+	}
 	if strings.Contains(route, "{page}") {
 		route = strings.ReplaceAll(route, "{page}", strconv.FormatInt(page, 10))
 	} else if page > 1 {
@@ -54,8 +58,8 @@ func getCanonical(ctx pongo2.Context, page int64, q ...url.Values) string {
 		route = strings.ReplaceAll(route, "{lang}", langId)
 		replacedLang = true
 	}
-	if config.General.MultiLanguage && isSearchPage && (langId != config.General.DefaultLanguage || !config.General.NoRedirectDefaultLanguage) && !replacedLang {
-		// For search page we need to add language to canonical url
+	if config.General.MultiLanguage && (langId != config.General.DefaultLanguage || !config.General.NoRedirectDefaultLanguage) && !replacedLang {
+		// add language to the route if it's not the default language
 		route = strings.ReplaceAll(config.Routes.LanguageTemplate, "{route}", route)
 		route = strings.ReplaceAll(route, "{lang}", langId)
 	}
