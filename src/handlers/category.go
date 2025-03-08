@@ -70,11 +70,13 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	durationFrom, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.DurationGte), 10, 64)
 	durationTo, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.DurationLt), 10, 64)
 	customContext := generateCustomContext(w, r, "category")
+	ip := net.ParseIP(r.Context().Value("ip").(string))
+	groupId := internal.DetectCountryGroup(ip).Id
 	amount := config.General.CategoryResultsPerPage
 	cacheKey := "category:" + helpers.Md5Hash(
-		fmt.Sprintf("%s:%s:%d:%s:%d:%s:%s:%s:%d:%d:%s:%d:%d:%d",
+		fmt.Sprintf("%s:%s:%d:%s:%d:%s:%s:%s:%d:%d:%s:%d:%d:%d:%d",
 			hostName, langId, categoryId, categorySlug, page, sortBy, sortByViewsTimeframe, channelSlug, channelId,
-			modelId, modelSlug, durationFrom, durationTo, amount),
+			modelId, modelSlug, durationFrom, durationTo, amount, groupId),
 	)
 	filtered := channelId > 0 || channelSlug != "" || modelId > 0 || modelSlug != "" || sortBy != "" ||
 		durationTo > 0 || durationFrom > 0
@@ -82,8 +84,7 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	if page > 1 || filtered {
 		cacheTtl = time.Minute * 5
 	}
-	ip := net.ParseIP(r.Context().Value("ip").(string))
-	groupId := internal.DetectCountryGroup(ip).Id
+
 	userAgent := r.Header.Get("User-Agent")
 	pageTtl := 0 * time.Second
 	randomizeRatio := config.General.RandomizeRatio
