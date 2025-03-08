@@ -26,7 +26,12 @@ var urlRegex = regexp.MustCompile(`^https?://([^/]+)`)
 
 // LangHandlers Function creates language routes like /ru/someroute, /en/someroute etc.
 func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler http.Handler) {
+	allLanguages := internal.GetLanguages(nil)
 	languages := internal.GetLanguages(siteConfig)
+	var langMap = make(map[string]struct{})
+	for _, l := range languages {
+		langMap[l.Id] = struct{}{}
+	}
 	var langTemplate = siteConfig.Routes.LanguageTemplate
 	for k, v := range siteConfig.Routes.Custom {
 		if v == route {
@@ -36,7 +41,7 @@ func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler h
 			break
 		}
 	}
-	for _, l := range languages {
+	for _, l := range allLanguages {
 		langId := l.Id
 		var preparedRoute string
 		if strings.Contains(route, "{lang}") {
@@ -80,6 +85,36 @@ func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler h
 					http.Redirect(w, r, "https://"+canonicalParsed.Host+uriToRedirect, http.StatusMovedPermanently)
 					return
 				}
+			}
+			// Проверяем, входит ли язык в список поддерживаемых
+			_, isLanguageSupported := langMap[langId]
+			if !isLanguageSupported {
+				// Редирект на страницу с дефолтным языком
+				defaultLang := siteConfig.General.DefaultLanguage
+				var redirectUri string
+
+				// Формируем путь с дефолтным языком
+				if strings.Contains(route, "{lang}") {
+					redirectUri = strings.ReplaceAll(route, "{lang}", defaultLang)
+				} else {
+					redirectUri = strings.ReplaceAll(langTemplate, "{lang}", defaultLang)
+					redirectUri = strings.ReplaceAll(redirectUri, "{route}", route)
+				}
+
+				if len(redirectUri) > 1 {
+					redirectUri = strings.TrimSuffix(redirectUri, "/")
+				}
+
+				// Сохраняем параметры запроса
+				if r.URL.RawQuery != "" {
+					redirectUri += "?" + r.URL.RawQuery
+				}
+
+				http.Redirect(w, r, redirectUri, http.StatusMovedPermanently)
+				if internal.Config.General.EnableAccessLog {
+					log.Println(r.Context().Value("hostName").(string), 301, "Unsupported language redirect to", redirectUri)
+				}
+				return
 			}
 			ctx := context.WithValue(r.Context(), "lang", langId)
 			ctx = context.WithValue(ctx, "isXDefault", false)
@@ -137,6 +172,12 @@ func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler h
 				langValue = langCookie.Value
 			}
 			lang := internal.DetectLanguage(langValue, siteConfig.General.DefaultLanguage, r.Header.Get("Accept-Language"))
+			// Проверяем, что обнаруженный язык поддерживается
+			_, isLanguageSupported := langMap[lang.Id]
+			if !isLanguageSupported {
+				// Используем дефолтный язык вместо обнаруженного
+				lang = internal.GetLanguage(siteConfig.General.DefaultLanguage)
+			}
 			var redirectUri string
 			if lang.Id == siteConfig.General.DefaultLanguage && siteConfig.General.NoRedirectDefaultLanguage {
 				redirectUri = "{route}"
@@ -210,6 +251,12 @@ func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler h
 				langValue = langCookie.Value
 			}
 			lang := internal.DetectLanguage(langValue, siteConfig.General.DefaultLanguage, r.Header.Get("Accept-Language"))
+			// Проверяем, что обнаруженный язык поддерживается
+			_, isLanguageSupported := langMap[lang.Id]
+			if !isLanguageSupported {
+				// Используем дефолтный язык вместо обнаруженного
+				lang = internal.GetLanguage(siteConfig.General.DefaultLanguage)
+			}
 			var redirectUri string
 			redirectUri = strings.ReplaceAll(langTemplate, "{lang}", lang.Id)
 			var uri = r.URL.Path

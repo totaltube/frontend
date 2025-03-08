@@ -45,7 +45,7 @@ func InitLanguages(Languages []types.Language) {
 }
 
 func GetLanguages(config *types.Config) []types.Language {
-	if len(config.General.LanguagesAvailable) > 0 {
+	if config != nil && len(config.General.LanguagesAvailable) > 0 {
 		langs := make([]types.Language, 0, len(config.General.LanguagesAvailable))
 		for _, l := range config.General.LanguagesAvailable {
 			if lang, ok := languagesMap[l]; ok {
