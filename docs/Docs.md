@@ -1,6 +1,10 @@
 # Totaltube Frontend Documentation
 
 Glossary
+* [Server Configuration and Deployment](#server-configuration-and-deployment)
+* [Global Configuration](#global-configuration)
+* [Command Line Interface](#command-line-interface)
+* [HTTPS Configuration](#https-configuration)
 * [Site configuration](#site-configuration)
 * [Site templates](#site-templates)
 * [Available special tags in templates](#available-special-tags-in-templates)
@@ -12,6 +16,91 @@ Glossary
 * [Site javascript build system](#site-javascript-build-system)
 * [Site css build system](#site-css-build-system)
 
+## Server Configuration and Deployment
+
+### Running in Development Mode
+
+To start Totaltube Frontend in development mode, run:
+
+```shell
+./bin/totaltube-frontend -c global-config.toml start
+```
+In development mode, compilation errors for JavaScript and CSS will be output to the console window.
+
+### Running as a Service
+To install Totaltube Frontend as a service on Linux or FreeBSD:
+1. Copy the binary to /usr/local/bin:
+```cp bin/totaltube-frontend /usr/local/bin/```
+2. Install as a service:
+```totaltube-frontend install```
+3. Start the service:
+```systemctl start totaltube-frontend```
+4. View logs:
+```journalctl -u totaltube-frontend -f```
+
+## Global Configuration
+
+The global configuration file (`global-config.toml`) contains settings for the entire application:
+
+```toml
+[general]
+port = 8380 # HTTP server port
+real_ip_header = "" # Header to get real client IP
+api_url = "http://minion-api-server/api/v1" # URL of Minion API
+api_secret = "secret" # Secret key for Minion API
+api_timeout = "5s" # API request timeout
+debug = false # Enable debug mode
+
+[frontend]
+sites_path = "sites" # Path to sites directory
+default_site = "example.com" # Default site
+secret_key = "random-secret" # Secret key for security
+captcha_key = "" # reCAPTCHA site key
+captcha_secret = "" # reCAPTCHA secret key
+max_dmca_minute = 5 # DMCA requests limit per minute
+captcha_whitelist = [] # Email whitelist for DMCA
+
+[database]
+path = "database" # Database files path
+backup_path = "database-backup" # Backup path
+```
+
+## Command Line Interface
+Totaltube Frontend supports the following commands:
+```
+start       - start the server
+stop        - stop the server
+install     - install as a service
+uninstall   - remove service
+version     - show version information
+help        - show help information
+```
+Options:
+```
+-c, --config FILE   - path to config file (default: global-config.toml)
+-d, --debug         - enable debug mode
+```
+## HTTPS Configuration
+
+For production environments, it's recommended to run Totaltube Frontend behind a reverse proxy like Nginx that handles HTTPS:
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name your-site.com;
+
+    ssl_certificate /path/to/cert.pem;
+    ssl_certificate_key /path/to/key.pem;
+
+    location / {
+        proxy_pass http://localhost:8380;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
 ## Site configuration
 
 In site templates directory must be `config.toml`. In this file in `[routes]` section you should define your routes for different pages of your site. Example:
@@ -536,7 +625,7 @@ if (ua.Mobile) {
 * `querystring` - raw querystring.
 * `canonical_query` - current page canonical querystring parameters
 * `config` - site configuration options. Field names are the same as in `config.toml`, but CamelCased except custom route names and custom variable names.
-* `global_config` - global configuration options (in root `config.toml`). Field names are the same as in `config.toml`, but CamelCased.
+* `global_config` - global configuration options (in root `global-config.toml`). Field names are the same as in `config.toml`, but CamelCased.
 * `route` - current route value
 
 ## Special variables, available in different template files.

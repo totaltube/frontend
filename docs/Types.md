@@ -1,243 +1,266 @@
 # Special Totaltube frontend types
 
+This document describes the data types available in the Totaltube frontend system. These types are used throughout the application for data manipulation and template rendering.
+
 ### ContentResults
-this type is returned on fetching of content from Totaltube minion API. Type fields:
-* `Total` integer - total amount of content
-* `From` integer - from index
-* `To` integer - to index
+This type is returned when fetching content from the Totaltube minion API. It contains the following fields:
+* `Total` integer - total amount of content items matching the query criteria
+* `From` integer - starting index of the current page
+* `To` integer - ending index of the current page
 * `Page` integer - current page number
-* `Pages` integer - total number of pages
-* `Items` array of [ContentResult](#contentresult) - content items
-* `Title` string - if the content is filtered by category, model or channel, this title will contain title of corresponding category, model or channel.
-* `Related` array of [RelatedItem](#relateditem) - related categories, models, channels or search queries if the content is filtered by category, model, channel or search query.
+* `Pages` integer - total number of available pages
+* `Items` array of [ContentResult](#contentresult) - collection of content items
+* `Title` string - title of the category, model, or channel if content is filtered by these criteria
+* `Related` array of [RelatedItem](#relateditem) - related categories, models, channels, or search queries based on current filtering
+
 
 ### ContentResult
-Type fields:
-* `Id` integer - numeric ID of content
+This type represents an individual content item with the following fields:
+* `Id` integer - unique numeric identifier of the content
 * `Title` string - content title
-* `TitleTranslated` boolean - if true, the `Title` is translated to requested language.
-* `OriginalTitle` string - if title is translated, this field holds original title
+* `TitleTranslated` boolean - indicates if the title has been translated to the requested language
+* `OriginalTitle` string - original title if translation is applied
 * `Description` string - content description
-* `Channel` [ChannelShortResult](#channelshortresult) - content channel
-* `Link` string - for `video-link` type this field will contain link to video
-* `CreatedAt` time.Time - actual content creation time
-* `Dated` time.Time - appointed content creation time
+* `Channel` [ChannelShortResult](#channelshortresult) - channel associated with the content
+* `Link` string - external link for content of type `"video-link"`
+* `CreatedAt` time.Time - actual content creation timestamp
+* `Dated` time.Time - appointed content publication timestamp
 * `Duration` [ContentDuration](#contentduration) - content duration in seconds
 * `Tags` array of strings - content tags
 * `Keywords` array of strings - content keywords
-* `Type` string - type of content. One of (`"video-embed"`, `"video-link"`, `"video"`, `"gallery"`)
-* `Priority` integer - priority for content creation and rotation.
-* `User` [ContentResultUser](#contentresultuser) - content creator
-* `Categories` array of [TaxonomyResult](#taxonomyresult) - content categories
-* `Models` array of [TaxonomyResult](#taxonomyresult) - content models
-* `RotationStatus` string - for 1 page of category top or top content page it will be `"casting"` o `"normal"` indicating if the content is in casting state or already got CTR counted.
-* `Ctr` float - current content CTR (for category top or top content page).
-* `Views` integer - content views (by default for last month).
-* `SourceSiteId` string - id of source site if grabbed using content sources.
-* `SourceSiteUniqueId` string - unique ID of this content on source site if grabbed using content sources.
-* `GetThumbFormat(formatName? string)` [ThumbFormat](#thumbformat) - function returns [ThumbFormat](#thumbformat) with name in optional argument or first available format.
-* `ThumbTemplate(formatName? string)` string - function return thumb template URL with %d on the place of thumb number.
-* `Thumb(formatName? string)` string - function return thumb URL.
-* `HiresThumb(formatName? string)` string - function return hires thumb or ordinary thumb if no hires thumb available.
-* `SelectedThumb(formatName? string)` integer - returns the index of currently selected thumb to show if content has several thumbs.
-* `MainCategorySlug(defaultName string)` string - returns the slug of content category or `defaultName` if content not in any category. Useful to generate links to content with category slug in link.
-* `HasCustomField(fieldName string)` bool - returns true if content item has custom field with name `fieldName`
-* `CustomField(fieldName string)` any - returns the value of custom field with name `fieldName` if it's defined, or `null`
-* `HasCustomTranslation(key string)` bool - returns true if content item has custom translation in current language for key `key`
-* `CustomTranslation(key string)` string - returns the custom translation with key `key`
+* `Type` string - content type, one of: `"video-embed"`, `"video-link"`, `"video"`, `"gallery"`
+* `Priority` integer - content priority for creation and rotation processes
+* `User` [ContentResultUser](#contentresultuser) - content creator information
+* `Categories` array of [TaxonomyResult](#taxonomyresult) - categories associated with the content
+* `Models` array of [TaxonomyResult](#taxonomyresult) - models featured in the content
+* `RotationStatus` string - content rotation status on category top or top content pages; can be `"casting"` or `"normal"`
+* `Ctr` float - current click-through rate (for category top or top content pages)
+* `Views` integer - view count (default: last month's views)
+* `SourceSiteId` string - source site identifier if content was obtained via content sources
+* `SourceSiteUniqueId` string - unique identifier of this content on the source site
+* `CustomData` [CustomData](#customdata) - custom fields data associated with this content
+* `CustomTranslations` [CustomTranslations](#customtranslations) - custom translations for this content
+
+**Methods:**
+* `GetThumbFormat(formatName? string)` [ThumbFormat](#thumbformat) - returns thumbnail format by name or the first available format
+* `ThumbTemplate(formatName? string)` string - returns thumbnail template URL with `%d` placeholder for thumbnail number
+* `Thumb(formatName? string)` string - returns complete thumbnail URL
+* `HiresThumb(formatName? string)` string - returns high-resolution thumbnail URL or standard thumbnail if unavailable
+* `SelectedThumb(formatName? string)` integer - returns the index of the currently selected thumbnail
+* `MainCategorySlug(defaultName? string)` string - returns the slug of the content's main category or the default value if no category exists
+* `HasCustomField(fieldName string)` boolean - checks if a specific custom field exists
+* `CustomField(fieldName string)` any - returns the value of the specified custom field or null
+* `HasCustomTranslation(key string)` boolean - checks if a custom translation exists for the given key
+* `CustomTranslation(key string)` string - returns the custom translation for the given key
+
 
 ### ThumbFormat
-This type holds some information about thumb format
-* `Name` string - the name of format
-* `Amount` integer - amount of thumbs of this format
-* `Width` integer - width of thumb
-* `Height` integer - height of thumb
-* `Type` string - thumb type (`png`, `jpg`, `webp`)
-* `Retina` boolean - if true, thumb has highres "retina" version.
+This type contains information about a thumbnail format:
+* `Name` string - format name
+* `Amount` integer - number of thumbnails available in this format
+* `Width` integer - thumbnail width in pixels
+* `Height` integer - thumbnail height in pixels
+* `Type` string - thumbnail image format (`"png"`, `"jpg"`, `"webp"`)
+* `Retina` boolean - indicates if high-resolution "retina" versions are available
 
 ### ContentItemResult
-This type has the same fields as in [ContentResult](#contentresult), with this additional fields:
-* `Related` array of [ContentResult](#contentresult) - array of similar content
-* `GalleryFormats()` array of strings - function returns all gallery format names for content of type `"gallery"`
-* `GalleryImages(galleryFormat string)` array of [GalleryImageInfo](#galleryimageinfo) - function returns gallery images information for rendering image gallery (only for content type `"gallery"`). First argument is optional and can be the name of gallery format.
-* `VideoInfo(videoFormat string)` [ContentVideoInfo](#contentvideoinfo) - function returns information about video format for content of type `"video"`. First argument is optional and can be the name of video format.
-* `VideoFormats()` array of strings - function returns all video format names for content of type `"video"`
-* `VideoUrl(videoFormat? string)` string - function returns video url for content of type `"video"`. `videoFormat` argument is optional.
-* `VideoPoster(videoFormat? string)` string - function returns video poster image URL for content of type `"video"`. `videoFormat` argument is optional. If no `videoFormat` specified, the function will return poster for format with maximum video size.
-* `VideoTimeline(videoFormat? string)` string - function returns video timeline `.vtt` file URL for content of type `"video"`. `videoFormat` argument is optional.
-* `VideoSize(videoFormat? string)` [Size](#size) - function returns video size for content of type `"video"`. `videoFormat` argument is optional.
-* `MaxVideoSize()` [Size](#size) - function returns maximum video size among all formats for content of type `"video"`.
-* `Mp4VideoFormats()` array of strings - function returns all video format names for content of type `"video"` with type `"mp4"`.
-* `HlsMasterUrl()` string - function returns HLS master playlist URL for content of type `"video"` if you have [nginx-vod](https://github.com/kaltura/nginx-vod-module) setup.
+This type extends [ContentResult](#contentresult) with additional fields for individual content items:
+* `Related` array of [ContentResult](#contentresult) - collection of related content items
+
+**Additional Methods:**
+* `GalleryFormats()` array of strings - returns all available gallery format names for gallery-type content
+* `GalleryImages(galleryFormat? string)` array of [GalleryImageInfo](#galleryimageinfo) - returns gallery image information for rendering
+* `VideoInfo(videoFormat? string)` [ContentVideoInfo](#contentvideoinfo) - returns video format information
+* `VideoFormats()` array of strings - returns all available video format names
+* `VideoUrl(videoFormat? string)` string - returns video file URL
+* `VideoPoster(videoFormat? string)` string - returns video poster image URL
+* `VideoTimeline(videoFormat? string)` string - returns video timeline `.vtt` file URL
+* `VideoSize(videoFormat? string)` [Size](#size) - returns video dimensions
+* `MaxVideoSize()` [Size](#size) - returns the largest available video dimensions
+* `Mp4VideoFormats()` array of strings - returns names of available MP4 video formats
+* `HlsMasterUrl()` string - returns HLS master playlist URL (requires [nginx-vod](https://github.com/kaltura/nginx-vod-module))
 
 ### RelatedItem
-The type has the following fields:
+This type represents related content references:
 * `Message` string - title of related taxonomy or search query
-* `Type` string - type of related item (`"category"`, `"model"`, `"channel"` or empty for search query)
-* `Id` integer - numeric ID of related taxonomy if the `Type` is `"category"`, `"model"` or `"channel"`. 0 for search query.
-* `Slug` string - slug of related taxonomy if the `Type` is `"category"`, `"model"` or `"channel"`. Empty for search query.
+* `Type` string - type of relationship: `"category"`, `"model"`, `"channel"` or empty for search query
+* `Id` integer - numeric identifier of the related taxonomy (0 for search query)
+* `Slug` string - slug of the related taxonomy (empty for search query)
+* `Searches` integer - number of searches (only for search queries)
 
 ### TaxonomyResult
-The type has the following fields:
-* `Id` integer - numeric ID of category, model or channel
-* `Slug` string - slug of category, model or channel
-* `Title` string - title of category, model or channel
+This type represents a category, model, or channel reference:
+* `Id` integer - numeric identifier
+* `Slug` string - URL-friendly slug
+* `Title` string - display title
 
 ### ChannelShortResult
-The type has the following fields:
-* `Id` integer - numeric ID of channel
-* `Slug` string - slug of channel
-* `Title` string - title of channel
-* `Url` string - url of channel
-* `Banner` string - banner of channel
+This type provides basic channel information:
+* `Id` integer - channel identifier
+* `Slug` string - channel slug
+* `Title` string - channel title
+* `Url` string - channel URL
+* `Banner` string - channel banner image
 
 ### ContentDuration
-This type itself is integer, holds duration in seconds and can be used directly as integer. Also, this type has these functions:
-* `Format()` string - function returns duration in `mm:ss` format.
+This integer type represents duration in seconds and provides formatting methods:
+* `Format()` string - returns duration in `mm:ss` format
 
 ### ContentResultUser
-The type has the following fields:
-* `Id` integer - numeric ID of user.
-* `Login` string - login of user.
-* `Name` string - name of user.
+This type represents content creator information:
+* `Id` integer - user identifier
+* `Login` string - user login name
+* `Name` string - user display name
 
 ### GalleryImageInfo
-The type has the following fields:
-* `ImageUrl` string - big image URL
-* `PreviewUrl` string - preview image URL
-* `PreviewSize` [Size](#size) - preview image size
-* `ImageSize` [Size](#size) - big image size
+This type provides information about gallery images:
+* `ImageUrl` string - full-size image URL
+* `PreviewUrl` string - thumbnail image URL
+* `PreviewSize` [Size](#size) - thumbnail dimensions
+* `ImageSize` [Size](#size) - full-size image dimensions
 
 ### Size
-The type has the following Fields:
-* `Width` integer
-* `Height` integer
+This type represents image or video dimensions:
+* `Width` integer - width in pixels
+* `Height` integer - height in pixels
 
 ### ContentVideoInfo
-The type has the following fields:
+This type provides video format information:
 * `Name` string - video format name
-* `Type` string - video type (`"mp4"` or `"webm"`)
-* `Size` [Size](#size) - video frame size
-* `VideoBitrate` integer - video bitrate in bytes
-* `AudioBitrate` integer - audio bitrate in bytes
-* `PosterType` string - poster image type (`"jpg"`, `"webp"` or `"png"`)
-* `TimelineType` string - timeline image type (`"jpg"`, `"webp"` or `"png"`)
-* `TimelineSize` [Size](#size) - the size of timeline image
-* `TimelineFrames` integer - the amount of timeline frames
-* `Duration` float - video duration
+* `Type` string - video format type (`"mp4"` or `"webm"`)
+* `Size` [Size](#size) - video frame dimensions
+* `VideoBitrate` integer - video bitrate in bytes per second
+* `AudioBitrate` integer - audio bitrate in bytes per second
+* `PosterType` string - poster image format (`"jpg"`, `"webp"`, or `"png"`)
+* `TimelineType` string - timeline image format (`"jpg"`, `"webp"`, or `"png"`)
+* `TimelineSize` [Size](#size) - timeline image dimensions
+* `TimelineFrames` integer - number of timeline frames
+* `Duration` float - video duration in seconds
 
 ### CategoryResults
-This type is returned on fetching categories. The type has the following fields:
-* `Total` integer - total number of categories matching the search criteria.
-* `From` integer - from index (for pagination)
-* `To` integer - to index (for pagination)
-* `Page` integer - current page
+This type is returned when fetching categories:
+* `Total` integer - total number of matching categories
+* `From` integer - starting index for pagination
+* `To` integer - ending index for pagination
+* `Page` integer - current page number
 * `Pages` integer - total number of pages
-* `Items` array of [CategoryResult](#categoryresult) - category items
+* `Items` array of [CategoryResult](#categoryresult) - collection of category items
 
 ### CategoryResult
-The type has the following fields:
-* `Id` integer - numeric ID of category
-* `Slug` string - slug of category
-* `Title` string - title of category
-* `TitleTranslated` boolean - true if category title has translation.
-* `OriginalTitle` string - if title translated, it holds original title
+This type represents a content category:
+* `Id` integer - category identifier
+* `Slug` string - category slug
+* `Title` string - category title
+* `TitleTranslated` boolean - indicates if the title is translated
+* `OriginalTitle` string - original title if translation is applied
 * `Description` string - category description
 * `Tags` array of strings - category tags
-* `Dated` time.Time - category dated time
-* `CreatedAt` time.Time - category actual creation time
-* `AliasCategoryId` integer - if category has alias - here is the alias category ID
-* `RotationStatus` string - category rotation status for top categories page. Can be `"casting"` or `"normal"`.
-* `Total` integer - total amount of content in category.
-* `Ctr` float - category CTR.
-* `Views` integer - category views for last month.
-* `GetThumbFormat(formatName? string)` [ThumbFormat](#thumbformat) - function returns [ThumbFormat](#thumbformat) with name in optional argument or first available format.
-* `ThumbTemplate(formatName? string)` string - function return thumb template URL with %d on the place of thumb number.
-* `Thumb(formatName? string)` string - function return thumb URL.
-* `HiresThumb(formatName? string)` string - function return hires thumb or ordinary thumb if no hires thumb available.
-* `SelectedThumb(formatName? string)` integer - returns the index of currently selected thumb to show if category has several thumbs.
-* `HasCustomField(fieldName string)` bool - returns true if category has custom field with name `fieldName`
-* `CustomField(fieldName string)` any - returns the value of custom field with name `fieldName` if it's defined, or `null`
-* `HasCustomTranslation(key string)` bool - returns true if category has custom translation in current language for key `key`
-* `CustomTranslation(key string)` string - returns the custom translation with key `key`
+* `Dated` time.Time - category publication date
+* `CreatedAt` time.Time - category creation date
+* `AliasCategoryId` integer - identifier of aliased category, if applicable
+* `RotationStatus` string - rotation status for top categories page (`"casting"` or `"normal"`)
+* `Total` integer - total number of content items in this category
+* `Ctr` float - category click-through rate
+* `Views` integer - view count (default: last month)
+**Methods:**
+* `GetThumbFormat(formatName? string)` [ThumbFormat](#thumbformat) - returns specified thumbnail format or first available
+* `ThumbTemplate(formatName? string)` string - returns thumbnail template URL
+* `Thumb(formatName? string)` string - returns thumbnail URL
+* `HiresThumb(formatName? string)` string - returns high-resolution thumbnail URL
+* `SelectedThumb(formatName? string)` integer - returns index of selected thumbnail
+* `HasCustomField(fieldName string)` boolean - checks for custom field existence
+* `CustomField(fieldName string)` any - retrieves custom field value
+* `HasCustomTranslation(key string)` boolean - checks for custom translation existence
+* `CustomTranslation(key string)` string - retrieves custom translation
 
 ### ModelResults
-This type is returned on fetching models. The type has the following fields:
-* `Total` integer - total number of models matching the search criteria.
-* `From` integer - from index (for pagination)
-* `To` integer - to index (for pagination)
-* `Page` integer - current page
+This type is returned when fetching models:
+* `Total` integer - total number of matching models
+* `From` integer - starting index for pagination
+* `To` integer - ending index for pagination
+* `Page` integer - current page number
 * `Pages` integer - total number of pages
-* `Items` array of [ModelResult](#modelresult) - model items
+* `Items` array of [ModelResult](#modelresult) - collection of model items
 
 ### ModelResult
-The type has the following fields:
-* `Id` integer - numeric ID of model
-* `Slug` string - slug of model
-* `Title` string - title of model
-* `TitleTranslated` boolean - true if model title has translation.
-* `OriginalTitle` string - if title translated, it holds original title
+This type represents a content model:
+* `Id` integer - model identifier
+* `Slug` string - model slug
+* `Title` string - model title
+* `TitleTranslated` boolean - indicates if the title is translated
+* `OriginalTitle` string - original title if translation is applied
 * `Description` string - model description
 * `Tags` array of strings - model tags
-* `Dated` time.Time - model dated time
-* `CreatedAt` time.Time - model actual creation time
-* `Total` integer - total amount of content with this model.
-* `Views` integer - model views for last month.
-* `GetThumbFormat(formatName? string)` [ThumbFormat](#thumbformat) - function returns [ThumbFormat](#thumbformat) with name in optional argument or first available format.
-* `ThumbTemplate(formatName? string)` string - function return thumb template URL with %d on the place of thumb number.
-* `Thumb(formatName? string)` string - function return thumb URL.
-* `HiresThumb(formatName? string)` string - function return hires thumb or ordinary thumb if no hires thumb available.
-* `SelectedThumb(formatName? string)` integer - returns the index of currently selected thumb to show if model has several thumbs.
-* `HasCustomField(fieldName string)` bool - returns true if model has custom field with name `fieldName`
-* `CustomField(fieldName string)` any - returns the value of custom field with name `fieldName` if it's defined, or `null`
-* `HasCustomTranslation(key string)` bool - returns true if model has custom translation in current language for key `key`
-* `CustomTranslation(key string)` string - returns the custom translation with key `key`
+* `Dated` time.Time - model publication date
+* `CreatedAt` time.Time - model creation date
+* `Total` integer - total number of content items featuring this model
+* `Views` integer - view count (default: last month)
 
+**Methods:**
+* `GetThumbFormat(formatName? string)` [ThumbFormat](#thumbformat) - returns specified thumbnail format or first available
+* `ThumbTemplate(formatName? string)` string - returns thumbnail template URL
+* `Thumb(formatName? string)` string - returns thumbnail URL
+* `HiresThumb(formatName? string)` string - returns high-resolution thumbnail URL
+* `SelectedThumb(formatName? string)` integer - returns index of selected thumbnail
+* `HasCustomField(fieldName string)` boolean - checks for custom field existence
+* `CustomField(fieldName string)` any - retrieves custom field value
+* `HasCustomTranslation(key string)` boolean - checks for custom translation existence
+* `CustomTranslation(key string)` string - retrieves custom translation
 
 ### ChannelResults
-This type is returned on fetching channels. The type has the following fields:
-* `Total` integer - total number of channels matching the search criteria.
-* `From` integer - from index (for pagination)
-* `To` integer - to index (for pagination)
-* `Page` integer - current page
+This type is returned when fetching channels:
+* `Total` integer - total number of matching channels
+* `From` integer - starting index for pagination
+* `To` integer - ending index for pagination
+* `Page` integer - current page number
 * `Pages` integer - total number of pages
-* `Items` array of [ChannelResult](#channelresult) - channel items
+* `Items` array of [ChannelResult](#channelresult) - collection of channel items
 
 ### ChannelResult
-The type has the following fields:
-* `Id` integer - numeric ID of channel
-* `Slug` string - slug of channel
-* `Title` string - title of channel
-* `TitleTranslated` boolean - true if channel title has translation.
-* `OriginalTitle` string - if title translated, it holds original title
+This type represents a content channel:
+* `Id` integer - channel identifier
+* `Slug` string - channel slug
+* `Title` string - channel title
+* `TitleTranslated` boolean - indicates if the title is translated
+* `OriginalTitle` string - original title if translation is applied
 * `Description` string - channel description
 * `Tags` array of strings - channel tags
-* `Url` string - url of channel if set
-* `Banner` string - banner of channel if set
-* `Dated` time.Time - channel dated time
-* `CreatedAt` time.Time - channel actual creation time
-* `Total` integer - total amount of content in this channel.
-* `Views` integer - channel views for last month.
-* `GetThumbFormat(formatName? string)` [ThumbFormat](#thumbformat) - function returns [ThumbFormat](#thumbformat) with name in optional argument or first available format.
-* `ThumbTemplate(formatName? string)` string - function return thumb template URL with %d on the place of thumb number.
-* `Thumb(formatName? string)` string - function return thumb URL.
-* `HiresThumb(formatName? string)` string - function return hires thumb or ordinary thumb if no hires thumb available.
-* `SelectedThumb(formatName? string)` integer - returns the index of currently selected thumb to show if model has several thumbs.
-* `HasCustomField(fieldName string)` bool - returns true if channel has custom field with name `fieldName`
-* `CustomField(fieldName string)` any - returns the value of custom field with name `fieldName` if it's defined, or `null`
-* `HasCustomTranslation(key string)` bool - returns true if channel has custom translation in current language for key `key`
-* `CustomTranslation(key string)` string - returns the custom translation with key `key`
+* `Url` string - channel URL, if configured
+* `Banner` string - channel banner image, if configured
+* `Dated` time.Time - channel publication date
+* `CreatedAt` time.Time - channel creation date
+* `Total` integer - total number of content items in this channel
+* `Views` integer - view count (default: last month)
+
+**Methods:**
+* `GetThumbFormat(formatName? string)` [ThumbFormat](#thumbformat) - returns specified thumbnail format or first available
+* `ThumbTemplate(formatName? string)` string - returns thumbnail template URL
+* `Thumb(formatName? string)` string - returns thumbnail URL
+* `HiresThumb(formatName? string)` string - returns high-resolution thumbnail URL
+* `SelectedThumb(formatName? string)` integer - returns index of selected thumbnail
+* `HasCustomField(fieldName string)` boolean - checks for custom field existence
+* `CustomField(fieldName string)` any - retrieves custom field value
+* `HasCustomTranslation(key string)` boolean - checks for custom translation existence
+* `CustomTranslation(key string)` string - retrieves custom translation
 
 ### TopSearch
-The type has the following fields:
-* `Message` string - search query 
-* `Searches` integer - number of searches
+This type represents a popular search query:
+* `Message` string - search query text
+* `Searches` integer - number of times the query was searched
 
 ### Language
-The type has the following fields:
-* `Id` integer - language ID like "en", "de", "it"
-* `Name` string - language name like English, German, Italian
-* `Locale` string - language locale like "en_US", "de_DE", "it_IT"
-* `Native` string - native language name like English, Deutsch, Italiano
-* `Direction` string - language direction: "ltr" (left to right) or "rtl" (right to left)
-* `Country` string - country code associated with language like us, de, it
+This type represents a supported language:
+* `Id` string - language code (e.g., "en", "de", "it")
+* `Name` string - language name in English (e.g., "English", "German", "Italian")
+* `Locale` string - language locale (e.g., "en_US", "de_DE", "it_IT")
+* `Native` string - language name in its native script (e.g., "English", "Deutsch", "Italiano")
+* `Direction` string - text direction: "ltr" (left to right) or "rtl" (right to left)
+* `Country` string - associated country code (e.g., "us", "de", "it")
+
+### CustomData
+This type represents a map of custom fields associated with content items, categories, models, or channels:
+* Key-value pairs where keys are field names and values can be of any type
+
+### CustomTranslations
+This type represents a map of custom translations for content items, categories, models, or channels:
+* Key-value pairs where keys are translation identifiers and values are localized strings
