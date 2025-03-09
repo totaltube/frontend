@@ -104,7 +104,12 @@ func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler h
 				if len(redirectUri) > 1 {
 					redirectUri = strings.TrimSuffix(redirectUri, "/")
 				}
-
+				// нам надо параметры тоже переписать в урле, типа {slug}, {id} и т.д.
+				ctx := chi.RouteContext(r.Context())
+				for i, key := range ctx.URLParams.Keys {
+					value := ctx.URLParams.Values[i]
+					redirectUri = strings.ReplaceAll(redirectUri, "{"+key+"}", value)
+				}
 				// Сохраняем параметры запроса
 				if r.URL.RawQuery != "" {
 					redirectUri += "?" + r.URL.RawQuery
@@ -184,6 +189,7 @@ func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler h
 			} else {
 				redirectUri = strings.ReplaceAll(langTemplate, "{lang}", lang.Id)
 			}
+			
 			ip := r.Context().Value("ip").(string)
 			groupId := internal.DetectCountryGroup(net.ParseIP(ip)).Id
 			if ref := r.Header.Get("Referer"); ref != "" {
