@@ -37,9 +37,9 @@ var TopContent = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	customContext := generateCustomContext(w, r, "top-content")
 	var groupId = internal.DetectCountryGroup(net.ParseIP(ip)).Id
 	cacheKey := fmt.Sprintf("top-content:%s:%s:%d:%d", hostName, langId, page, groupId)
-	cacheTtl := time.Second * 15
+	cacheTtl := time.Minute * 3
 	if page > 1 {
-		cacheTtl = time.Minute * 5
+		cacheTtl = time.Minute * 30
 	}
 	pageTtl := 0 * time.Second
 	randomizeRatio := config.General.RandomizeRatio

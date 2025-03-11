@@ -80,9 +80,9 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	)
 	filtered := channelId > 0 || channelSlug != "" || modelId > 0 || modelSlug != "" || sortBy != "" ||
 		durationTo > 0 || durationFrom > 0
-	cacheTtl := time.Second * 15
+	cacheTtl := time.Minute * 3
 	if page > 1 || filtered {
-		cacheTtl = time.Minute * 5
+		cacheTtl = time.Minute * 30
 	}
 
 	userAgent := r.Header.Get("User-Agent")
@@ -92,7 +92,7 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		randomizeRatio = internal.Config.General.RandomizeRatio
 	}
 	if randomizeRatio <= 0 {
-		pageTtl = time.Second * 15
+		pageTtl = time.Minute * 3
 	}
 	parsed, err := site.ParseTemplate("category", path, config, customContext, nocache, cacheKey, pageTtl,
 		func() (pongo2.Context, error) {

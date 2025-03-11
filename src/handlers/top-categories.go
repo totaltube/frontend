@@ -108,9 +108,9 @@ var TopCategories = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))
 	customContext := generateCustomContext(w, r, "top-categories")
 	cacheKey := fmt.Sprintf("top-categories:%s:%s:%d:%d", hostName, langId, page, groupId)
-	cacheTtl := time.Second * 15
+	cacheTtl := time.Minute * 3
 	if page > 1 {
-		cacheTtl = time.Minute * 5
+		cacheTtl = time.Minute * 30
 	}
 	pageTtl := 0 * time.Second
 	randomizeRatio := config.General.RandomizeRatio
