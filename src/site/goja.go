@@ -1,12 +1,13 @@
 package site
 
 import (
-	"github.com/dop251/goja/parser"
 	"log"
 	"net/url"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/dop251/goja/parser"
 
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/dop251/goja"
@@ -72,7 +73,8 @@ var gojaVmPool = sync.Pool{
 	},
 }
 
-var jsMutex sync.Mutex
+var jsSourceMutex sync.Mutex
+var jsProgramMutex sync.Mutex
 
 var jsPrograms = make(map[string]*goja.Program)
 
@@ -82,8 +84,8 @@ var jsSources = make(map[string]struct {
 })
 
 func getJsSource(path string) []byte {
-	jsMutex.Lock()
-	defer jsMutex.Unlock()
+	jsSourceMutex.Lock()
+	defer jsSourceMutex.Unlock()
 	if existing, ok := jsSources[path]; ok {
 		if info, err := os.Stat(path); err != nil {
 			log.Println("can't open", path, ":", err)
@@ -110,8 +112,8 @@ func getJsSource(path string) []byte {
 var faker = gofakeit.NewCrypto()
 
 func getJsProgram(name string, code string) (program *goja.Program, err error) {
-	jsMutex.Lock()
-	defer jsMutex.Unlock()
+	jsProgramMutex.Lock()
+	defer jsProgramMutex.Unlock()
 	var ok bool
 	hash := helpers.Md5Hash(code)
 	if program, ok = jsPrograms[name+":"+hash]; ok {
@@ -119,9 +121,9 @@ func getJsProgram(name string, code string) (program *goja.Program, err error) {
 	}
 	program, err = goja.Compile(name, code, true)
 	if err != nil {
+		log.Println("Failed to compile JS program:", err)
 		return
 	}
 	jsPrograms[name+":"+hash] = program
 	return
 }
-

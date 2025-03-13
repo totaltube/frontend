@@ -29,7 +29,7 @@ type countInfo struct {
 	countThumbId int64
 }
 
-var countChannel = make(chan countInfo, 1000)
+var countChannel = make(chan countInfo, 10000)
 
 var Out = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	config := r.Context().Value("config").(*types.Config)
@@ -97,7 +97,12 @@ var Out = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// let's count in background in separate goroutine, by sending in buffered channel
-	countChannel <- info
+	select {
+	case countChannel <- info:
+		// Successfully sent
+	default:
+		log.Println("Count channel full, skipping count for", info)
+	}
 	returnFunc()
 })
 

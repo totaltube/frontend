@@ -189,10 +189,10 @@ func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler h
 			} else {
 				redirectUri = strings.ReplaceAll(langTemplate, "{lang}", lang.Id)
 			}
-			
+
 			ip := r.Context().Value("ip").(string)
 			groupId := internal.DetectCountryGroup(net.ParseIP(ip)).Id
-			if ref := r.Header.Get("Referer"); ref != "" {
+			if ref := r.Header.Get("Referer"); ref != "" && !siteConfig.General.DisableCategoriesRedirect {
 				if u, err := url.Parse(ref); err == nil &&
 					strings.TrimPrefix(strings.ToLower(u.Hostname()), "www.") != hostName &&
 					!botDetector.IsBot(r.Header.Get("User-Agent")) {
