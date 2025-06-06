@@ -20,13 +20,14 @@ import (
 var botDetector = botdetector.New()
 
 type countInfo struct {
-	hostName     string
-	categoryId   int64
-	contentId    int64
-	countView    bool
-	ip           string
-	countType    types.CountType
-	countThumbId int64
+	hostName      string
+	categoryId    int64
+	contentId     int64
+	countView     bool
+	ip            string
+	countType     types.CountType
+	countThumbId  int64
+	countPosition int64
 }
 
 var countChannel = make(chan countInfo, 10000)
@@ -185,9 +186,10 @@ func doCount() {
 				sess.LastClickType = info.countType.String()
 				sess.LastClickId = countId
 				err := api.CategoryClick(info.hostName, info.categoryId, types.CountClickParams{
-					Ip:      info.ip,
-					Id:      countId,
-					GroupId: groupId,
+					Ip:        info.ip,
+					Id:        countId,
+					GroupId:   groupId,
+					CellIndex: info.countPosition,
 				})
 				if err != nil {
 					log.Println("category click api error: ", err, info.hostName, info.categoryId, info.ip, countId)

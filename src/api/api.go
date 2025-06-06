@@ -43,6 +43,7 @@ const (
 	uriTimeframes         ApiUri = "timeframes"
 	uriOptions            ApiUri = "options"
 	uriContentItem        ApiUri = "content-item"
+	uriContentId          ApiUri = "content-id"
 	uriTopContent         ApiUri = "top-content"
 	uriCategory           ApiUri = "category"
 	uriCategoryInfo       ApiUri = "category-info"

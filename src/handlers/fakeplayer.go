@@ -58,7 +58,11 @@ var FakePlayer = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var err error
 			var response json.RawMessage
 			response, err = db.GetCachedTimeout(cacheKey+":data", cacheTtl, cacheTtl, func() ([]byte, error) {
-				return api.ContentItemRaw(hostName, langId, slug, id, orfl, int64(relatedAmount), groupId)
+				return api.ContentItemRaw(hostName, langId, slug, id, orfl, int64(relatedAmount), groupId,
+					config.Related.TitleTranslated, config.Related.TitleTranslatedMinTermFreq, config.Related.TitleTranslatedMaxQueryTerms, config.Related.TitleTranslatedBoost,
+					config.Related.Title, config.Related.TitleMinTermFreq, config.Related.TitleMaxQueryTerms, config.Related.TitleBoost,
+					config.Related.Tags, config.Related.TagsMinTermFreq, config.Related.TagsMaxQueryTerms, config.Related.TagsBoost,
+				)
 			}, nocache)
 			if err != nil {
 				if strings.Contains(err.Error(), "not found") {
@@ -122,7 +126,7 @@ var FakePlayer = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		Output500(w, r, err)
 		return
 	}
-	
+
 	if middlewares.HeadersSent(w) {
 		return
 	}

@@ -264,7 +264,7 @@ func startChild(socket bool) {
 		Handler: app,
 	}
 	go func() {
-		log.Printf("Worker with PID %d started\n", os.Getpid())
+		log.Printf("Worker with PID %d started. Version: %s\n", os.Getpid(), version)
 		if err := srv.Serve(listener); err != http.ErrServerClosed {
 			// Unexpected server error
 			fmt.Printf("ListenAndServe(): %v", err)

@@ -1,9 +1,10 @@
 package types
 
 type CountClickParams struct {
-	Ip      string `json:"ip"`
-	Id      int64  `json:"id"`
-	GroupId int64  `json:"group_id"`
+	Ip        string `json:"ip"`
+	Id        int64  `json:"id"`
+	GroupId   int64  `json:"group_id"`
+	CellIndex int64  `json:"cell_index"`
 }
 
 type CountType int

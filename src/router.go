@@ -271,6 +271,9 @@ func InitRouter() http.Handler {
 		if internal.Config.Frontend.RouteRedirectContentItem != "" && internal.Config.Frontend.RouteRedirectContentItem != "-" {
 			hr.Handle(internal.Config.Frontend.RouteRedirectContentItem, handlers.RedirectToContentItem)
 		}
+		if internal.Config.Frontend.RouteGetContentId != "" && internal.Config.Frontend.RouteGetContentId != "-" {
+			hr.Handle(internal.Config.Frontend.RouteGetContentId, handlers.GetContentId)
+		}
 		if config.Routes.Custom != nil {
 			for templateName, routePath := range config.Routes.Custom {
 				if strings.HasSuffix(templateName, "_multilang") {

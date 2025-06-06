@@ -55,8 +55,61 @@ var ContentItem = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 	groupId := internal.DetectCountryGroup(net.ParseIP(ip)).Id
 	customContext := generateCustomContext(w, r, "content-item")
 	params := customContext["params"].(map[string]string)
+	relatedTitleTranslated := config.Related.TitleTranslated
+	if relatedTitleTranslated == nil {
+		relatedTitleTranslated = internal.Config.Related.TitleTranslated
+	}
+	relatedTitleTranslatedMinTermFreq := config.Related.TitleTranslatedMinTermFreq
+	if relatedTitleTranslatedMinTermFreq == nil {
+		relatedTitleTranslatedMinTermFreq = internal.Config.Related.TitleTranslatedMinTermFreq
+	}
+	relatedTitleTranslatedMaxQueryTerms := config.Related.TitleTranslatedMaxQueryTerms
+	if relatedTitleTranslatedMaxQueryTerms == nil {
+		relatedTitleTranslatedMaxQueryTerms = internal.Config.Related.TitleTranslatedMaxQueryTerms
+	}
+	relatedTitleTranslatedBoost := config.Related.TitleTranslatedBoost
+	if relatedTitleTranslatedBoost == nil {
+		relatedTitleTranslatedBoost = internal.Config.Related.TitleTranslatedBoost
+	}
+	relatedTitle := config.Related.Title
+	if relatedTitle == nil {
+		relatedTitle = internal.Config.Related.Title
+	}
+	relatedTitleMinTermFreq := config.Related.TitleMinTermFreq
+	if relatedTitleMinTermFreq == nil {
+		relatedTitleMinTermFreq = internal.Config.Related.TitleMinTermFreq
+	}
+	relatedTitleMaxQueryTerms := config.Related.TitleMaxQueryTerms
+	if relatedTitleMaxQueryTerms == nil {
+		relatedTitleMaxQueryTerms = internal.Config.Related.TitleMaxQueryTerms
+	}
+	relatedTitleBoost := config.Related.TitleBoost
+	if relatedTitleBoost == nil {
+		relatedTitleBoost = internal.Config.Related.TitleBoost
+	}
+	relatedTags := config.Related.Tags
+	if relatedTags == nil {
+		relatedTags = internal.Config.Related.Tags
+	}
+	relatedTagsMinTermFreq := config.Related.TagsMinTermFreq
+	if relatedTagsMinTermFreq == nil {
+		relatedTagsMinTermFreq = internal.Config.Related.TagsMinTermFreq
+	}
+	relatedTagsMaxQueryTerms := config.Related.TagsMaxQueryTerms
+	if relatedTagsMaxQueryTerms == nil {
+		relatedTagsMaxQueryTerms = internal.Config.Related.TagsMaxQueryTerms
+	}
+	relatedTagsBoost := config.Related.TagsBoost
+	if relatedTagsBoost == nil {
+		relatedTagsBoost = internal.Config.Related.TagsBoost
+	}
+
 	cacheKey := "content-item:" + helpers.Md5Hash(
-		fmt.Sprintf("%s:%s:%d:%s:%v:%d:%d", hostName, langId, id, slug, orfl, relatedAmount, groupId),
+		fmt.Sprintf("%s:%s:%d:%s:%v:%d:%d:%v:%v:%v:%v:%v:%v:%v:%v:%v:%v:%v:%v", hostName, langId, id, slug, orfl, relatedAmount, groupId,
+			relatedTitleTranslated, relatedTitleTranslatedMinTermFreq, relatedTitleTranslatedMaxQueryTerms, relatedTitleTranslatedBoost,
+			relatedTitle, relatedTitleMinTermFreq, relatedTitleMaxQueryTerms, relatedTitleBoost,
+			relatedTags, relatedTagsMinTermFreq, relatedTagsMaxQueryTerms, relatedTagsBoost,
+		),
 	)
 	cacheTtl := time.Minute * 60
 	parsed, err := site.ParseTemplate("content-item", path, config, customContext, nocache, cacheKey, cacheTtl,
@@ -67,7 +120,11 @@ var ContentItem = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 			var err error
 			var response json.RawMessage
 			response, err = db.GetCachedTimeout(cacheKey+":data", cacheTtl, cacheTtl, func() ([]byte, error) {
-				return api.ContentItemRaw(hostName, langId, slug, id, orfl, int64(relatedAmount), groupId)
+				return api.ContentItemRaw(hostName, langId, slug, id, orfl, int64(relatedAmount), groupId,
+					relatedTitleTranslated, relatedTitleTranslatedMinTermFreq, relatedTitleTranslatedMaxQueryTerms, relatedTitleTranslatedBoost,
+					relatedTitle, relatedTitleMinTermFreq, relatedTitleMaxQueryTerms, relatedTitleBoost,
+					relatedTags, relatedTagsMinTermFreq, relatedTagsMaxQueryTerms, relatedTagsBoost,
+				)
 			}, nocache)
 			if err != nil {
 				if strings.Contains(err.Error(), "not found") {
@@ -147,6 +204,54 @@ var ContentItem = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 })
 
 func getContentItemFunc(hostName string, config *types.Config, langId string, groupId int64, nocache bool) func(args ...interface{}) *types.ContentItemResult {
+	relatedTitleTranslated := config.Related.TitleTranslated
+	if relatedTitleTranslated == nil {
+		relatedTitleTranslated = internal.Config.Related.TitleTranslated
+	}
+	relatedTitleTranslatedMinTermFreq := config.Related.TitleTranslatedMinTermFreq
+	if relatedTitleTranslatedMinTermFreq == nil {
+		relatedTitleTranslatedMinTermFreq = internal.Config.Related.TitleTranslatedMinTermFreq
+	}
+	relatedTitleTranslatedMaxQueryTerms := config.Related.TitleTranslatedMaxQueryTerms
+	if relatedTitleTranslatedMaxQueryTerms == nil {
+		relatedTitleTranslatedMaxQueryTerms = internal.Config.Related.TitleTranslatedMaxQueryTerms
+	}
+	relatedTitleTranslatedBoost := config.Related.TitleTranslatedBoost
+	if relatedTitleTranslatedBoost == nil {
+		relatedTitleTranslatedBoost = internal.Config.Related.TitleTranslatedBoost
+	}
+	relatedTitle := config.Related.Title
+	if relatedTitle == nil {
+		relatedTitle = internal.Config.Related.Title
+	}
+	relatedTitleMinTermFreq := config.Related.TitleMinTermFreq
+	if relatedTitleMinTermFreq == nil {
+		relatedTitleMinTermFreq = internal.Config.Related.TitleMinTermFreq
+	}
+	relatedTitleMaxQueryTerms := config.Related.TitleMaxQueryTerms
+	if relatedTitleMaxQueryTerms == nil {
+		relatedTitleMaxQueryTerms = internal.Config.Related.TitleMaxQueryTerms
+	}
+	relatedTitleBoost := config.Related.TitleBoost
+	if relatedTitleBoost == nil {
+		relatedTitleBoost = internal.Config.Related.TitleBoost
+	}
+	relatedTags := config.Related.Tags
+	if relatedTags == nil {
+		relatedTags = internal.Config.Related.Tags
+	}
+	relatedTagsMinTermFreq := config.Related.TagsMinTermFreq
+	if relatedTagsMinTermFreq == nil {
+		relatedTagsMinTermFreq = internal.Config.Related.TagsMinTermFreq
+	}
+	relatedTagsMaxQueryTerms := config.Related.TagsMaxQueryTerms
+	if relatedTagsMaxQueryTerms == nil {
+		relatedTagsMaxQueryTerms = internal.Config.Related.TagsMaxQueryTerms
+	}
+	relatedTagsBoost := config.Related.TagsBoost
+	if relatedTagsBoost == nil {
+		relatedTagsBoost = internal.Config.Related.TagsBoost
+	}
 	return func(args ...interface{}) *types.ContentItemResult {
 		parsingName := true
 		var id int64
@@ -188,7 +293,11 @@ func getContentItemFunc(hostName string, config *types.Config, langId string, gr
 			fmt.Sprintf("%s:%s:%d:%s:%v:%d:%d", hostName, langId, id, slug, orfl, relatedAmount, groupId),
 		)
 		results, err := db.GetCachedTimeout(cacheKey+":data", cacheTime, cacheTime, func() ([]byte, error) {
-			return api.ContentItemRaw(hostName, langId, slug, id, orfl, relatedAmount, groupId)
+			return api.ContentItemRaw(hostName, langId, slug, id, orfl, relatedAmount, groupId,
+				relatedTitleTranslated, relatedTitleTranslatedMinTermFreq, relatedTitleTranslatedMaxQueryTerms, relatedTitleTranslatedBoost,
+				relatedTitle, relatedTitleMinTermFreq, relatedTitleMaxQueryTerms, relatedTitleBoost,
+				relatedTags, relatedTagsMinTermFreq, relatedTagsMaxQueryTerms, relatedTagsBoost,
+			)
 		}, nocache)
 		if err != nil {
 			log.Println("can't get content item:", err, hostName)

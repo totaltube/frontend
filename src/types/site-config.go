@@ -6,12 +6,27 @@ type (
 		General         ConfigGeneral
 		Sitemap         ConfigSitemap
 		Params          ConfigParams
+		Related         ConfigRelated
 		LanguageDomains map[string]string            `toml:"language_domains"`
 		Translations    map[string]map[string]string `toml:"translations"`
 		Javascript      ConfigJs                     `json:"-"`
 		Scss            ConfigScss                   `json:"-"`
 		Custom          map[string]string            `json:"-"`
 		Hostname        string                       `json:"-"`
+	}
+	ConfigRelated struct {
+		TitleTranslated              *bool    `toml:"title_translated"`
+		TitleTranslatedMinTermFreq   *int     `toml:"title_translated_min_term_freq"`
+		TitleTranslatedMaxQueryTerms *int     `toml:"title_translated_max_query_terms"`
+		TitleTranslatedBoost         *float64 `toml:"title_translated_boost"`
+		Title                        *bool    `toml:"title"`
+		TitleMinTermFreq             *int     `toml:"title_min_term_freq"`
+		TitleMaxQueryTerms           *int     `toml:"title_max_query_terms"`
+		TitleBoost                   *float64 `toml:"title_boost"`
+		Tags                         *bool    `toml:"tags"`
+		TagsMinTermFreq              *int     `toml:"tags_min_term_freq"`
+		TagsMaxQueryTerms            *int     `toml:"tags_max_query_terms"`
+		TagsBoost                    *float64 `toml:"tags_boost"`
 	}
 	ConfigSitemap struct {
 		Route            string   `toml:"route"`

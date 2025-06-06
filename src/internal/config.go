@@ -24,6 +24,7 @@ type (
 		Options      *Options
 		Mail         Mail
 		Comments     Comments
+		Related      Related
 		Translations map[string]map[string]string `toml:"translations"`
 		Custom       map[string]string            `toml:"custom"`
 	}
@@ -59,6 +60,7 @@ type (
 		MaxDmcaMinute            int64    `toml:"max_dmca_minute"`
 		CaptchaWhiteList         []string `toml:"captcha_whitelist"`
 		RouteRedirectContentItem string   `toml:"route_redirect_content_item"`
+		RouteGetContentId        string   `toml:"route_get_content_id"`
 	}
 	Database struct {
 		Path                       string `toml:"path"`
@@ -85,6 +87,20 @@ type (
 		ItemsPerPage int `toml:"items_per_page"`
 		MaxReplies   int `toml:"max_replies"`
 	}
+	Related struct {
+		TitleTranslated              *bool    `toml:"title_translated"`
+		TitleTranslatedMinTermFreq   *int     `toml:"title_translated_min_term_freq"`
+		TitleTranslatedMaxQueryTerms *int     `toml:"title_translated_max_query_terms"`
+		TitleTranslatedBoost         *float64 `toml:"title_translated_boost"`
+		Title                        *bool    `toml:"title"`
+		TitleMinTermFreq             *int     `toml:"title_min_term_freq"`
+		TitleMaxQueryTerms           *int     `toml:"title_max_query_terms"`
+		TitleBoost                   *float64 `toml:"title_boost"`
+		Tags                         *bool    `toml:"tags"`
+		TagsMinTermFreq              *int     `toml:"tags_min_term_freq"`
+		TagsMaxQueryTerms            *int     `toml:"tags_max_query_terms"`
+		TagsBoost                    *float64 `toml:"tags_boost"`
+	}
 )
 
 var apiVersionRegex = regexp.MustCompile(`^(.*)/v\d+/?$`)
@@ -105,9 +121,12 @@ func InitConfig(configPath string) {
 		Frontend: Frontend{
 			MaxDmcaMinute:            5,
 			RouteRedirectContentItem: "/_redirect_content_item",
+			RouteGetContentId:        "/_get_content_id",
 		},
 		Database: Database{
-			Engine: "badger",
+			Engine:          "badger",
+			SyncWrites:      true,
+			DetectConflicts: true,
 		},
 		Translations: make(map[string]map[string]string),
 		Mail: Mail{

@@ -22,7 +22,11 @@ var RedirectToContentItem = http.HandlerFunc(func(w http.ResponseWriter, r *http
 		Output404(w, r, "page not found")
 		return
 	}
-	results, err := api.ContentItem(hostName, langId, slug, id, true, 0, 0)
+	results, err := api.ContentItem(hostName, langId, slug, id, true, 0, 0,
+		config.Related.TitleTranslated, config.Related.TitleTranslatedMinTermFreq, config.Related.TitleTranslatedMaxQueryTerms, config.Related.TitleTranslatedBoost,
+		config.Related.Title, config.Related.TitleMinTermFreq, config.Related.TitleMaxQueryTerms, config.Related.TitleBoost,
+		config.Related.Tags, config.Related.TagsMinTermFreq, config.Related.TagsMaxQueryTerms, config.Related.TagsBoost,
+	)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "no rows") {
 			Output404(w, r, "content item not found")
