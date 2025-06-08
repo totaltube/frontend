@@ -253,6 +253,9 @@ func InitPongo2() {
 		log.Fatalln(err)
 	}
 	err = pongo2.RegisterTag("cdata", pongo2CData)
+	if err != nil {
+		log.Fatalln(err)
+	}
 	err = pongo2.RegisterTag("prevnext", pongo2Prevnext)
 	if err != nil {
 		log.Fatalln(err)

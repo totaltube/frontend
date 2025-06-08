@@ -25,11 +25,11 @@ import (
 )
 
 var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	path := r.Context().Value("path").(string)
-	config := r.Context().Value("config").(*types.Config)
-	hostName := r.Context().Value("hostName").(string)
+	path := r.Context().Value(types.ContextKeyPath).(string)
+	config := r.Context().Value(types.ContextKeyConfig).(*types.Config)
+	hostName := r.Context().Value(types.ContextKeyHostName).(string)
 	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))
-	langId := r.Context().Value("lang").(string)
+	langId := r.Context().Value(types.ContextKeyLang).(string)
 	var pageStr = chi.URLParam(r, "page")
 	if pageStr == "" {
 		pageStr = r.URL.Query().Get(config.Params.Page)
@@ -70,7 +70,7 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	durationFrom, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.DurationGte), 10, 64)
 	durationTo, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.DurationLt), 10, 64)
 	customContext := generateCustomContext(w, r, "category")
-	ip := net.ParseIP(r.Context().Value("ip").(string))
+	ip := net.ParseIP(r.Context().Value(types.ContextKeyIp).(string))
 	groupId := internal.DetectCountryGroup(ip).Id
 	amount := config.General.CategoryResultsPerPage
 	cacheKey := "category:" + helpers.Md5Hash(

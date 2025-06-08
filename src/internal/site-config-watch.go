@@ -2,6 +2,7 @@ package internal
 
 import (
 	"log"
+	"os"
 	"path/filepath"
 	"sync"
 	"time"
@@ -15,18 +16,27 @@ import (
 var configsMap = make(map[string]*types.Config)
 var configsMutex sync.RWMutex
 
-func GetConfig(configPath string) *types.Config {
+func GetConfig(configPath string, updateConfig func(config *types.Config, configSource string) error) *types.Config {
 	configsMutex.RLock()
 	defer configsMutex.RUnlock()
 	if config, ok := configsMap[configPath]; ok {
 		return config
 	}
-	return GetConfigAndWatch(configPath)
+	return GetConfigAndWatch(configPath, updateConfig)
 }
 
-func GetConfigAndWatch(configPath string) *types.Config {
+func GetConfigAndWatch(configPath string, updateConfig func(config *types.Config, configSource string) error) *types.Config {
 	var config = types.NewConfig()
 	config.Hostname = filepath.Base(filepath.Dir(configPath))
+
+	// читаем configSource из файла configPath
+	configSourceBytes, err := os.ReadFile(configPath)
+	if err != nil {
+		log.Fatalln("error reading config source at", configPath, err)
+	}
+	configSource := string(configSourceBytes)
+	go updateConfig(config, configSource)
+
 	if _, err := toml.DecodeFile(configPath, config); err != nil {
 		log.Fatalln("error reading site config at", configPath, err)
 	}
@@ -77,6 +87,13 @@ func GetConfigAndWatch(configPath string) *types.Config {
 								newConfig.Custom[k] = v
 							}
 						}
+						// читаем configSource заново при перезагрузке
+						newConfigSourceBytes, err := os.ReadFile(configPath)
+						if err != nil {
+							log.Println("error reading config source at", configPath, err)
+						}
+						newConfigSource := string(newConfigSourceBytes)
+						go updateConfig(newConfig, newConfigSource)
 						if _, err := toml.DecodeFile(configPath, newConfig); err != nil {
 							log.Println("error reading site config at", configPath, err)
 						} else {

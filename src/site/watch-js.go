@@ -5,9 +5,11 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"sersh.com/totaltube/frontend/internal"
 	"sync"
 	"time"
+
+	"sersh.com/totaltube/frontend/api"
+	"sersh.com/totaltube/frontend/internal"
 
 	"github.com/rjeczalik/notify"
 )
@@ -15,7 +17,7 @@ import (
 func WatchJS(path string, configPath string) {
 	var rebuildTimeout = time.Millisecond * 1500
 	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
-		rebuildTimeout = time.Millisecond*100
+		rebuildTimeout = time.Millisecond * 100
 	}
 	go func() {
 		mu := sync.Mutex{}
@@ -59,8 +61,8 @@ func WatchJS(path string, configPath string) {
 					if !lastChange.After(time.Now().Add(-rebuildTimeout)) {
 						lastChange = time.Now()
 						mu.Unlock()
-						log.Println(ei.Path(),  "changed. Rebuilding js...")
-						err := RebuildJS(path, internal.GetConfig(configPath))
+						log.Println(ei.Path(), "changed. Rebuilding js...")
+						err := RebuildJS(path, internal.GetConfig(configPath, api.UpdateConfigRetry))
 						if err != nil {
 							log.Println(err)
 						}

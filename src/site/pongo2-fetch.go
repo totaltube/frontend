@@ -8,9 +8,10 @@ import (
 	"net"
 	"net/url"
 	"regexp"
-	"sersh.com/totaltube/frontend/internal"
 	"strings"
 	"time"
+
+	"sersh.com/totaltube/frontend/internal"
 
 	"github.com/flosch/pongo2/v6"
 	"github.com/stretchr/objx"
@@ -323,7 +324,7 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 		}
 		userAgent := ""
 		if headers, ok := ctx.Public["headers"].(map[string]string); ok {
-			userAgent, _ = headers["User-Agent"]
+			userAgent = headers["User-Agent"]
 		}
 		ip := "127.0.0.1"
 		ip, _ = ctx.Public["ip"].(string)

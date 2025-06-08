@@ -23,9 +23,9 @@ import (
 )
 
 var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	config := r.Context().Value("config").(*types.Config)
-	path := r.Context().Value("path").(string)
-	hostName := r.Context().Value("hostName").(string)
+	config := r.Context().Value(types.ContextKeyConfig).(*types.Config)
+	path := r.Context().Value(types.ContextKeyPath).(string)
+	hostName := r.Context().Value(types.ContextKeyHostName).(string)
 	currentDate := time.Now().UTC().Format(time.DateOnly)
 	doc := etree.NewDocument()
 	doc.CreateProcInst("xml", `version="1.0" encoding="UTF-8"`)

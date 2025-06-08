@@ -14,10 +14,12 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/handlers"
 	"sersh.com/totaltube/frontend/internal"
 	"sersh.com/totaltube/frontend/middlewares"
 	"sersh.com/totaltube/frontend/site"
+	"sersh.com/totaltube/frontend/types"
 )
 
 type hostRouter struct {
@@ -45,7 +47,7 @@ func InitRouter() http.Handler {
 		if _, err := os.Stat(configPath); err != nil {
 			continue
 		}
-		config := internal.GetConfigAndWatch(configPath)
+		config := internal.GetConfigAndWatch(configPath, api.UpdateConfigRetry)
 		h := hostRouter{
 			configPath: configPath,
 			path:       m,
@@ -70,11 +72,11 @@ func InitRouter() http.Handler {
 		hr.Use(middleware.StripSlashes)
 		hr.Use(func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				config := internal.GetConfig(configPath)
-				r = r.WithContext(context.WithValue(r.Context(), "config", config))
-				r = r.WithContext(context.WithValue(r.Context(), "path", h.path))
-				r = r.WithContext(context.WithValue(r.Context(), "hostName", hostName))
-				r = r.WithContext(context.WithValue(r.Context(), "lang", config.General.DefaultLanguage))
+				config := internal.GetConfig(configPath, api.UpdateConfigRetry)
+				r = r.WithContext(context.WithValue(r.Context(), types.ContextKeyConfig, config))
+				r = r.WithContext(context.WithValue(r.Context(), types.ContextKeyPath, h.path))
+				r = r.WithContext(context.WithValue(r.Context(), types.ContextKeyHostName, hostName))
+				r = r.WithContext(context.WithValue(r.Context(), types.ContextKeyLang, config.General.DefaultLanguage))
 				next.ServeHTTP(w, r)
 			})
 		})
@@ -271,9 +273,6 @@ func InitRouter() http.Handler {
 		if internal.Config.Frontend.RouteRedirectContentItem != "" && internal.Config.Frontend.RouteRedirectContentItem != "-" {
 			hr.Handle(internal.Config.Frontend.RouteRedirectContentItem, handlers.RedirectToContentItem)
 		}
-		if internal.Config.Frontend.RouteGetContentId != "" && internal.Config.Frontend.RouteGetContentId != "-" {
-			hr.Handle(internal.Config.Frontend.RouteGetContentId, handlers.GetContentId)
-		}
 		if config.Routes.Custom != nil {
 			for templateName, routePath := range config.Routes.Custom {
 				if strings.HasSuffix(templateName, "_multilang") {
@@ -287,23 +286,23 @@ func InitRouter() http.Handler {
 				_, isCustomMultilangTemplate := config.Routes.Custom[tName+"_multilang"]
 				if config.General.MultiLanguage && (strings.Contains(routePath, "{lang}") || isCustomMultilangTemplate) {
 					handlers.LangHandlers(hr, fixPageAndIdRoute(routePath), config, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-						ctx := context.WithValue(r.Context(), "custom_template_name", tName)
+						ctx := context.WithValue(r.Context(), types.ContextKeyCustomTemplateName, tName)
 						middlewares.BadBotMiddleware(handlers.Custom).ServeHTTP(w, r.WithContext(ctx))
 					}))
 					if isCustomPaginationTemplate && paginationRoute != "" && paginationRoute != "-" {
 						handlers.LangHandlers(hr, fixPageAndIdRoute(paginationRoute), config, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-							ctx := context.WithValue(r.Context(), "custom_template_name", tName)
+							ctx := context.WithValue(r.Context(), types.ContextKeyCustomTemplateName, tName)
 							middlewares.BadBotMiddleware(handlers.Custom).ServeHTTP(w, r.WithContext(ctx))
 						}))
 					}
 				} else {
 					hr.Handle(fixPageAndIdRoute(routePath), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-						ctx := context.WithValue(r.Context(), "custom_template_name", tName)
+						ctx := context.WithValue(r.Context(), types.ContextKeyCustomTemplateName, tName)
 						middlewares.BadBotMiddleware(handlers.Custom).ServeHTTP(w, r.WithContext(ctx))
 					}))
 					if isCustomPaginationTemplate && paginationRoute != "" && paginationRoute != "-" {
 						hr.Handle(fixPageAndIdRoute(paginationRoute), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-							ctx := context.WithValue(r.Context(), "custom_template_name", tName)
+							ctx := context.WithValue(r.Context(), types.ContextKeyCustomTemplateName, tName)
 							middlewares.BadBotMiddleware(handlers.Custom).ServeHTTP(w, r.WithContext(ctx))
 						}))
 					}
@@ -371,7 +370,7 @@ func InitRouter() http.Handler {
 		if ip == "127.0.0.1" && internal.Config.General.Development {
 			ip = "89.23.44.10"
 		}
-		r = r.WithContext(context.WithValue(r.Context(), "ip", ip))
+		r = r.WithContext(context.WithValue(r.Context(), types.ContextKeyIp, ip))
 		host.handler.ServeHTTP(w, r)
 	}))
 	if os.Getenv("GO_ENV") == "debug" {

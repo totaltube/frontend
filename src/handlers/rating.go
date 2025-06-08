@@ -13,9 +13,9 @@ import (
 )
 
 var Rating = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	config := r.Context().Value("config").(*types.Config)
-	hostName := r.Context().Value("hostName").(string)
-	ip := r.Context().Value("ip").(string)
+	config := r.Context().Value(types.ContextKeyConfig).(*types.Config)
+	hostName := r.Context().Value(types.ContextKeyHostName).(string)
+	ip := r.Context().Value(types.ContextKeyIp).(string)
 	slug, _ := url.PathUnescape(chi.URLParam(r, "slug"))
 	id, _ := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if id == 0 && slug == "" {

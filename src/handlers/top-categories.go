@@ -65,11 +65,11 @@ func getTopCategoriesFunc(hostName string, langId string, groupId int64, config 
 }
 
 var TopCategories = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	path := r.Context().Value("path").(string)
-	config := r.Context().Value("config").(*types.Config)
-	hostName := r.Context().Value("hostName").(string)
-	langId := r.Context().Value("lang").(string)
-	ip := r.Context().Value("ip").(string)
+	path := r.Context().Value(types.ContextKeyPath).(string)
+	config := r.Context().Value(types.ContextKeyConfig).(*types.Config)
+	hostName := r.Context().Value(types.ContextKeyHostName).(string)
+	langId := r.Context().Value(types.ContextKeyLang).(string)
+	ip := r.Context().Value(types.ContextKeyIp).(string)
 	groupId := internal.DetectCountryGroup(net.ParseIP(ip)).Id
 	page, _ := strconv.ParseInt(helpers.FirstNotEmpty(chi.URLParam(r, "page"), r.URL.Query().Get(config.Params.Page), "1"), 10, 16)
 	if page <= 0 {

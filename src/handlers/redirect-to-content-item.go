@@ -13,9 +13,9 @@ import (
 )
 
 var RedirectToContentItem = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	config := r.Context().Value("config").(*types.Config)
-	langId := r.Context().Value("lang").(string)
-	hostName := r.Context().Value("hostName").(string)
+	config := r.Context().Value(types.ContextKeyConfig).(*types.Config)
+	langId := r.Context().Value(types.ContextKeyLang).(string)
+	hostName := r.Context().Value(types.ContextKeyHostName).(string)
 	id, _ := strconv.ParseInt(r.URL.Query().Get("id"), 10, 64)
 	slug := r.URL.Query().Get("slug")
 	if id <= 0 && slug == "" {

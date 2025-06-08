@@ -13,6 +13,9 @@ func Autocomplete(siteDomain, query, lang string, config *types.Config) (results
 		"lang":  []string{lang},
 		"query": []string{query},
 	})
+	if err != nil {
+		return
+	}
 	results = new(types.AutocompleteResults)
 	err = json.Unmarshal(response, results)
 	if err != nil {

@@ -68,7 +68,7 @@ func startServer() {
 	}
 	defer listener.Close()
 	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGUSR2, syscall.SIGINT, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGABRT, syscall.SIGKILL, syscall.SIGQUIT)
+	signal.Notify(sigs, syscall.SIGUSR2, syscall.SIGINT, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGABRT)
 
 	go func() {
 		for {

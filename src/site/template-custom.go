@@ -140,7 +140,7 @@ func ParseCustomTemplate(name, path string, config *types.Config,
 		}
 		ctx["cookies"] = cookies
 		ctx["headers"] = headers
-		ip := r.Context().Value("ip").(string)
+		ip := r.Context().Value(types.ContextKeyIp).(string)
 		ctx["ip"] = ip
 
 		ctx["country"] = func() string {

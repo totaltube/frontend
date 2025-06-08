@@ -35,11 +35,11 @@ func (r redirectErr) Error() string {
 }
 
 var ContentItem = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	path := r.Context().Value("path").(string)
-	config := r.Context().Value("config").(*types.Config)
-	hostName := r.Context().Value("hostName").(string)
+	path := r.Context().Value(types.ContextKeyPath).(string)
+	config := r.Context().Value(types.ContextKeyConfig).(*types.Config)
+	hostName := r.Context().Value(types.ContextKeyHostName).(string)
 	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))
-	langId := r.Context().Value("lang").(string)
+	langId := r.Context().Value(types.ContextKeyLang).(string)
 	slug, _ := url.PathUnescape(chi.URLParam(r, "slug"))
 	id, _ := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if id == 0 && slug == "" {
@@ -51,7 +51,7 @@ var ContentItem = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 	}
 	orfl := !config.General.FakeVideoPage
 	relatedAmount := config.General.ContentRelatedAmount
-	ip := r.Context().Value("ip").(string)
+	ip := r.Context().Value(types.ContextKeyIp).(string)
 	groupId := internal.DetectCountryGroup(net.ParseIP(ip)).Id
 	customContext := generateCustomContext(w, r, "content-item")
 	params := customContext["params"].(map[string]string)

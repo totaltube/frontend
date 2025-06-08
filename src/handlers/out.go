@@ -33,9 +33,9 @@ type countInfo struct {
 var countChannel = make(chan countInfo, 10000)
 
 var Out = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	config := r.Context().Value("config").(*types.Config)
-	hostName := r.Context().Value("hostName").(string)
-	ip := r.Context().Value("ip").(string)
+	config := r.Context().Value(types.ContextKeyConfig).(*types.Config)
+	hostName := r.Context().Value(types.ContextKeyHostName).(string)
+	ip := r.Context().Value(types.ContextKeyIp).(string)
 	redirectUrl := r.URL.Query().Get(config.Params.CountRedirect)
 	encryptedRedirectUrl := r.URL.Query().Get("e" + config.Params.CountRedirect)
 	if redirectUrl == "" && encryptedRedirectUrl != "" {

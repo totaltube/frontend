@@ -23,12 +23,12 @@ import (
 )
 
 var Search = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	path := r.Context().Value("path").(string)
-	config := r.Context().Value("config").(*types.Config)
-	hostName := r.Context().Value("hostName").(string)
+	path := r.Context().Value(types.ContextKeyPath).(string)
+	config := r.Context().Value(types.ContextKeyConfig).(*types.Config)
+	hostName := r.Context().Value(types.ContextKeyHostName).(string)
 	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))
 
-	langId := r.Context().Value("lang").(string)
+	langId := r.Context().Value(types.ContextKeyLang).(string)
 	page, _ := strconv.ParseInt(helpers.FirstNotEmpty(chi.URLParam(r, "page"), r.URL.Query().Get(config.Params.Page), "1"), 10, 16)
 	if page <= 0 {
 		page = 1
@@ -82,7 +82,7 @@ var Search = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			hostName, langId, page, channelSlug, channelId,
 			modelId, modelSlug, durationFrom, durationTo, categoryId, categorySlug, sortBy, searchQuery, amount),
 	)
-	ip := r.Context().Value("ip").(string)
+	ip := r.Context().Value(types.ContextKeyIp).(string)
 	groupId := internal.DetectCountryGroup(net.ParseIP(ip)).Id
 	userAgent := r.Header.Get("User-Agent")
 	cacheTtl := time.Minute * 15

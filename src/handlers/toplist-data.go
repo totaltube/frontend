@@ -23,8 +23,8 @@ import (
 
 // ToplistData will handle requests to get most clickable thumbs for trading with other sites
 var ToplistData = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	config := r.Context().Value("config").(*types.Config)
-	hostName := r.Context().Value("hostName").(string)
+	config := r.Context().Value(types.ContextKeyConfig).(*types.Config)
+	hostName := r.Context().Value(types.ContextKeyHostName).(string)
 	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))
 	query := r.URL.Query().Get("query")
 	lang := r.URL.Query().Get("lang")
@@ -36,7 +36,7 @@ var ToplistData = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 		lang = "zh-Hans"
 	}
 	lang = internal.DetectLanguage(lang, config.General.DefaultLanguage, lang).Id
-	ip := r.Context().Value("ip").(string)
+	ip := r.Context().Value(types.ContextKeyIp).(string)
 	groupId := internal.DetectCountryGroup(net.ParseIP(ip)).Id
 	cacheKey := fmt.Sprintf(`td:%s`, helpers.Md5Hash(fmt.Sprintf(`%s-%s-%s-%d`, hostName, query, lang, groupId)))
 	cacheTtl := time.Minute * 30

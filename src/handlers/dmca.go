@@ -21,15 +21,15 @@ import (
 )
 
 var Dmca = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	path := r.Context().Value("path").(string)
-	config := r.Context().Value("config").(*types.Config)
-	hostName := r.Context().Value("hostName").(string)
+	path := r.Context().Value(types.ContextKeyPath).(string)
+	config := r.Context().Value(types.ContextKeyConfig).(*types.Config)
+	hostName := r.Context().Value(types.ContextKeyHostName).(string)
 	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))
-	langId := r.Context().Value("lang").(string)
+	langId := r.Context().Value(types.ContextKeyLang).(string)
 	customContext := generateCustomContext(w, r, "dmca")
 	cacheTtl := time.Minute * 15
 	isOk := false
-	var ip = r.Context().Value("ip").(string)
+	var ip = r.Context().Value(types.ContextKeyIp).(string)
 	session := db.GetSession(ip)
 	defer db.SaveSession(ip, session)
 	if session.LastDmca.IsZero() || session.LastDmca.Before(time.Now().Add(-time.Minute)) {

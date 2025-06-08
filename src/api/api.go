@@ -72,6 +72,7 @@ const (
 	uriWhitelistBotsList  ApiUri = "bot-whitelist"
 	uriRating             ApiUri = "rating"
 	uriHealth             ApiUri = "health"
+	uriUpdateConfig       ApiUri = "update-config"
 )
 
 var ErrApiWriteTrouble = errors.New("api not available for write operations now. Try later")
@@ -88,7 +89,7 @@ func Request(siteDomain string, method Method, uri ApiUri, data interface{}) (re
 		siteDomain = internal.Config.Frontend.DefaultSite
 	}
 	siteConfigPath := filepath.Join(internal.Config.Frontend.SitesPath, siteDomain, "config.toml")
-	siteConfig := internal.GetConfig(siteConfigPath)
+	siteConfig := internal.GetConfig(siteConfigPath, UpdateConfigRetry)
 	f := helpers.SiteFetch(siteConfig)(string(uri))
 	f.WithMethod(string(method))
 	if method == "GET" && data != nil {
@@ -151,7 +152,7 @@ func Request(siteDomain string, method Method, uri ApiUri, data interface{}) (re
 		_ = json.Unmarshal(r.Value, &errorString)
 		err = errors.New("error from api: " + errorString + ", " + string(method) + ", " + string(uri))
 		if !strings.Contains(errorString, "favicon.ico") {
-			log.Printf("error from api: %s, %s, %s, %s, %v", errorString, siteDomain, method, uri, data)
+			log.Printf("error from api: %s, %s, %s, %s", errorString, siteDomain, method, uri)
 		}
 		return
 	}

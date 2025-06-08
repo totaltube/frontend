@@ -3,9 +3,11 @@ package site
 import (
 	"log"
 	"runtime"
-	"sersh.com/totaltube/frontend/internal"
 	"sync"
 	"time"
+
+	"sersh.com/totaltube/frontend/api"
+	"sersh.com/totaltube/frontend/internal"
 
 	"github.com/rjeczalik/notify"
 )
@@ -13,7 +15,7 @@ import (
 func WatchScss(path string, configPath string) {
 	var rebuildTimeout = time.Millisecond * 1500
 	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
-		rebuildTimeout = time.Millisecond*100
+		rebuildTimeout = time.Millisecond * 100
 	}
 	go func() {
 		mu := sync.Mutex{}
@@ -41,13 +43,13 @@ func WatchScss(path string, configPath string) {
 					if !lastChange.After(time.Now().Add(-rebuildTimeout)) {
 						lastChange = time.Now()
 						mu.Unlock()
-						log.Println(ei.Path(),  "changed. Rebuilding scss...")
+						log.Println(ei.Path(), "changed. Rebuilding scss...")
 						started := time.Now()
-						err := RebuildSCSS(path, internal.GetConfig(configPath))
+						err := RebuildSCSS(path, internal.GetConfig(configPath, api.UpdateConfigRetry))
 						if err != nil {
 							log.Println("Error rebuilding scss:", err)
 						}
-						log.Println("done rebuilding scss in", time.Now().Sub(started).Truncate(time.Millisecond))
+						log.Println("done rebuilding scss in", time.Since(started).Truncate(time.Millisecond))
 					} else {
 						mu.Unlock()
 					}

@@ -60,7 +60,6 @@ type (
 		MaxDmcaMinute            int64    `toml:"max_dmca_minute"`
 		CaptchaWhiteList         []string `toml:"captcha_whitelist"`
 		RouteRedirectContentItem string   `toml:"route_redirect_content_item"`
-		RouteGetContentId        string   `toml:"route_get_content_id"`
 	}
 	Database struct {
 		Path                       string `toml:"path"`
@@ -121,7 +120,6 @@ func InitConfig(configPath string) {
 		Frontend: Frontend{
 			MaxDmcaMinute:            5,
 			RouteRedirectContentItem: "/_redirect_content_item",
-			RouteGetContentId:        "/_get_content_id",
 		},
 		Database: Database{
 			Engine:          "badger",

@@ -64,7 +64,7 @@ func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler h
 					uri = u.Path
 					d = u.Hostname()
 				}
-				if d != r.Context().Value("hostName") {
+				if d != r.Context().Value(types.ContextKeyHostName) {
 					uriToRedirect := path.Join(uri, r.URL.Path)
 					if r.URL.RawQuery != "" {
 						uriToRedirect += "?" + r.URL.RawQuery
@@ -77,7 +77,7 @@ func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler h
 				canonicalParsed, _ := url.Parse(siteConfig.General.CanonicalUrl)
 				canonicalDomain := canonicalParsed.Hostname()
 				canonicalDomain = strings.TrimPrefix(canonicalDomain, "www.")
-				if canonicalDomain != r.Context().Value("hostName") {
+				if canonicalDomain != r.Context().Value(types.ContextKeyHostName) {
 					uriToRedirect := r.URL.Path
 					if r.URL.RawQuery != "" {
 						uriToRedirect += "?" + r.URL.RawQuery
@@ -117,12 +117,12 @@ func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler h
 
 				http.Redirect(w, r, redirectUri, http.StatusMovedPermanently)
 				if internal.Config.General.EnableAccessLog {
-					log.Println(r.Context().Value("hostName").(string), 301, "Unsupported language redirect to", redirectUri)
+					log.Println(r.Context().Value(types.ContextKeyHostName).(string), 301, "Unsupported language redirect to", redirectUri)
 				}
 				return
 			}
-			ctx := context.WithValue(r.Context(), "lang", langId)
-			ctx = context.WithValue(ctx, "isXDefault", false)
+			ctx := context.WithValue(r.Context(), types.ContextKeyLang, langId)
+			ctx = context.WithValue(ctx, types.ContextKeyIsXDefault, false)
 			cookie := &http.Cookie{
 				Name:     internal.Config.General.LangCookie,
 				Value:    langId,
@@ -132,7 +132,7 @@ func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler h
 			}
 			r.AddCookie(cookie)
 			http.SetCookie(w, cookie)
-			config := r.Context().Value("config").(*types.Config)
+			config := r.Context().Value(types.ContextKeyConfig).(*types.Config)
 			if config.General.NoRedirectDefaultLanguage && langId == config.General.DefaultLanguage && !strings.Contains(route, "{lang}") {
 				// for default language, we need to redirect to x-default uri
 				escapedTemplate := regexp.QuoteMeta(langTemplate)
@@ -146,7 +146,7 @@ func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler h
 					w.Header().Add("Pragma", "no-cache")
 					http.Redirect(w, r, matches[1], http.StatusMovedPermanently)
 					if internal.Config.General.EnableAccessLog {
-						log.Println(r.Context().Value("hostName").(string), 301, matches[1])
+						log.Println(r.Context().Value(types.ContextKeyHostName).(string), 301, matches[1])
 					}
 					return
 				}
@@ -155,7 +155,7 @@ func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler h
 					w.Header().Add("Pragma", "no-cache")
 					http.Redirect(w, r, route, http.StatusMovedPermanently)
 					if internal.Config.General.EnableAccessLog {
-						log.Println(r.Context().Value("hostName").(string), 301, route)
+						log.Println(r.Context().Value(types.ContextKeyHostName).(string), 301, route)
 					}
 					return
 				}
@@ -171,7 +171,7 @@ func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler h
 	if route == siteConfig.Routes.TopCategories {
 		hr.Handle(route, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			langCookie, _ := r.Cookie(internal.Config.General.LangCookie)
-			hostName := r.Context().Value("hostName").(string)
+			hostName := r.Context().Value(types.ContextKeyHostName).(string)
 			langValue := ""
 			if langCookie != nil {
 				langValue = langCookie.Value
@@ -190,7 +190,7 @@ func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler h
 				redirectUri = strings.ReplaceAll(langTemplate, "{lang}", lang.Id)
 			}
 
-			ip := r.Context().Value("ip").(string)
+			ip := r.Context().Value(types.ContextKeyIp).(string)
 			groupId := internal.DetectCountryGroup(net.ParseIP(ip)).Id
 			if ref := r.Header.Get("Referer"); ref != "" && !siteConfig.General.DisableCategoriesRedirect {
 				if u, err := url.Parse(ref); err == nil &&
@@ -233,8 +233,8 @@ func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler h
 				}
 			}
 			if siteConfig.General.NoRedirectDefaultLanguage && lang.Id == siteConfig.General.DefaultLanguage {
-				ctx := context.WithValue(r.Context(), "lang", lang.Id)
-				ctx = context.WithValue(ctx, "isXDefault", true)
+				ctx := context.WithValue(r.Context(), types.ContextKeyLang, lang.Id)
+				ctx = context.WithValue(ctx, types.ContextKeyIsXDefault, true)
 				middlewares.BadBotMiddleware(handler).ServeHTTP(w, r.WithContext(ctx))
 				return
 			}
@@ -268,8 +268,8 @@ func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler h
 			var uri = r.URL.Path
 			redirectUri = strings.ReplaceAll(redirectUri, "{route}", uri)
 			if siteConfig.General.NoRedirectDefaultLanguage && lang.Id == siteConfig.General.DefaultLanguage || redirectUri == uri {
-				ctx := context.WithValue(r.Context(), "lang", lang.Id)
-				ctx = context.WithValue(ctx, "isXDefault", true)
+				ctx := context.WithValue(r.Context(), types.ContextKeyLang, lang.Id)
+				ctx = context.WithValue(ctx, types.ContextKeyIsXDefault, true)
 				middlewares.BadBotMiddleware(handler).ServeHTTP(w, r.WithContext(ctx))
 				return
 			}

@@ -2,13 +2,13 @@ package site
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
-	"sersh.com/totaltube/frontend/types"
 	"sync"
+
+	"sersh.com/totaltube/frontend/types"
 
 	"github.com/evanw/esbuild/pkg/api"
 )
@@ -22,7 +22,7 @@ func RebuildJS(path string, config *types.Config) error {
 	for _, e := range config.Javascript.Entries {
 		entryFile := filepath.Join(path, e)
 		if _, err := os.Stat(entryFile); err != nil {
-			err := errors.New(fmt.Sprintf("can't access entry file %s: %s", entryFile, err.Error()))
+			err := fmt.Errorf("can't access entry file %s: %s", entryFile, err.Error())
 			return err
 		}
 		entryFiles = append(entryFiles, entryFile)
@@ -32,7 +32,7 @@ func RebuildJS(path string, config *types.Config) error {
 		outDir = filepath.Join(outDir, config.Javascript.Destination)
 	}
 	if err := os.MkdirAll(outDir, 0755); err != nil {
-		err := errors.New(fmt.Sprintf("can't create out directory for javascript bundle: %s", err.Error()))
+		err := fmt.Errorf("can't create out directory for javascript bundle: %s", err.Error())
 		return err
 	}
 	configJson, err := json.MarshalIndent(config, "", "   ")
@@ -56,15 +56,15 @@ func RebuildJS(path string, config *types.Config) error {
 		MinifyIdentifiers: config.Javascript.Minify,
 		MinifySyntax:      config.Javascript.Minify,
 		Loader: map[string]api.Loader{
-			".gif": api.LoaderFile,
-			".jpg": api.LoaderFile,
-			".jpeg": api.LoaderFile,
-			".webp": api.LoaderFile,
-			".png": api.LoaderFile,
-			".svg": api.LoaderText,
+			".gif":   api.LoaderFile,
+			".jpg":   api.LoaderFile,
+			".jpeg":  api.LoaderFile,
+			".webp":  api.LoaderFile,
+			".png":   api.LoaderFile,
+			".svg":   api.LoaderText,
 			".woff2": api.LoaderFile,
-			".woff": api.LoaderFile,
-			".ttf": api.LoaderFile,
+			".woff":  api.LoaderFile,
+			".ttf":   api.LoaderFile,
 		},
 	})
 	for _, m := range result.Errors {

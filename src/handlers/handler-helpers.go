@@ -26,9 +26,9 @@ import (
 )
 
 func generateCustomContext(_ http.ResponseWriter, r *http.Request, templateName string) pongo2.Context {
-	config := r.Context().Value("config").(*types.Config)
-	hostName := r.Context().Value("hostName").(string)
-	langId := r.Context().Value("lang").(string)
+	config := r.Context().Value(types.ContextKeyConfig).(*types.Config)
+	hostName := r.Context().Value(types.ContextKeyHostName).(string)
+	langId := r.Context().Value(types.ContextKeyLang).(string)
 	refreshTranslations := r.URL.Query().Get(config.Params.Nocache) == "3"
 	page, _ := strconv.ParseInt(helpers.FirstNotEmpty(chi.URLParam(r, "page"), r.URL.Query().Get(config.Params.Page), "1"), 10, 16)
 	if page <= 0 {
@@ -242,7 +242,7 @@ func generateCustomContext(_ http.ResponseWriter, r *http.Request, templateName 
 	}
 	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))
 	var globals = make(map[string]interface{})
-	ip := r.Context().Value("ip").(string)
+	ip := r.Context().Value(types.ContextKeyIp).(string)
 	var countryGroup = internal.DetectCountryGroup(net.ParseIP(ip))
 	groupId := countryGroup.Id
 	customContext := pongo2.Context{
@@ -332,11 +332,11 @@ func generateCustomContext(_ http.ResponseWriter, r *http.Request, templateName 
 }
 
 func Output404(w http.ResponseWriter, r *http.Request, errMessage string) {
-	path := r.Context().Value("path").(string)
-	config := r.Context().Value("config").(*types.Config)
+	path := r.Context().Value(types.ContextKeyPath).(string)
+	config := r.Context().Value(types.ContextKeyConfig).(*types.Config)
 	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))
-	hostName := r.Context().Value("hostName").(string)
-	langId := r.Context().Value("lang").(string)
+	hostName := r.Context().Value(types.ContextKeyHostName).(string)
+	langId := r.Context().Value(types.ContextKeyLang).(string)
 	customContext := generateCustomContext(w, r, "404")
 	customContext["error"] = errMessage
 	cacheKey := fmt.Sprintf("404:%s:%s:%s", hostName, langId, helpers.Md5Hash(errMessage))
@@ -354,11 +354,11 @@ func Output404(w http.ResponseWriter, r *http.Request, errMessage string) {
 }
 
 func Output500(w http.ResponseWriter, r *http.Request, err error) {
-	path := r.Context().Value("path").(string)
-	config := r.Context().Value("config").(*types.Config)
+	path := r.Context().Value(types.ContextKeyPath).(string)
+	config := r.Context().Value(types.ContextKeyConfig).(*types.Config)
 	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))
-	hostName := r.Context().Value("hostName").(string)
-	langId := r.Context().Value("lang").(string)
+	hostName := r.Context().Value(types.ContextKeyHostName).(string)
+	langId := r.Context().Value(types.ContextKeyLang).(string)
 	customContext := generateCustomContext(w, r, "404")
 	customContext["error"] = err.Error()
 	log.Println(err, hostName, langId)
