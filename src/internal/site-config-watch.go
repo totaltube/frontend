@@ -17,8 +17,8 @@ var configsMap = make(map[string]*types.Config)
 var configsMutex sync.RWMutex
 
 func GetConfig(configPath string, updateConfig func(config *types.Config, configSource string) error) *types.Config {
-	configsMutex.RLock()
-	defer configsMutex.RUnlock()
+	configsMutex.Lock()
+	defer configsMutex.Unlock()
 	if config, ok := configsMap[configPath]; ok {
 		return config
 	}

@@ -43,6 +43,7 @@ func main() {
 		if err != nil {
 			panic(errors.Wrap(err, "Can't get sites options"))
 		}
+		log.Println("Starting server...")
 		startServer()
 	case "child":
 		log.Println("Initializing configuration...")

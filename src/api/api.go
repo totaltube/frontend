@@ -151,7 +151,7 @@ func Request(siteDomain string, method Method, uri ApiUri, data interface{}) (re
 		var errorString string
 		_ = json.Unmarshal(r.Value, &errorString)
 		err = errors.New("error from api: " + errorString + ", " + string(method) + ", " + string(uri))
-		if !strings.Contains(errorString, "favicon.ico") {
+		if !strings.Contains(errorString, "favicon.ico") && !strings.Contains(errorString, "not found") {
 			log.Printf("error from api: %s, %s, %s, %s", errorString, siteDomain, method, uri)
 		}
 		return

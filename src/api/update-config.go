@@ -3,6 +3,7 @@ package api
 import (
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -22,8 +23,11 @@ func UpdateConfigRetry(config *types.Config, configSource string) (err error) {
 		if err = UpdateConfig(config, configSource); err == nil {
 			return nil
 		}
-		time.Sleep(time.Second * 3)
+		if strings.Contains(err.Error(), "not found") {
+			break
+		}
 		log.Println("failed to update config, retrying...", err)
+		time.Sleep(time.Second * 3)
 	}
 	return errors.New("failed to update config after 10 retries")
 }
