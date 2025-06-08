@@ -26,8 +26,9 @@ jobs:
         
     - name: Build Linux binary
       run: |
+        mkdir -p bin
         cd src
-        CGO_ENABLED=1 CGO_LDFLAGS="-static" go build \
+        CGO_ENABLED=1 CGO_LDFLAGS="-static" go build -buildvcs=false \
           --ldflags='-s -w -X main.version=${{ steps.get_version.outputs.VERSION }} -extldflags=-static' \
           -o ../bin/totaltube-frontend .
           
@@ -35,7 +36,7 @@ jobs:
       run: |
         cd src
         CGO_ENABLED=1 CGO_LDFLAGS="-static" GOOS=windows GOARCH=amd64 \
-          CC=x86_64-w64-mingw32-gcc CXX=x86_64-w64-mingw32-g++ go build \
+          CC=x86_64-w64-mingw32-gcc CXX=x86_64-w64-mingw32-g++ go build -buildvcs=false \
           --ldflags='-s -w -X main.version=${{ steps.get_version.outputs.VERSION }} -extldflags=-static' \
           -o ../bin/totaltube-frontend.exe .
           
