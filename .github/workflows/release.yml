@@ -1,0 +1,86 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    container:
+      image: sersh/golang-builder:latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+        
+    - name: Extract version from tag
+      id: get_version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        
+    - name: Install libsass dependencies
+      run: |
+        cd src
+        CGO_LDFLAGS="-static" go install github.com/wellington/go-libsass
+        
+    - name: Build Linux binary
+      run: |
+        cd src
+        CGO_ENABLED=1 CGO_LDFLAGS="-static" go build \
+          --ldflags='-s -w -X main.version=${{ steps.get_version.outputs.VERSION }} -extldflags=-static' \
+          -o ../bin/totaltube-frontend .
+          
+    - name: Build Windows binary
+      run: |
+        cd src
+        CGO_ENABLED=1 CGO_LDFLAGS="-static" GOOS=windows GOARCH=amd64 \
+          CC=x86_64-w64-mingw32-gcc CXX=x86_64-w64-mingw32-g++ go build \
+          --ldflags='-s -w -X main.version=${{ steps.get_version.outputs.VERSION }} -extldflags=-static' \
+          -o ../bin/totaltube-frontend.exe .
+          
+    - name: Create Linux archive
+      run: |
+        cd bin
+        tar --owner=root --group=root --mode='a+rwX' -zcf totaltube-frontend-${{ steps.get_version.outputs.VERSION }}.tar.gz totaltube-frontend
+        
+    - name: Create Windows archive
+      run: |
+        cd bin
+        zip totaltube-frontend-${{ steps.get_version.outputs.VERSION }}.zip totaltube-frontend.exe
+        
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ steps.get_version.outputs.VERSION }}
+        draft: false
+        prerelease: false
+        body: |
+          ## Changes in version ${{ steps.get_version.outputs.VERSION }}
+          
+          - Built from commit ${{ github.sha }}
+          - Linux and Windows binaries included
+          
+    - name: Upload Linux Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./bin/totaltube-frontend-${{ steps.get_version.outputs.VERSION }}.tar.gz
+        asset_name: totaltube-frontend-${{ steps.get_version.outputs.VERSION }}.tar.gz
+        asset_content_type: application/gzip
+        
+    - name: Upload Windows Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./bin/totaltube-frontend-${{ steps.get_version.outputs.VERSION }}.zip
+        asset_name: totaltube-frontend-${{ steps.get_version.outputs.VERSION }}.zip
+        asset_content_type: application/zip 
