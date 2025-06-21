@@ -23,6 +23,7 @@ jobs:
       run: |
         cd src
         CGO_LDFLAGS="-static" go install github.com/wellington/go-libsass
+        CGO_ENABLED=1 GOOS=freebsd GOARCH=amd64 CC=clang-freebsd CGO_LDFLAGS="-static" go install github.com/wellington/go-libsass
         
     - name: Build Linux binary
       run: |
