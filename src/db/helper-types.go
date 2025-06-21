@@ -1,4 +1,7 @@
 package db
 
-type M map[string]interface{}
-type A []interface{}
+// M is a map of any
+type M map[string]any
+
+// A is a slice of any
+type A []any

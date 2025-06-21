@@ -16,6 +16,7 @@ import (
 
 var bdb *badger.DB
 
+// InitDB initializes the database
 func InitDB() {
 	rand.Seed(time.Now().UnixNano())
 	launchCacheWorkers()
@@ -153,6 +154,7 @@ func InitDB() {
 	}
 }
 
+// BeforeClose closes the database before the server is closed
 func BeforeClose() {
 	if bdb != nil {
 		err := bdb.Close()

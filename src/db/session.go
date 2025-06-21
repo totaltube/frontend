@@ -14,6 +14,7 @@ const (
 	sessionPrefix = "s_"
 )
 
+// Session is a session
 type Session struct {
 	Ip            string
 	LastViewType  string
@@ -25,6 +26,7 @@ type Session struct {
 	DmcaAmount    int64
 }
 
+// GetSession gets a session
 func GetSession(ip string) (session *Session) {
 	helpers.KeyMutex.Lock(ip)
 	key := []byte(sessionPrefix + ip)

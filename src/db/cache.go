@@ -175,6 +175,7 @@ func storeToBadgerCache(key, expireKey []byte, data []byte, timeout, extendedTim
 	})
 }
 
+// GetCachedTimeout gets cached data with timeout
 func GetCachedTimeout(
 	cacheKey string,
 	timeout, extendedTimeout time.Duration,
@@ -251,6 +252,7 @@ func recreateAndStore(
 
 var clearCacheMutex sync.Mutex
 
+// ClearCacheByPrefix clears cache by prefix
 func ClearCacheByPrefix(prefix string) (err error) {
 	clearCacheMutex.Lock()
 	defer clearCacheMutex.Unlock()

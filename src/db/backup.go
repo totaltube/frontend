@@ -1,3 +1,4 @@
+// Package db contains functions for working with the database
 package db
 
 import (
@@ -14,6 +15,7 @@ import (
 
 var backupMutex sync.Mutex
 
+// DoBackup does backup of badger database
 func DoBackup(file *os.File, since uint64) (err error) {
 	backupMutex.Lock()
 	defer backupMutex.Unlock()

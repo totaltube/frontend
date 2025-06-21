@@ -79,9 +79,11 @@ var ErrApiWriteTrouble = errors.New("api not available for write operations now.
 var ErrApiTrouble = errors.New("api not available now. Try later")
 
 func Request(siteDomain string, method Method, uri ApiUri, data interface{}) (response json.RawMessage, err error) {
+	//nolint
 	if ApiHasTrouble.Load() {
 		//return nil, ErrApiTrouble
 	}
+	//nolint
 	if method != methodGet && ApiWriteHasTrouble.Load() {
 		//return nil, ErrApiWriteTrouble
 	}

@@ -78,13 +78,14 @@ var Out = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		countView, _ = strconv.ParseBool(r.URL.Query().Get(config.Params.CountView))
 	}
 	countType := types.CountTypeNone
-	if countTypeParam == config.Params.CountTypeCategory {
+	switch countTypeParam {
+	case config.Params.CountTypeCategory:
 		countType = types.CountTypeCategory
-	} else if countTypeParam == config.Params.CountTypeTopCategories {
+	case config.Params.CountTypeTopCategories:
 		countType = types.CountTypeTopCategories
-	} else if countTypeParam == config.Params.CountTypeTopContent {
+	case config.Params.CountTypeTopContent:
 		countType = types.CountTypeTopContent
-	} else if countTypeParam == config.Params.CountTypeCategoryView {
+	case config.Params.CountTypeCategoryView:
 		countType = types.CountTypeCategoryView
 	}
 	info := countInfo{
@@ -156,9 +157,10 @@ func doCount() {
 				sess.LastClickType = info.countType.String()
 				sess.LastClickId = countId
 				err := api.TopCategoriesClick(info.hostName, types.CountClickParams{
-					Ip:      info.ip,
-					Id:      countId,
-					GroupId: groupId,
+					Ip:        info.ip,
+					Id:        countId,
+					GroupId:   groupId,
+					CellIndex: info.countPosition,
 				})
 				if err != nil {
 					log.Println("top categories click api error:", err)
@@ -171,9 +173,10 @@ func doCount() {
 				sess.LastClickType = info.countType.String()
 				sess.LastClickId = countId
 				err := api.TopContentClick(info.hostName, types.CountClickParams{
-					Ip:      info.ip,
-					Id:      countId,
-					GroupId: groupId,
+					Ip:        info.ip,
+					Id:        countId,
+					GroupId:   groupId,
+					CellIndex: info.countPosition,
 				})
 				if err != nil {
 					log.Println("top content click api error:", err)
