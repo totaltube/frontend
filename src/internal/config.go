@@ -28,6 +28,9 @@ type (
 		Translations map[string]map[string]string `toml:"translations"`
 		Custom       map[string]string            `toml:"custom"`
 	}
+	ConfigTranslations struct {
+		Translations map[string]map[string]string `toml:"translations"`
+	}
 	General struct {
 		Nginx                              bool `toml:"nginx"`
 		Port                               uint16

@@ -31,6 +31,14 @@ jobs:
         CGO_ENABLED=1 CGO_LDFLAGS="-static" go build -buildvcs=false \
           --ldflags='-s -w -X main.version=${{ steps.get_version.outputs.VERSION }} -extldflags=-static' \
           -o ../bin/totaltube-frontend .
+
+    - name: Build FreeBSD binary
+      run: |
+        cd src
+        CGO_ENABLED=1 CGO_LDFLAGS="-static" GOOS=freebsd GOARCH=amd64 CC=clang-freebsd go build -buildvcs=false \
+          --tags="netgo osusergo" \
+          --ldflags='-s -w -X main.version=${{ steps.get_version.outputs.VERSION }} -extldflags=-static' \
+          -o ../bin/totaltube-frontend-freebsd-amd64 .
           
     - name: Build Windows binary
       run: |
@@ -43,12 +51,19 @@ jobs:
     - name: Create Linux archive
       run: |
         cd bin
-        tar --owner=root --group=root --mode='a+rwX' -zcf totaltube-frontend-${{ steps.get_version.outputs.VERSION }}.tar.gz totaltube-frontend
+        tar --owner=root --group=root --mode='a+rwX' -zcf totaltube-frontend-${{ steps.get_version.outputs.VERSION }}-linux-amd64.tar.gz totaltube-frontend
+
+    - name: Create FreeBSD archive
+      run: |
+        cd bin
+        cp totaltube-frontend-freebsd-amd64 totaltube-frontend
+        tar --owner=root --group=root --mode='a+rwX' -zcf totaltube-frontend-${{ steps.get_version.outputs.VERSION }}-freebsd-amd64.tar.gz totaltube-frontend
+        rm totaltube-frontend
         
     - name: Create Windows archive
       run: |
         cd bin
-        zip totaltube-frontend-${{ steps.get_version.outputs.VERSION }}.zip totaltube-frontend.exe
+        zip totaltube-frontend-${{ steps.get_version.outputs.VERSION }}-windows-amd64.zip totaltube-frontend.exe
         
     - name: Create Release
       id: create_release
@@ -72,16 +87,26 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./bin/totaltube-frontend-${{ steps.get_version.outputs.VERSION }}.tar.gz
-        asset_name: totaltube-frontend-${{ steps.get_version.outputs.VERSION }}.tar.gz
+        asset_path: ./bin/totaltube-frontend-${{ steps.get_version.outputs.VERSION }}-linux-amd64.tar.gz
+        asset_name: totaltube-frontend-${{ steps.get_version.outputs.VERSION }}-linux-amd64.tar.gz
         asset_content_type: application/gzip
         
+    - name: Upload FreeBSD Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./bin/totaltube-frontend-${{ steps.get_version.outputs.VERSION }}-freebsd-amd64.tar.gz
+        asset_name: totaltube-frontend-${{ steps.get_version.outputs.VERSION }}-freebsd-amd64.tar.gz
+        asset_content_type: application/gzip
+
     - name: Upload Windows Release Asset
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./bin/totaltube-frontend-${{ steps.get_version.outputs.VERSION }}.zip
-        asset_name: totaltube-frontend-${{ steps.get_version.outputs.VERSION }}.zip
+        asset_path: ./bin/totaltube-frontend-${{ steps.get_version.outputs.VERSION }}-windows-amd64.zip
+        asset_name: totaltube-frontend-${{ steps.get_version.outputs.VERSION }}-windows-amd64.zip
         asset_content_type: application/zip 

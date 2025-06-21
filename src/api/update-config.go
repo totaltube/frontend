@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/base64"
 	"log"
 	"os"
 	"strings"
@@ -14,7 +15,7 @@ func UpdateConfig(config *types.Config, configSource string) (err error) {
 	if os.Getenv("DEBUG") == "true" {
 		return nil
 	}
-	_, err = Request(config.Hostname, methodPost, uriUpdateConfig, M{"config": configSource})
+	_, err = Request(config.Hostname, methodPost, uriUpdateConfig, M{"config": base64.StdEncoding.EncodeToString([]byte(configSource))})
 	return
 }
 

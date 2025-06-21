@@ -242,7 +242,7 @@ func (f *FetchRequest) Do() (response []byte, err error) {
 	request.Close = true
 	var resp *http.Response
 	resp, err = client.Do(request)
-	elapsed := time.Now().Sub(started)
+	elapsed := time.Since(started)
 	if elapsed > time.Second*2 && !strings.Contains(request.URL.String(), "/translate") {
 		log.Println("too long request for ", request.URL.String(), f.config.Hostname, elapsed)
 	}

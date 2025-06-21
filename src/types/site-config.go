@@ -1,6 +1,9 @@
 package types
 
 type (
+	ConfigTranslations struct {
+		Translations map[string]map[string]string `toml:"translations"`
+	}
 	Config struct {
 		Routes          ConfigRoutes
 		General         ConfigGeneral

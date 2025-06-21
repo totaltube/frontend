@@ -7,10 +7,11 @@ import (
 	"crypto/sha512"
 	"encoding/base64"
 	"encoding/hex"
-	"golang.org/x/crypto/md4"
 	"log"
-	"sersh.com/totaltube/frontend/internal"
 	"sync"
+
+	"golang.org/x/crypto/md4" //nolint
+	"sersh.com/totaltube/frontend/internal"
 )
 
 func Sha1Hash(s string) (hash string) {

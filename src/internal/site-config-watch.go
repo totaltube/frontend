@@ -18,34 +18,74 @@ var configsMutex sync.RWMutex
 
 func GetConfig(configPath string, updateConfig func(config *types.Config, configSource string) error) *types.Config {
 	configsMutex.Lock()
-	defer configsMutex.Unlock()
 	if config, ok := configsMap[configPath]; ok {
+		configsMutex.Unlock()
 		return config
 	}
+	configsMutex.Unlock()
 	return GetConfigAndWatch(configPath, updateConfig)
 }
 
-func GetConfigAndWatch(configPath string, updateConfig func(config *types.Config, configSource string) error) *types.Config {
-	var config = types.NewConfig()
+func readConfig(configPath string) (config *types.Config, configSource string, err error) {
+	config = types.NewConfig()
 	config.Hostname = filepath.Base(filepath.Dir(configPath))
-
-	// читаем configSource из файла configPath
 	configSourceBytes, err := os.ReadFile(configPath)
+	if err != nil {
+		log.Println("error reading config at", configPath, err)
+		return
+	}
+	configSource = string(configSourceBytes)
+	if _, err = toml.DecodeFile(configPath, config); err != nil {
+		log.Println("error decoding config at", configPath, err)
+		return
+	}
+	// прочитаем еще файл с окончанием -translations.toml
+	// для этого найдем базовый путь без экстеншена и добавим к нему -translations.toml
+	basePath := filepath.Dir(configPath)
+	translationsPath := filepath.Join(basePath, "config-translations.toml")
+	translationsConfig := types.ConfigTranslations{}
+	translationsConfigAlternate := make(map[string]map[string]string)
+	if _, err := toml.DecodeFile(translationsPath, &translationsConfig); err == nil && len(translationsConfig.Translations) > 0 {
+		for k, trs := range translationsConfig.Translations {
+			for k2, v2 := range trs {
+				if _, ok := config.Translations[k]; !ok {
+					config.Translations[k] = make(map[string]string)
+				}
+				config.Translations[k][k2] = v2
+			}
+		}
+	} else if _, err := toml.DecodeFile(translationsPath, &translationsConfigAlternate); err == nil && len(translationsConfigAlternate) > 0 {
+		for k, trs := range translationsConfigAlternate {
+			for k2, v2 := range trs {
+				if _, ok := config.Translations[k]; !ok {
+					config.Translations[k] = make(map[string]string)
+				}
+				config.Translations[k][k2] = v2
+			}
+		}
+	}
+	return
+}
+
+func GetConfigAndWatch(configPath string, updateConfig func(config *types.Config, configSource string) error) *types.Config {
+	config, configSource, err := readConfig(configPath)
 	if err != nil {
 		log.Fatalln("error reading config source at", configPath, err)
 	}
-	configSource := string(configSourceBytes)
-	go updateConfig(config, configSource)
+	go func() {
+		if err := updateConfig(config, configSource); err != nil {
+			log.Println("error updating config at", configPath, err)
+		}
+	}()
 
-	if _, err := toml.DecodeFile(configPath, config); err != nil {
-		log.Fatalln("error reading site config at", configPath, err)
-	}
 	for k, v := range Config.Custom {
 		if _, ok := config.Custom[k]; !ok {
 			config.Custom[k] = v
 		}
 	}
+	configsMutex.Lock()
 	configsMap[configPath] = config
+	configsMutex.Unlock()
 	go func() {
 		var m sync.Mutex
 		var lastChange time.Time
@@ -65,7 +105,7 @@ func GetConfigAndWatch(configPath string, updateConfig func(config *types.Config
 				// waiting for signal of file changing
 				for {
 					info := <-c
-					if filepath.Base(info.Path()) == "config.toml" {
+					if filepath.Base(info.Path()) == "config.toml" || filepath.Base(info.Path()) == "config-translations.toml" {
 						break
 					}
 				}
@@ -80,28 +120,20 @@ func GetConfigAndWatch(configPath string, updateConfig func(config *types.Config
 					if !lastChange.After(time.Now().Add(-time.Millisecond * 1500)) {
 						// reload config
 						lastChange = time.Now()
-						var newConfig = types.NewConfig()
-						newConfig.Hostname = filepath.Base(filepath.Dir(configPath))
-						for k, v := range Config.Custom {
-							if _, ok := newConfig.Custom[k]; !ok {
-								newConfig.Custom[k] = v
-							}
-						}
-						// читаем configSource заново при перезагрузке
-						newConfigSourceBytes, err := os.ReadFile(configPath)
+						newConfig, newConfigSource, err := readConfig(configPath)
 						if err != nil {
 							log.Println("error reading config source at", configPath, err)
+							return
 						}
-						newConfigSource := string(newConfigSourceBytes)
-						go updateConfig(newConfig, newConfigSource)
-						if _, err := toml.DecodeFile(configPath, newConfig); err != nil {
-							log.Println("error reading site config at", configPath, err)
-						} else {
-							configsMutex.Lock()
-							configsMap[configPath] = newConfig
-							configsMutex.Unlock()
-							log.Println("config file " + configPath + " reloaded")
-						}
+						go func() {
+							if err := updateConfig(newConfig, newConfigSource); err != nil {
+								log.Println("error updating config at", configPath, err)
+							}
+						}()
+						configsMutex.Lock()
+						configsMap[configPath] = newConfig
+						configsMutex.Unlock()
+						log.Println("config file " + configPath + " reloaded")
 					}
 				}()
 			}()

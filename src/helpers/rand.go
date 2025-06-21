@@ -4,12 +4,11 @@ import (
 	"encoding/base64"
 	"math/rand"
 	"sort"
-	"time"
 )
 
 func RandStr(len int) string {
 	buff := make([]byte, len)
-	rand.Read(buff)
+	_, _ = rand.Read(buff)
 	str := base64.StdEncoding.EncodeToString(buff)
 	// Base 64 can be longer than len
 	return str[:len]
@@ -17,8 +16,6 @@ func RandStr(len int) string {
 
 // RandomizeItems randomizes items with a given ratio.
 func RandomizeItems[T any](items []T, ratio float64) {
-	randSource := rand.NewSource(time.Now().UnixNano())
-	r := rand.New(randSource)
 	n := len(items)
 
 	if ratio <= 0 || n == 0 {
@@ -27,7 +24,7 @@ func RandomizeItems[T any](items []T, ratio float64) {
 	}
 	if ratio >= 1 {
 		// Shuffle items completely
-		r.Shuffle(n, func(i, j int) {
+		rand.Shuffle(n, func(i, j int) {
 			items[i], items[j] = items[j], items[i]
 		})
 		return
@@ -41,7 +38,7 @@ func RandomizeItems[T any](items []T, ratio float64) {
 	itemsWithPriority := make([]itemWithPriority, n)
 	for i := 0; i < n; i++ {
 		normalizedPosition := float64(n-i) / float64(n)
-		randomValue := r.Float64()
+		randomValue := rand.Float64()
 		priority := (1-ratio)*normalizedPosition + ratio*randomValue
 		itemsWithPriority[i] = itemWithPriority{
 			item:     items[i],

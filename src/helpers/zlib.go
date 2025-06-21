@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 
 	"github.com/klauspost/compress/flate"
@@ -37,14 +37,14 @@ func Flate(data []byte) []byte {
 	return b.Bytes()
 }
 
-func Bytes(data interface{}) []byte {
-	return []byte(fmt.Sprintf("%v", data))
+func Bytes(data any) []byte {
+	return fmt.Appendf(nil, "%v", data)
 }
 
 func Deflate(data []byte) []byte {
 	var b = bytes.NewReader(data)
 	zr := flate.NewReader(b)
-	s, _ := ioutil.ReadAll(zr)
+	s, _ := io.ReadAll(zr)
 	return s
 }
 
@@ -63,7 +63,7 @@ func Gzip(data []byte) []byte {
 func Ungzip(data []byte) []byte {
 	var b = bytes.NewReader(data)
 	zr, _ := gzip.NewReader(b)
-	s, _ := ioutil.ReadAll(zr)
+	s, _ := io.ReadAll(zr)
 	return s
 }
 
@@ -82,6 +82,6 @@ func Zip(data []byte) []byte {
 func Unzip(data []byte) []byte {
 	var b = bytes.NewReader(data)
 	zr, _ := zlib.NewReader(b)
-	s, _ := ioutil.ReadAll(zr)
+	s, _ := io.ReadAll(zr)
 	return s
 }
