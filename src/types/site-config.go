@@ -104,6 +104,7 @@ type (
 		CountTypeTopContent    string `toml:"count_type_top_content"`
 		CountTypeCategoryView  string `toml:"count_type_category_view"`
 		CountThumbId           string `toml:"count_thumb_id"`
+		CountPosition          string `toml:"count_position"`
 		Nocache                string `toml:"nocache" json:"-"`
 	}
 	ConfigJs struct {
@@ -224,6 +225,7 @@ func NewConfig() *Config {
 			CountTypeTopCategories: "tca",
 			CountTypeCategoryView:  "ccv",
 			CountThumbId:           "tid",
+			CountPosition:          "pos",
 			Nocache:                "nocache",
 			CountView:              "cv",
 			Like:                   "like",

@@ -77,6 +77,11 @@ var Out = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	if len(r.URL.Query().Get(config.Params.CountView)) > 0 {
 		countView, _ = strconv.ParseBool(r.URL.Query().Get(config.Params.CountView))
 	}
+	var err error
+	var countPosition int64
+	if countPosition, err = strconv.ParseInt(r.URL.Query().Get(config.Params.CountPosition), 10, 64); err != nil {
+		countPosition = -1
+	}
 	countType := types.CountTypeNone
 	switch countTypeParam {
 	case config.Params.CountTypeCategory:
@@ -89,13 +94,14 @@ var Out = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		countType = types.CountTypeCategoryView
 	}
 	info := countInfo{
-		hostName:     hostName,
-		categoryId:   categoryId,
-		contentId:    contentId,
-		ip:           ip,
-		countType:    countType,
-		countThumbId: countThumbId,
-		countView:    countView,
+		hostName:      hostName,
+		categoryId:    categoryId,
+		contentId:     contentId,
+		ip:            ip,
+		countType:     countType,
+		countThumbId:  countThumbId,
+		countView:     countView,
+		countPosition: countPosition,
 	}
 
 	// let's count in background in separate goroutine, by sending in buffered channel

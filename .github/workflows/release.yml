@@ -23,7 +23,6 @@ jobs:
       run: |
         cd src
         CGO_LDFLAGS="-static" go install github.com/wellington/go-libsass
-        CGO_ENABLED=1 GOOS=freebsd GOARCH=amd64 CC=clang-freebsd CGO_LDFLAGS="-static" go install github.com/wellington/go-libsass
         
     - name: Build Linux binary
       run: |
@@ -66,48 +65,21 @@ jobs:
         cd bin
         zip totaltube-frontend-${{ steps.get_version.outputs.VERSION }}-windows-amd64.zip totaltube-frontend.exe
         
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
+    - name: Create Release and Upload Assets
+      uses: softprops/action-gh-release@v2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ github.ref }}
-        release_name: Release ${{ steps.get_version.outputs.VERSION }}
+        name: Release ${{ steps.get_version.outputs.VERSION }}
         draft: false
         prerelease: false
         body: |
           ## Changes in version ${{ steps.get_version.outputs.VERSION }}
           
           - Built from commit ${{ github.sha }}
-          - Linux and Windows binaries included
-          
-    - name: Upload Linux Release Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./bin/totaltube-frontend-${{ steps.get_version.outputs.VERSION }}-linux-amd64.tar.gz
-        asset_name: totaltube-frontend-${{ steps.get_version.outputs.VERSION }}-linux-amd64.tar.gz
-        asset_content_type: application/gzip
-        
-    - name: Upload FreeBSD Release Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./bin/totaltube-frontend-${{ steps.get_version.outputs.VERSION }}-freebsd-amd64.tar.gz
-        asset_name: totaltube-frontend-${{ steps.get_version.outputs.VERSION }}-freebsd-amd64.tar.gz
-        asset_content_type: application/gzip
-
-    - name: Upload Windows Release Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./bin/totaltube-frontend-${{ steps.get_version.outputs.VERSION }}-windows-amd64.zip
-        asset_name: totaltube-frontend-${{ steps.get_version.outputs.VERSION }}-windows-amd64.zip
-        asset_content_type: application/zip 
+          - Linux, FreeBSD and Windows binaries included
+        files: |
+          ./bin/totaltube-frontend-${{ steps.get_version.outputs.VERSION }}-linux-amd64.tar.gz
+          ./bin/totaltube-frontend-${{ steps.get_version.outputs.VERSION }}-freebsd-amd64.tar.gz
+          ./bin/totaltube-frontend-${{ steps.get_version.outputs.VERSION }}-windows-amd64.zip 
