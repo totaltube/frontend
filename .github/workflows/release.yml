@@ -36,7 +36,7 @@ jobs:
     - name: Build FreeBSD binary
       run: |
         cd src
-        CGO_ENABLED=1 CGO_LDFLAGS="-static" GOOS=freebsd GOARCH=amd64 CC=clang-freebsd go build -buildvcs=false \
+        CGO_ENABLED=1 CGO_LDFLAGS="-static" GOOS=freebsd GOARCH=amd64 CC=clang-freebsd CXX=clang-freebsd go build -buildvcs=false \
           --tags="netgo osusergo" \
           --ldflags='-s -w -X main.version=${{ steps.get_version.outputs.VERSION }} -extldflags=-static' \
           -o ../bin/totaltube-frontend-freebsd-amd64 .
