@@ -54,15 +54,16 @@ var Search = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	}
 	sortBy := r.URL.Query().Get(config.Params.SortBy)
 	sortByTimeframe := r.URL.Query().Get(config.Params.SortByViewsTimeframe)
-	if sortBy == config.Params.SortByDate {
+	switch sortBy {
+	case config.Params.SortByDate:
 		sortBy = "dated"
-	} else if sortBy == config.Params.SortByDuration {
+	case config.Params.SortByDuration:
 		sortBy = "duration"
-	} else if sortBy == config.Params.SortByViews {
+	case config.Params.SortByViews:
 		sortBy = "views"
-	} else if sortBy == config.Params.SortByRand {
+	case config.Params.SortByRand:
 		sortBy = "rand"
-	} else {
+	default:
 		sortBy = ""
 	}
 	channelId, _ := strconv.ParseInt(r.URL.Query().Get(config.Params.ChannelId), 10, 64)
@@ -77,11 +78,16 @@ var Search = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	if amount == 0 {
 		amount = config.General.DefaultResultsPerPage
 	}
-	cacheKey := "search:" + helpers.Md5Hash(
-		fmt.Sprintf("%s:%s:%d:%s:%d:%d:%s:%d:%d:%d:%s:%s:%s:%d",
-			hostName, langId, page, channelSlug, channelId,
-			modelId, modelSlug, durationFrom, durationTo, categoryId, categorySlug, sortBy, searchQuery, amount),
-	)
+	cacheKey := fmt.Sprintf("%s:%s:%d:%s:%d:%d:%s:%d:%d:%d:%s:%s:%s:%d",
+		hostName, langId, page, channelSlug, channelId,
+		modelId, modelSlug, durationFrom, durationTo, categoryId, categorySlug, sortBy, searchQuery, amount)
+	for _, param := range config.General.CacheKeyQueryParams {
+		v := r.URL.Query().Get(param)
+		if v != "" {
+			cacheKey += fmt.Sprintf(":%s:%s", param, v)
+		}
+	}
+	cacheKey = "search:" + helpers.Md5Hash(cacheKey)
 	ip := r.Context().Value(types.ContextKeyIp).(string)
 	groupId := internal.DetectCountryGroup(net.ParseIP(ip)).Id
 	userAgent := r.Header.Get("User-Agent")
@@ -144,3 +150,57 @@ var Search = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	}
 	render.HTML(w, r, string(parsed))
 })
+
+func getTopSearchesFunc(hostName string, langId string) func(args ...any) []types.TopSearch {
+	return func(args ...any) []types.TopSearch {
+		currentName := ""
+		parsingName := true
+		amount := int64(10)
+		for _, arg := range args {
+			if parsingName {
+				currentName = fmt.Sprintf("%v", arg)
+				parsingName = false
+			} else {
+				v := fmt.Sprintf("%v", arg)
+				if currentName == "amount" {
+					amount, _ = strconv.ParseInt(v, 10, 64)
+				}
+			}
+		}
+		results, _, err := api.TopSearches(hostName, langId, int64(amount))
+		if err != nil {
+			log.Println(err)
+			return nil
+		}
+		return results
+	}
+}
+
+func getRandomSearchesFunc(hostName string, langId string) func(args ...any) []types.TopSearch {
+	return func(args ...any) []types.TopSearch {
+		currentName := ""
+		parsingName := true
+		amount := int64(10)
+		minSearches := int64(0)
+		for _, arg := range args {
+			if parsingName {
+				currentName = fmt.Sprintf("%v", arg)
+				parsingName = false
+			} else {
+				v := fmt.Sprintf("%v", arg)
+				switch currentName {
+				case "amount":
+					amount, _ = strconv.ParseInt(v, 10, 64)
+				case "min_searches":
+					minSearches, _ = strconv.ParseInt(v, 10, 64)
+				}
+			}
+		}
+		results, _, err := api.RandomSearches(hostName, langId, int64(amount), int64(minSearches))
+		if err != nil {
+			log.Println(err)
+			return nil
+		}
+		return results
+	}
+}

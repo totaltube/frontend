@@ -41,6 +41,52 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	if page <= 0 {
 		page = 1
 	}
+	rotationParamsList := strings.Split(r.URL.Query().Get(config.Params.Rotation), "-")
+	var rotationParams = rotationParams{
+		Type:       types.CountTypeNone,
+		ContentId:  0,
+		CategoryId: 0,
+		ThumbId:    -1,
+		Position:   -1,
+	}
+	useTrade := false
+	for _, param := range rotationParamsList {
+		param_parts := strings.Split(param, ":")
+		if len(param_parts) == 2 {
+			switch param_parts[0] {
+			case config.Params.CountType:
+				switch param_parts[1] {
+				case config.Params.CountTypeCategory:
+					rotationParams.Type = types.CountTypeCategory
+				case config.Params.CountTypeTopCategories:
+					rotationParams.Type = types.CountTypeTopCategories
+				case config.Params.CountTypeTopContent:
+					rotationParams.Type = types.CountTypeTopContent
+				}
+			case config.Params.ContentId:
+				rotationParams.ContentId, _ = strconv.ParseInt(param_parts[1], 10, 64)
+			case config.Params.CategoryId:
+				rotationParams.CategoryId, _ = strconv.ParseInt(param_parts[1], 10, 64)
+			case config.Params.CountThumbId:
+				rotationParams.ThumbId, _ = strconv.ParseInt(param_parts[1], 10, 64)
+			case config.Params.CountPosition:
+				rotationParams.Position, _ = strconv.ParseInt(param_parts[1], 10, 64)
+			case config.Params.RotationTrade:
+				useTrade = true
+			case config.Params.Skim:
+				rotationParams.Skim = param_parts[1]
+			}
+		}
+	}
+	if (rotationParams.Type != types.CountTypeNone && page == 1) || useTrade {
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		w.Header().Set("Pragma", "no-cache")
+		w.Header().Set("Expires", "0")
+		toReturn := handleRotation(rotationParams, useTrade, config, r, w)
+		if toReturn {
+			return
+		}
+	}
 	categorySlug := helpers.FirstNotEmpty(chi.URLParam(r, "slug"), r.URL.Query().Get(config.Params.CategorySlug))
 	categoryId, _ := strconv.ParseInt(helpers.FirstNotEmpty(chi.URLParam(r, "id"), r.URL.Query().Get(config.Params.CategoryId)), 10, 64)
 	if categoryId == 0 && categorySlug == "" {
@@ -51,15 +97,16 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		categoryId = categoryId ^ config.Routes.IdXorKey
 	}
 	sortBy := r.URL.Query().Get(config.Params.SortBy)
-	if sortBy == config.Params.SortByDate {
+	switch sortBy {
+	case config.Params.SortByDate:
 		sortBy = "dated"
-	} else if sortBy == config.Params.SortByDuration {
+	case config.Params.SortByDuration:
 		sortBy = "duration"
-	} else if sortBy == config.Params.SortByViews {
+	case config.Params.SortByViews:
 		sortBy = "views"
-	} else if sortBy == config.Params.SortByRand {
+	case config.Params.SortByRand:
 		sortBy = "rand"
-	} else {
+	default:
 		sortBy = ""
 	}
 	sortByViewsTimeframe := r.URL.Query().Get(config.Params.SortByViewsTimeframe)

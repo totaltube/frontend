@@ -283,6 +283,8 @@ func generateCustomContext(_ http.ResponseWriter, r *http.Request, templateName 
 		"get_category_top":    getCategoryTopFunc(hostName, langId, groupId, config),
 		"get_category":        getCategoryFunc(hostName, langId),
 		"get_model":           getModelFunc(hostName, langId, groupId),
+		"get_top_searches":    getTopSearchesFunc(hostName, langId),
+		"get_random_searches": getRandomSearchesFunc(hostName, langId),
 		"xor_id": func(id *pongo2.Value) int64 {
 			idInt := int64(id.Integer())
 			if idInt > 0 && config.Routes.IdXorKey > 0 {
@@ -371,7 +373,10 @@ func Output500(w http.ResponseWriter, r *http.Request, err error) {
 			return ctx, nil
 		}, w, r)
 	if err != nil {
-		panic(err)
+		log.Println(err, hostName, langId)
+		render.Status(r, 500)
+		render.PlainText(w, r, "Internal server error")
+		return
 	}
 	render.Status(r, 500)
 	render.HTML(w, r, string(parsed))

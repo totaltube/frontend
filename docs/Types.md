@@ -257,6 +257,14 @@ This type represents a supported language:
 * `Direction` string - text direction: "ltr" (left to right) or "rtl" (right to left)
 * `Country` string - associated country code (e.g., "us", "de", "it")
 
+### CountryGroup
+This type represents a country group:
+* `Id` integer - country group identifier
+* `Name` string - country group name
+* `Countries` array of strings - countries in this group
+* `Ignore` boolean - if true, the country group is ignored
+
+
 ### CustomData
 This type represents a map of custom fields associated with content items, categories, models, or channels:
 * Key-value pairs where keys are field names and values can be of any type

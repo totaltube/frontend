@@ -34,6 +34,15 @@ func (r redirectErr) Error() string {
 	return fmt.Sprintf("%d redirect to %s", r.code, r.url)
 }
 
+type rotationParams struct {
+	Type       types.CountType
+	ContentId  int64
+	CategoryId int64
+	ThumbId    int64
+	Position   int64
+	Skim       string
+}
+
 var ContentItem = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	path := r.Context().Value(types.ContextKeyPath).(string)
 	config := r.Context().Value(types.ContextKeyConfig).(*types.Config)
@@ -42,6 +51,52 @@ var ContentItem = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 	langId := r.Context().Value(types.ContextKeyLang).(string)
 	slug, _ := url.PathUnescape(chi.URLParam(r, "slug"))
 	id, _ := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	rotationParamsList := strings.Split(r.URL.Query().Get(config.Params.Rotation), "-")
+	var rotationParams = rotationParams{
+		Type:       types.CountTypeNone,
+		ContentId:  0,
+		CategoryId: 0,
+		ThumbId:    -1,
+		Position:   -1,
+	}
+	useTrade := false
+	for _, param := range rotationParamsList {
+		param_parts := strings.Split(param, ":")
+		if len(param_parts) == 2 {
+			switch param_parts[0] {
+			case config.Params.CountType:
+				switch param_parts[1] {
+				case config.Params.CountTypeCategory:
+					rotationParams.Type = types.CountTypeCategory
+				case config.Params.CountTypeTopCategories:
+					rotationParams.Type = types.CountTypeTopCategories
+				case config.Params.CountTypeTopContent:
+					rotationParams.Type = types.CountTypeTopContent
+				}
+			case config.Params.ContentId:
+				rotationParams.ContentId, _ = strconv.ParseInt(param_parts[1], 10, 64)
+			case config.Params.CategoryId:
+				rotationParams.CategoryId, _ = strconv.ParseInt(param_parts[1], 10, 64)
+			case config.Params.CountThumbId:
+				rotationParams.ThumbId, _ = strconv.ParseInt(param_parts[1], 10, 64)
+			case config.Params.CountPosition:
+				rotationParams.Position, _ = strconv.ParseInt(param_parts[1], 10, 64)
+			case config.Params.RotationTrade:
+				useTrade = true
+			case config.Params.Skim:
+				rotationParams.Skim = param_parts[1]
+			}
+		}
+	}
+	if rotationParams.Type != types.CountTypeNone || useTrade {
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		w.Header().Set("Pragma", "no-cache")
+		w.Header().Set("Expires", "0")
+		toReturn := handleRotation(rotationParams, useTrade, config, r, w)
+		if toReturn {
+			return
+		}
+	}
 	if id == 0 && slug == "" {
 		Output404(w, r, "content item not found")
 		return
@@ -103,14 +158,18 @@ var ContentItem = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 	if relatedTagsBoost == nil {
 		relatedTagsBoost = internal.Config.Related.TagsBoost
 	}
-
-	cacheKey := "content-item:" + helpers.Md5Hash(
-		fmt.Sprintf("%s:%s:%d:%s:%v:%d:%d:%v:%v:%v:%v:%v:%v:%v:%v:%v:%v:%v:%v", hostName, langId, id, slug, orfl, relatedAmount, groupId,
-			relatedTitleTranslated, relatedTitleTranslatedMinTermFreq, relatedTitleTranslatedMaxQueryTerms, relatedTitleTranslatedBoost,
-			relatedTitle, relatedTitleMinTermFreq, relatedTitleMaxQueryTerms, relatedTitleBoost,
-			relatedTags, relatedTagsMinTermFreq, relatedTagsMaxQueryTerms, relatedTagsBoost,
-		),
+	cacheKey := fmt.Sprintf("%s:%s:%d:%s:%v:%d:%d:%v:%v:%v:%v:%v:%v:%v:%v:%v:%v:%v:%v", hostName, langId, id, slug, orfl, relatedAmount, groupId,
+		relatedTitleTranslated, relatedTitleTranslatedMinTermFreq, relatedTitleTranslatedMaxQueryTerms, relatedTitleTranslatedBoost,
+		relatedTitle, relatedTitleMinTermFreq, relatedTitleMaxQueryTerms, relatedTitleBoost,
+		relatedTags, relatedTagsMinTermFreq, relatedTagsMaxQueryTerms, relatedTagsBoost,
 	)
+	for _, param := range config.General.CacheKeyQueryParams {
+		v := r.URL.Query().Get(param)
+		if v != "" {
+			cacheKey += fmt.Sprintf(":%s:%s", param, v)
+		}
+	}
+	cacheKey = "content-item:" + helpers.Md5Hash(cacheKey)
 	cacheTtl := time.Minute * 60
 	parsed, err := site.ParseTemplate("content-item", path, config, customContext, nocache, cacheKey, cacheTtl,
 		func() (pongo2.Context, error) {
@@ -142,7 +201,7 @@ var ContentItem = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 				if len(results.Categories) > 0 {
 					categorySlug = results.Categories[0].Slug
 				}
-				var args = make([]interface{}, 0, 10)
+				var args = make([]any, 0, 10)
 				args = append(args,
 					"slug", results.Slug,
 					"id", results.Id,
@@ -203,7 +262,7 @@ var ContentItem = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 	render.HTML(w, r, string(parsed))
 })
 
-func getContentItemFunc(hostName string, config *types.Config, langId string, groupId int64, nocache bool) func(args ...interface{}) *types.ContentItemResult {
+func getContentItemFunc(hostName string, config *types.Config, langId string, groupId int64, nocache bool) func(args ...any) *types.ContentItemResult {
 	relatedTitleTranslated := config.Related.TitleTranslated
 	if relatedTitleTranslated == nil {
 		relatedTitleTranslated = internal.Config.Related.TitleTranslated
@@ -252,7 +311,7 @@ func getContentItemFunc(hostName string, config *types.Config, langId string, gr
 	if relatedTagsBoost == nil {
 		relatedTagsBoost = internal.Config.Related.TagsBoost
 	}
-	return func(args ...interface{}) *types.ContentItemResult {
+	return func(args ...any) *types.ContentItemResult {
 		parsingName := true
 		var id int64
 		var slug string

@@ -581,6 +581,8 @@ It's deferred translate, so if the text is not translated yet, it will show untr
 * `get_categories_list` - function to get categories list. It accepts variable amount of params as pairs where first is param name and second is param value. Possible param names are `"lang"`, `"page"`, `"amount"`, `"sort"` (can be `"title"`, `"total"`, `"popular"`). The result is of type [CategoryResults](Types.md#categoryresults).
 * `get_channels_list` - function to get channels list. It accepts variable amount of params as pairs where first is param name and second is param value. Possible param names are `"lang"`, `"page"`, `"amount"`, `"sort"` (can be `"title"`, `"total"`, `"popular"`). The result is of type [ChannelResults](Types.md#channelresults)
 * `get_category_top` - function to get top content in category. It accepts variable amount of params as pairs where first is param name and second is param value. Possible param names are:
+* `get_top_searches` - function to get top searches. It accepts variable amount of params as pairs where first is param name and second is param value. Possible param names are `"lang"` and `"amount"`. The result is array of [TopSearch](Types.md#topsearch)
+* `get_random_searches` - function to get random searches. It accepts variable amount of params as pairs where first is param name and second is param value. Possible param names are `"lang"`, `"amount"` and `"min_searches"`. The result is array of [TopSearch](Types.md#topsearch)
   * `lang` - language of content items, defaults to current page language.
   * `page` - for pagination from 1, default 1.
   * `category_id` - category numeric id for which to get the top. Either `category_id` or `category_slug` is required.
@@ -625,6 +627,8 @@ if (ua.Mobile) {
 * `querystring` - raw querystring.
 * `canonical_query` - current page canonical querystring parameters
 * `config` - site configuration options. Field names are the same as in `config.toml`, but CamelCased except custom route names and custom variable names.
+* `country_group` - holds the [country group](Types.md#countrygroup) of current surder. Useful only with `{% dynamic %}` tag.
+* `country_group_id` - holds the country group id of current surder. Useful only with `{% dynamic %}` tag.
 * `global_config` - global configuration options (in root `global-config.toml`). Field names are the same as in `config.toml`, but CamelCased.
 * `route` - current route value
 

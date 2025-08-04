@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"errors"
 	"log"
 	"os"
 	"path/filepath"
@@ -45,23 +46,37 @@ func readConfig(configPath string) (config *types.Config, configSource string, e
 	translationsPath := filepath.Join(basePath, "config-translations.toml")
 	translationsConfig := types.ConfigTranslations{}
 	translationsConfigAlternate := make(map[string]map[string]string)
-	if _, err := toml.DecodeFile(translationsPath, &translationsConfig); err == nil && len(translationsConfig.Translations) > 0 {
-		for k, trs := range translationsConfig.Translations {
-			for k2, v2 := range trs {
-				if _, ok := config.Translations[k]; !ok {
-					config.Translations[k] = make(map[string]string)
+	if _, errt := os.Stat(translationsPath); errt == nil {
+		var err1, err2 error
+		ok := false
+		_, err1 = toml.DecodeFile(translationsPath, &translationsConfig)
+		if err1 == nil && len(translationsConfig.Translations) > 0 {
+			for k, trs := range translationsConfig.Translations {
+				for k2, v2 := range trs {
+					if _, ok := config.Translations[k]; !ok {
+						config.Translations[k] = make(map[string]string)
+					}
+					config.Translations[k][k2] = v2
 				}
-				config.Translations[k][k2] = v2
 			}
+			ok = true
+		} else {
+			_, err2 = toml.DecodeFile(translationsPath, &translationsConfigAlternate)
+			if err2 == nil && len(translationsConfigAlternate) > 0 {
+				for k, trs := range translationsConfigAlternate {
+					for k2, v2 := range trs {
+						if _, ok := config.Translations[k]; !ok {
+							config.Translations[k] = make(map[string]string)
+						}
+						config.Translations[k][k2] = v2
+					}
+				}
+			}
+			ok = true
 		}
-	} else if _, err := toml.DecodeFile(translationsPath, &translationsConfigAlternate); err == nil && len(translationsConfigAlternate) > 0 {
-		for k, trs := range translationsConfigAlternate {
-			for k2, v2 := range trs {
-				if _, ok := config.Translations[k]; !ok {
-					config.Translations[k] = make(map[string]string)
-				}
-				config.Translations[k][k2] = v2
-			}
+		if !ok && (err1 != nil || err2 != nil) {
+			err = errors.Join(err1, err2)
+			log.Println("error decoding translations config at", translationsPath, err)
 		}
 	}
 	return

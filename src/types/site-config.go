@@ -106,6 +106,9 @@ type (
 		CountThumbId           string `toml:"count_thumb_id"`
 		CountPosition          string `toml:"count_position"`
 		Nocache                string `toml:"nocache" json:"-"`
+		Rotation               string `toml:"rotation"`
+		RotationTrade          string `toml:"rotation_trade"`
+		Skim                   string `toml:"skim"`
 	}
 	ConfigJs struct {
 		Entries     []string `toml:"entries"`
@@ -122,6 +125,7 @@ type (
 	ConfigGeneral struct {
 		CanonicalUrl                       string   `toml:"canonical_url"`
 		TradeUrlTemplate                   string   `toml:"trade_url_template"`
+		LocalTradeUrlTemplate              string   `toml:"local_trade_url_template"`
 		ModelsPerPage                      int      `toml:"models_per_page"`
 		DefaultResultsPerPage              int64    `toml:"default_results_per_page"`
 		SearchResultsPerPage               int64    `toml:"search_results_per_page"`
@@ -146,6 +150,7 @@ type (
 		DeletedTaxonomiesToSearch          bool     `toml:"deleted_taxonomies_to_search"`
 		DeletedTaxonomiesToSearchPermanent bool     `toml:"deleted_taxonomies_to_search_permanent"`
 		RandomizeRatio                     float64  `toml:"randomize_ratio"`
+		CacheKeyQueryParams                []string `toml:"cache_key_query_params"` // query params to mention in cache key
 	}
 )
 
@@ -229,6 +234,9 @@ func NewConfig() *Config {
 			Nocache:                "nocache",
 			CountView:              "cv",
 			Like:                   "like",
+			Rotation:               "rot",
+			RotationTrade:          "tr",
+			Skim:                   "s",
 		},
 		LanguageDomains: make(map[string]string),
 		Translations:    make(map[string]map[string]string),
