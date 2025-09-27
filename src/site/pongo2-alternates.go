@@ -38,7 +38,7 @@ func (node *tagAlternatesNode) Execute(ctx *pongo2.ExecutionContext, writer pong
 			langInCustomRoute = true
 		}
 		customMultilangTemplateExists := false
-		if _, exists := config.Routes.Custom[customTemplateName+"_multilang"]; exists  {
+		if _, exists := config.Routes.Custom[customTemplateName+"_multilang"]; exists {
 			customMultilangTemplateExists = true
 		}
 		if !langInCustomRoute && !customMultilangTemplateExists {
@@ -53,17 +53,17 @@ func (node *tagAlternatesNode) Execute(ctx *pongo2.ExecutionContext, writer pong
 	for _, l := range languages {
 		canonical := canonicalUrl
 		if d, ok := config.LanguageDomains[l.Id]; ok {
-			canonical = "https://"+d
+			canonical = "https://" + d
 		}
-		_, err := writer.WriteString(
-			fmt.Sprintf(`<link rel="alternate" hreflang="%s" href="%s">`+"\n",
-				l.Id, canonical+getAlternate(context.Public, l.Id, page)))
+		_, err := fmt.Fprintf(writer,
+			`<link rel="alternate" hreflang="%s" href="%s">`+"\n",
+			l.Id, canonical+getAlternate(context.Public, l.Id, page))
 		if err != nil {
 			return &pongo2.Error{Sender: "tag:alternates", OrigError: err}
 		}
 	}
-	_, err := writer.WriteString(fmt.Sprintf(`<link rel="alternate" hreflang="x-default" href="%s">`+"\n",
-		canonicalUrl+getAlternate(context.Public, config.General.DefaultLanguage, page)))
+	_, err := fmt.Fprintf(writer, `<link rel="alternate" hreflang="x-default" href="%s">`+"\n",
+		canonicalUrl+getAlternate(context.Public, config.General.DefaultLanguage, page))
 	if err != nil {
 		return &pongo2.Error{Sender: "tag:alternates", OrigError: err}
 	}

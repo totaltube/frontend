@@ -153,7 +153,7 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			}, nocache)
 			if err != nil {
 				if !strings.Contains(err.Error(), "favicon.ico") {
-					log.Println(err, config.Hostname)
+					log.Println(err, config.Hostname, ip)
 				}
 				return ctx, err
 			}

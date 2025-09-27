@@ -173,6 +173,7 @@ func ParseTemplate(name, path string, config *types.Config, customContext pongo2
 				expires = time.Now().Add(time.Hour * 24 * time.Duration(e))
 			}
 			var cookie = &http.Cookie{
+				Path:    "/",
 				Name:    name,
 				Value:   fmt.Sprintf("%v", value),
 				Expires: expires,

@@ -79,6 +79,7 @@ func generateContext(name string, sitePath string, customContext pongo2.Context)
 		"sha512_raw":   helpers.Sha512HashRaw,
 		"time8601":     helpers.Time8601,
 		"duration8601": helpers.Duration8601,
+		"slugify":      helpers.Slugify,
 		"translate": func(text interface{}) interface{} {
 			return deferredTranslate("en", customContext["lang"].(*types.Language).Id, text, "page-text", refreshTranslations, customContext["config"].(*types.Config))
 		},

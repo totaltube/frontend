@@ -138,6 +138,9 @@ func (node *tagAlternateNode) Execute(ctx *pongo2.ExecutionContext, writer pongo
 		canonicalUrl = "https://" + hostName
 	}
 	if !config.General.MultiLanguage {
+		if domain, ok := config.LanguageDomains[langId]; ok && domain != "" {
+			canonicalUrl = "https://" + domain
+		}
 		_, err := writer.WriteString(canonicalUrl + getAlternate(context.Public, langId, page))
 		if err != nil {
 			return &pongo2.Error{Sender: "tag:alternate", OrigError: err}
@@ -149,6 +152,9 @@ func (node *tagAlternateNode) Execute(ctx *pongo2.ExecutionContext, writer pongo
 		return &pongo2.Error{Sender: "tag:alternate", OrigError: err}
 	}
 	alternateLang := v.String()
+	if domain, ok := config.LanguageDomains[alternateLang]; ok && domain != "" {
+		canonicalUrl = "https://" + domain
+	}
 	if templateName, ok := context.Public["page_template"].(string); ok && templateName == "search" {
 		// Search page doesn't have alternate. Return link to the root
 		link := strings.ReplaceAll(config.Routes.LanguageTemplate, "{lang}", alternateLang)

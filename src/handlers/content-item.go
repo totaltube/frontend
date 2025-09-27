@@ -249,7 +249,7 @@ var ContentItem = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		if strings.Contains(err.Error(), "not found") {
-			log.Println("content item not found", slug, id, hostName)
+			log.Println("content item not found", slug, id, hostName, r.Header.Get("Referer"), r.Header.Get("User-Agent"), langId, ip, r.URL.String())
 			Output404(w, r, err.Error())
 			return
 		}

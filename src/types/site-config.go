@@ -139,6 +139,7 @@ type (
 		MultiLanguage                      bool     `toml:"multi_language"`
 		DefaultLanguage                    string   `toml:"default_language"`
 		NoRedirectDefaultLanguage          bool     `toml:"no_redirect_default_language"`
+		NoDetectLanguage                   bool     `toml:"no_detect_language"`
 		LanguagesAvailable                 []string `toml:"languages_available"`
 		MinifyHtml                         bool     `toml:"minify_html" json:"-"`
 		PaginationMaxRenderedLinks         int      `toml:"pagination_max_rendered_links"`

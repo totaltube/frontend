@@ -94,7 +94,7 @@ var Model = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				return rawResponse, err
 			}, nocache)
 			if err != nil {
-				log.Println(err)
+				log.Println(err, hostName, ip)
 				return ctx, err
 			}
 			modelInfo := new(types.ModelResult)

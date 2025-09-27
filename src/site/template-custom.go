@@ -124,6 +124,7 @@ func ParseCustomTemplate(name, path string, config *types.Config,
 				expires = time.Now().Add(time.Hour * 24 * time.Duration(e))
 			}
 			var cookie = &http.Cookie{
+				Path:    "/",
 				Name:    name,
 				Value:   fmt.Sprintf("%v", value),
 				Expires: expires,

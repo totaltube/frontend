@@ -124,6 +124,8 @@ video_embed = "/embed/{slug}" # URL of video embed for hosted video
 dmca = "/dmca" # dmca report uri
 out = "/c" # URL of out script
 language_template = "/{lang}{route}" #template for language id in route for multilingual sites if multi_language is true
+no_detect_language = false # if true, will not auto detect language from Accept-Language header
+no_redirect_default_language = false # if true, will not redirect to default language URI if no lang cookie is set (route without {lang} in route)
 ```
 If route is blank - it will not be served by script.
 

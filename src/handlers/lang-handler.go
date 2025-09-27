@@ -176,6 +176,9 @@ func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler h
 			if langCookie != nil {
 				langValue = langCookie.Value
 			}
+			if siteConfig.General.NoDetectLanguage && langCookie == nil {
+				langValue = siteConfig.General.DefaultLanguage
+			}
 			lang := internal.DetectLanguage(langValue, siteConfig.General.DefaultLanguage, r.Header.Get("Accept-Language"))
 			// Проверяем, что обнаруженный язык поддерживается
 			_, isLanguageSupported := langMap[lang.Id]
@@ -255,6 +258,9 @@ func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler h
 			langValue := ""
 			if langCookie != nil {
 				langValue = langCookie.Value
+			}
+			if siteConfig.General.NoDetectLanguage && langCookie == nil {
+				langValue = siteConfig.General.DefaultLanguage
 			}
 			lang := internal.DetectLanguage(langValue, siteConfig.General.DefaultLanguage, r.Header.Get("Accept-Language"))
 			// Проверяем, что обнаруженный язык поддерживается

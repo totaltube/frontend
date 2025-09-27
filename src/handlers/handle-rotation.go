@@ -92,8 +92,9 @@ func handleRotation(rotationParams rotationParams, useTrade bool, config *types.
 			if parsedReferer == nil {
 				return
 			}
-			if parsedReferer.Host != hostName {
-				log.Printf("referer %s not equal to %s", parsedReferer.Host, hostName)
+			parsedRefererHost := strings.TrimPrefix(strings.ToLower(parsedReferer.Host), "www.")
+			if parsedRefererHost != hostName {
+				log.Printf("referer %s not equal to %s", parsedRefererHost, hostName)
 				return
 			}
 			tradeUrl := config.General.TradeUrlTemplate
