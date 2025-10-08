@@ -80,9 +80,21 @@ var Channel = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			hostName, langId, page, sortBy, sortByViewsTimeframe, channelSlug, channelId,
 			modelId, modelSlug, durationGte, durationLt, categoryId, categorySlug, groupId, amount),
 	)
-	cacheTtl := time.Minute * 15
+	var cacheTtl types.Duration
+	if config.CacheTimeouts.Channel != nil {
+		cacheTtl = *config.CacheTimeouts.Channel
+	} else {
+		cacheTtl = internal.Config.CacheTimeouts.Channel
+	}
+	if page > 1 {
+		if config.CacheTimeouts.ChannelPagination != nil {
+			cacheTtl = *config.CacheTimeouts.ChannelPagination
+		} else {
+			cacheTtl = internal.Config.CacheTimeouts.ChannelPagination
+		}
+	}
 	userAgent := r.Header.Get("User-Agent")
-	parsed, err := site.ParseTemplate("channel", path, config, customContext, nocache, cacheKey, cacheTtl,
+	parsed, err := site.ParseTemplate("channel", path, config, customContext, nocache, cacheKey, time.Duration(cacheTtl),
 		func() (pongo2.Context, error) {
 			ctx := pongo2.Context{}
 			// getting category information from cache or from api
@@ -104,7 +116,7 @@ var Channel = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			}
 			var results = new(types.ContentResults)
 			var response json.RawMessage
-			response, err = db.GetCachedTimeout(cacheKey+":data", cacheTtl, cacheTtl, func() ([]byte, error) {
+			response, err = db.GetCachedTimeout(cacheKey+":data", time.Duration(cacheTtl), time.Duration(cacheTtl), func() ([]byte, error) {
 				return api.ContentRaw(hostName, api.ContentParams{
 					Lang:         langId,
 					Page:         page,

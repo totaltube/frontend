@@ -153,7 +153,7 @@ func handleRotation(rotationParams rotationParams, useTrade bool, config *types.
 				return
 			}
 			if resp.StatusCode != 200 {
-				log.Printf("error doing request %s %s %s", resp.StatusCode, tradeUrl, hostName)
+				log.Printf("error doing request %s %s %s", http.StatusText(resp.StatusCode), tradeUrl, hostName)
 				return
 			}
 			if resp.StatusCode == 200 {

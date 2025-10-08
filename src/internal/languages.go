@@ -43,7 +43,18 @@ func InitLanguages(Languages []types.Language) {
 	}
 	matcher = language.NewMatcher(languageTags)
 }
-
+func GetLanguagesAvailableInSitemap(config *types.Config) []types.Language {
+	if config != nil && len(config.General.LanguagesAvailableInSitemap) > 0 {
+		langs := make([]types.Language, 0, len(config.General.LanguagesAvailableInSitemap))
+		for _, l := range config.General.LanguagesAvailableInSitemap {
+			if lang, ok := languagesMap[l]; ok {
+				langs = append(langs, *lang)
+			}
+		}
+		return langs
+	}
+	return GetLanguages(config)
+}
 func GetLanguages(config *types.Config) []types.Language {
 	if config != nil && len(config.General.LanguagesAvailable) > 0 {
 		langs := make([]types.Language, 0, len(config.General.LanguagesAvailable))

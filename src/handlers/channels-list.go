@@ -9,8 +9,8 @@ import (
 	"sersh.com/totaltube/frontend/types"
 )
 
-func getChannelsListFunc(hostName string, langId string, defaultAmount int64, groupId int64) func(args ...interface{}) *types.ChannelResults {
-	return func(args ...interface{}) *types.ChannelResults {
+func getChannelsListFunc(hostName string, langId string, defaultAmount int64, groupId int64) func(args ...any) *types.ChannelResults {
+	return func(args ...any) *types.ChannelResults {
 		parsingName := true
 		var amount = defaultAmount
 		var page int64

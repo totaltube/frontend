@@ -10,8 +10,8 @@ import (
 	"sersh.com/totaltube/frontend/types"
 )
 
-func getContentFunc(hostName string, langId string, userAgent string, ip string, groupId int64) func(args ...interface{}) *types.ContentResults {
-	return func(args ...interface{}) *types.ContentResults {
+func getContentFunc(hostName string, langId string, userAgent string, ip string, groupId int64) func(args ...any) *types.ContentResults {
+	return func(args ...any) *types.ContentResults {
 		parsingName := true
 		params := api.ContentParams{
 			Ip:        net.ParseIP(ip),

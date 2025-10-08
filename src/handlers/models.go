@@ -44,15 +44,27 @@ var Models = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Sprintf("%s:%s:%d:%s:%s:%d:%d",
 			hostName, langId, page, sortBy, query, amount, groupId),
 	)
-	cacheTtl := time.Minute * 15
-	parsed, err := site.ParseTemplate("models", path, config, customContext, nocache, cacheKey, cacheTtl,
+	var cacheTtl types.Duration
+	if config.CacheTimeouts.Models != nil {
+		cacheTtl = *config.CacheTimeouts.Models
+	} else {
+		cacheTtl = internal.Config.CacheTimeouts.Models
+	}
+	if page > 1 {
+		if config.CacheTimeouts.ModelsPagination != nil {
+			cacheTtl = *config.CacheTimeouts.ModelsPagination
+		} else {
+			cacheTtl = internal.Config.CacheTimeouts.ModelsPagination
+		}
+	}
+	parsed, err := site.ParseTemplate("models", path, config, customContext, nocache, cacheKey, time.Duration(cacheTtl),
 		func() (pongo2.Context, error) {
 			ctx := pongo2.Context{}
 			// getting category information from cache or from api
 			var results = new(types.ModelResults)
 			var err error
 			var response json.RawMessage
-			response, err = db.GetCachedTimeout(cacheKey+":data", cacheTtl, cacheTtl, func() ([]byte, error) {
+			response, err = db.GetCachedTimeout(cacheKey+":data", time.Duration(cacheTtl), time.Duration(cacheTtl), func() ([]byte, error) {
 				return api.ModelsListRaw(hostName, langId, page, api.SortBy(sortBy), int64(amount), query, groupId)
 			}, nocache)
 			if err != nil {

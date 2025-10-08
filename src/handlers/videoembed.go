@@ -46,15 +46,20 @@ var VideoEmbed = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	cacheKey := "video-embed:" + helpers.Md5Hash(
 		fmt.Sprintf("%s:%s:%d:%s", hostName, langId, id, slug),
 	)
-	cacheTtl := time.Minute * 30
-	parsed, err := site.ParseTemplate("video-embed", path, config, customContext, nocache, cacheKey, cacheTtl,
+	var cacheTtl types.Duration
+	if config.CacheTimeouts.ContentItem != nil {
+		cacheTtl = *config.CacheTimeouts.ContentItem
+	} else {
+		cacheTtl = internal.Config.CacheTimeouts.ContentItem
+	}
+	parsed, err := site.ParseTemplate("video-embed", path, config, customContext, nocache, cacheKey, time.Duration(cacheTtl),
 		func() (pongo2.Context, error) {
 			ctx := pongo2.Context{}
 			// getting category information from cache or from api
 			var results = new(types.ContentItemResult)
 			var err error
 			var response json.RawMessage
-			response, err = db.GetCachedTimeout(cacheKey+":data", cacheTtl, cacheTtl, func() ([]byte, error) {
+			response, err = db.GetCachedTimeout(cacheKey+":data", time.Duration(cacheTtl), time.Duration(cacheTtl), func() ([]byte, error) {
 				return api.ContentItemRaw(hostName, langId, slug, id, true, 0, groupId,
 					config.Related.TitleTranslated, config.Related.TitleTranslatedMinTermFreq, config.Related.TitleTranslatedMaxQueryTerms, config.Related.TitleTranslatedBoost,
 					config.Related.Title, config.Related.TitleMinTermFreq, config.Related.TitleMaxQueryTerms, config.Related.TitleBoost,

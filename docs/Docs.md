@@ -63,6 +63,29 @@ captcha_whitelist = [] # Email whitelist for DMCA
 [database]
 path = "database" # Database files path
 backup_path = "database-backup" # Backup path
+
+[cache_timeouts]
+content_item = "1 hour" # Cache timeout for content item and embed
+search = "1 hour" # Cache timeout for search
+search_pagination = "1 hour" # Cache timeout for search pagination
+popular = "30 minutes" # Cache timeout for popular
+popular_pagination = "30 minutes" # Cache timeout for popular pagination
+new = "30 minutes" # Cache timeout for new
+new_pagination = "30 minutes" # Cache timeout for new pagination
+long = "30 minutes" # Cache timeout for long
+long_pagination = "30 minutes" # Cache timeout for long pagination
+model = "60 minutes" # Cache timeout for model
+model_pagination = "60 minutes" # Cache timeout for model pagination
+models = "60 minutes" # Cache timeout for models
+models_pagination = "60 minutes" # Cache timeout for models pagination
+category = "3 minutes" # Cache timeout for category
+category_pagination = "30 minutes" # Cache timeout for category pagination
+channel = "60 minutes" # Cache timeout for channel
+channel_pagination = "60 minutes" # Cache timeout for channel pagination
+top_content = "3 minutes" # Cache timeout for top content 
+top_content_pagination = "30 minutes" # Cache timeout for top content pagination
+top_categories = "3 minutes" # Cache timeout for top categories
+top_categories_pagination = "30 minutes" # Cache timeout for top categories pagination
 ```
 
 ## Command Line Interface
@@ -183,6 +206,8 @@ fake_video_page = true # Show fake video page for video links
 disable_categories_redirect = false # if true - redirect to category from top categories page based on referrer will be disabled.
 api_url = "" # if set, it will override minion api url in global config
 api_secret = "" # if set, it will override minion api secret in global config
+languages_available = ["en", "ru"] # if set, it will override languages available for site limiting them to the list.
+languages_available_in_sitemap = ["en", "ru"] # if set, it will override languages available for sitemap.xml limiting them to the list. If not set, languages available for sitemap.xml will be the same as languages available for site.
 ```
 
 In `[javascript]` and `[css]` sections you can define options to build js and css for the site. Example:
@@ -225,6 +250,14 @@ vast_url = "https://syndication.realsrv.com/splash.php?idzone=4232570"
 cdn_salt = "JsjdIyu872@jkshHHsl;"
 default_video_format = "main" # default format for hosted video.
 default_gallery_format = "main" #default format for picture gallery
+```
+In `[cache_timeouts]` section you can define cache timeouts for different pages. It will override default cache timeouts from `[internal]` section.
+Example:
+```toml
+[cache_timeouts]
+content_item = "1 hour"
+search = "1 hour"
+search_pagination = "1 hour"
 ```
 
 ## Site templates

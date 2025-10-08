@@ -60,13 +60,25 @@ var New = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			modelId, modelSlug, durationFrom, durationTo, categoryId, categorySlug, groupId, amount),
 	)
 	userAgent := r.Header.Get("User-Agent")
-	cacheTtl := time.Minute * 15
-	parsed, err := site.ParseTemplate("new", path, config, customContext, nocache, cacheKey, cacheTtl,
+	var cacheTtl types.Duration
+	if config.CacheTimeouts.New != nil {
+		cacheTtl = *config.CacheTimeouts.New
+	} else {
+		cacheTtl = internal.Config.CacheTimeouts.New
+	}
+	if page > 1 {
+		if config.CacheTimeouts.NewPagination != nil {
+			cacheTtl = *config.CacheTimeouts.NewPagination
+		} else {
+			cacheTtl = internal.Config.CacheTimeouts.NewPagination
+		}
+	}
+	parsed, err := site.ParseTemplate("new", path, config, customContext, nocache, cacheKey, time.Duration(cacheTtl),
 		func() (pongo2.Context, error) {
 			ctx := pongo2.Context{}
 			var err error
 			var response []byte
-			response, err = db.GetCachedTimeout(cacheKey+":data", cacheTtl, cacheTtl, func() ([]byte, error) {
+			response, err = db.GetCachedTimeout(cacheKey+":data", time.Duration(cacheTtl), time.Duration(cacheTtl), func() ([]byte, error) {
 				return api.ContentRaw(hostName, api.ContentParams{
 					Lang:         langId,
 					Page:         page,

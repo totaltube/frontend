@@ -9,8 +9,8 @@ import (
 	"sersh.com/totaltube/frontend/types"
 )
 
-func getCategoriesListFunc(hostName string, langId string, defaultAmount int64, groupId int64) func(args ...interface{}) *types.CategoryResults {
-	return func(args ...interface{}) *types.CategoryResults {
+func getCategoriesListFunc(hostName string, langId string, defaultAmount int64, groupId int64) func(args ...any) *types.CategoryResults {
+	return func(args ...any) *types.CategoryResults {
 		parsingName := true
 		var amount = defaultAmount
 		var page int64

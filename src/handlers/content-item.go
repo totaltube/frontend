@@ -170,15 +170,20 @@ var ContentItem = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 	cacheKey = "content-item:" + helpers.Md5Hash(cacheKey)
-	cacheTtl := time.Minute * 60
-	parsed, err := site.ParseTemplate("content-item", path, config, customContext, nocache, cacheKey, cacheTtl,
+	var cacheTtl types.Duration
+	if config.CacheTimeouts.ContentItem != nil {
+		cacheTtl = *config.CacheTimeouts.ContentItem
+	} else {
+		cacheTtl = internal.Config.CacheTimeouts.ContentItem
+	}
+	parsed, err := site.ParseTemplate("content-item", path, config, customContext, nocache, cacheKey, time.Duration(cacheTtl),
 		func() (pongo2.Context, error) {
 			ctx := pongo2.Context{}
 			// getting category information from cache or from api
 			var results = new(types.ContentItemResult)
 			var err error
 			var response json.RawMessage
-			response, err = db.GetCachedTimeout(cacheKey+":data", cacheTtl, cacheTtl, func() ([]byte, error) {
+			response, err = db.GetCachedTimeout(cacheKey+":data", time.Duration(cacheTtl), time.Duration(cacheTtl), func() ([]byte, error) {
 				return api.ContentItemRaw(hostName, langId, slug, id, orfl, int64(relatedAmount), groupId,
 					relatedTitleTranslated, relatedTitleTranslatedMinTermFreq, relatedTitleTranslatedMaxQueryTerms, relatedTitleTranslatedBoost,
 					relatedTitle, relatedTitleMinTermFreq, relatedTitleMaxQueryTerms, relatedTitleBoost,
@@ -311,13 +316,18 @@ func getContentItemFunc(hostName string, config *types.Config, langId string, gr
 	if relatedTagsBoost == nil {
 		relatedTagsBoost = internal.Config.Related.TagsBoost
 	}
+	var cacheTime types.Duration
+	if config.CacheTimeouts.ContentItem != nil {
+		cacheTime = *config.CacheTimeouts.ContentItem
+	} else {
+		cacheTime = internal.Config.CacheTimeouts.ContentItem
+	}
 	return func(args ...any) *types.ContentItemResult {
 		parsingName := true
 		var id int64
 		var slug string
 		orfl := !config.General.FakeVideoPage
 		var relatedAmount = int64(config.General.ContentRelatedAmount)
-		var cacheTime = time.Minute * 60
 		curName := ""
 		for k := range args {
 			if parsingName {
@@ -341,7 +351,7 @@ func getContentItemFunc(hostName string, config *types.Config, langId string, gr
 			case "group_id":
 				groupId, _ = strconv.ParseInt(val, 10, 32)
 			case "cache":
-				cacheTime = types.ParseHumanDuration(val)
+				cacheTime = types.Duration(types.ParseHumanDuration(val))
 			}
 		}
 		if id == 0 && slug == "" {
@@ -351,7 +361,7 @@ func getContentItemFunc(hostName string, config *types.Config, langId string, gr
 		cacheKey := "content-item:" + helpers.Md5Hash(
 			fmt.Sprintf("%s:%s:%d:%s:%v:%d:%d", hostName, langId, id, slug, orfl, relatedAmount, groupId),
 		)
-		results, err := db.GetCachedTimeout(cacheKey+":data", cacheTime, cacheTime, func() ([]byte, error) {
+		results, err := db.GetCachedTimeout(cacheKey+":data", time.Duration(cacheTime), time.Duration(cacheTime), func() ([]byte, error) {
 			return api.ContentItemRaw(hostName, langId, slug, id, orfl, relatedAmount, groupId,
 				relatedTitleTranslated, relatedTitleTranslatedMinTermFreq, relatedTitleTranslatedMaxQueryTerms, relatedTitleTranslatedBoost,
 				relatedTitle, relatedTitleMinTermFreq, relatedTitleMaxQueryTerms, relatedTitleBoost,

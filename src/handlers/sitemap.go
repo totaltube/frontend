@@ -50,7 +50,18 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			route.CreateElement("loc").
 				CreateText("https://" + config.Hostname + link)
 			if config.General.MultiLanguage {
-				for _, lang := range internal.GetLanguages(config) {
+				selfAlt := route.CreateElement("xhtml:link")
+				selfAlt.CreateAttr("rel", "alternate")
+				selfAlt.CreateAttr("hreflang", config.General.DefaultLanguage)
+				selfAlt.CreateAttr("href", "https://"+config.Hostname+link)
+				xdef := route.CreateElement("xhtml:link")
+				xdef.CreateAttr("rel", "alternate")
+				xdef.CreateAttr("hreflang", "x-default")
+				xdef.CreateAttr("href", "https://"+config.Hostname+link)
+				for _, lang := range internal.GetLanguagesAvailableInSitemap(config) {
+					if lang.Id == config.General.DefaultLanguage {
+						continue
+					}
 					var hostname = config.Hostname
 					if d, ok := config.LanguageDomains[lang.Id]; ok && d != "" {
 						matches := urlRegex.FindStringSubmatch(d)
@@ -82,38 +93,48 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		urlSet.CreateAttr("xmlns", "http://www.sitemaps.org/schemas/sitemap/0.9")
 		urlSet.CreateAttr("xmlns:video", `http://www.google.com/schemas/sitemap-video/1.1`)
 		urlSet.CreateAttr("xmlns:xhtml", `http://www.w3.org/1999/xhtml`)
-		results, err := getSitemapCategories(config.Hostname, config.Sitemap.CategoriesAmount)
-		if err != nil {
-			log.Println(err)
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			return
-		}
-		if int64(len(results.Items)) <= (page-1)*config.Sitemap.MaxLinks {
-			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-			return
-		}
+		pages := (config.Sitemap.CategoriesAmount + config.Sitemap.MaxLinks - 1) / config.Sitemap.MaxLinks
 		var num int64
-		for _, item := range results.Items[(page-1)*config.Sitemap.MaxLinks:] {
-			route := urlSet.CreateElement("url")
-			route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink("category", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
-			if config.General.MultiLanguage {
-				for _, lang := range internal.GetLanguages(config) {
-					alt := route.CreateElement("xhtml:link")
-					alt.CreateAttr("rel", "alternate")
-					alt.CreateAttr("hreflang", lang.Id)
-					var hostname = config.Hostname
-					if d, ok := config.LanguageDomains[lang.Id]; ok && d != "" {
-						hostname = d
-					}
-					alt.CreateAttr("href", "https://"+hostname+site.GetLink("category", config, hostName, lang.Id, true, "slug", item.Slug, "id", item.Id))
-				}
+		if page <= pages {
+			results, err := getSitemapCategories(config.Hostname, config.Sitemap.CategoriesAmount)
+			if err != nil {
+				log.Println(err)
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+				return
 			}
-			route.CreateElement("lastmod").CreateText(time.Now().UTC().Format(time.DateOnly))
-			route.CreateElement("changefreq").CreateText("hourly")
-			route.CreateElement("priority").CreateText("0.6")
-			num++
-			if num >= config.Sitemap.MaxLinks {
-				break
+			for _, item := range results.Items[(page-1)*config.Sitemap.MaxLinks:] {
+				route := urlSet.CreateElement("url")
+				route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink("category", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
+				if config.General.MultiLanguage {
+					selfAlt := route.CreateElement("xhtml:link")
+					selfAlt.CreateAttr("rel", "alternate")
+					selfAlt.CreateAttr("hreflang", config.General.DefaultLanguage)
+					selfAlt.CreateAttr("href", "https://"+config.Hostname+site.GetLink("category", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
+					xdef := route.CreateElement("xhtml:link")
+					xdef.CreateAttr("rel", "alternate")
+					xdef.CreateAttr("hreflang", "x-default")
+					xdef.CreateAttr("href", "https://"+config.Hostname+site.GetLink("category", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
+					for _, lang := range internal.GetLanguagesAvailableInSitemap(config) {
+						if lang.Id == config.General.DefaultLanguage {
+							continue
+						}
+						alt := route.CreateElement("xhtml:link")
+						alt.CreateAttr("rel", "alternate")
+						alt.CreateAttr("hreflang", lang.Id)
+						var hostname = config.Hostname
+						if d, ok := config.LanguageDomains[lang.Id]; ok && d != "" {
+							hostname = d
+						}
+						alt.CreateAttr("href", "https://"+hostname+site.GetLink("category", config, hostName, lang.Id, true, "slug", item.Slug, "id", item.Id))
+					}
+				}
+				route.CreateElement("lastmod").CreateText(time.Now().UTC().Format(time.DateOnly))
+				route.CreateElement("changefreq").CreateText("hourly")
+				route.CreateElement("priority").CreateText("0.6")
+				num++
+				if num >= config.Sitemap.MaxLinks {
+					break
+				}
 			}
 		}
 	case "models":
@@ -125,38 +146,48 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		urlSet.CreateAttr("xmlns", "http://www.sitemaps.org/schemas/sitemap/0.9")
 		urlSet.CreateAttr("xmlns:video", `http://www.google.com/schemas/sitemap-video/1.1`)
 		urlSet.CreateAttr("xmlns:xhtml", `http://www.w3.org/1999/xhtml`)
-		results, err := getSitemapModels(config.Hostname, config.Sitemap.ModelsAmount)
-		if err != nil {
-			log.Println(err)
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			return
-		}
-		if int64(len(results.Items)) <= (page-1)*config.Sitemap.MaxLinks {
-			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-			return
-		}
+		pages := (config.Sitemap.ModelsAmount + config.Sitemap.MaxLinks - 1) / config.Sitemap.MaxLinks
 		var num int64
-		for _, item := range results.Items[(page-1)*config.Sitemap.MaxLinks:] {
-			route := urlSet.CreateElement("url")
-			route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink("model", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
-			if config.General.MultiLanguage {
-				for _, lang := range internal.GetLanguages(config) {
-					var hostname = config.Hostname
-					if d, ok := config.LanguageDomains[lang.Id]; ok && d != "" {
-						hostname = d
-					}
-					alt := route.CreateElement("xhtml:link")
-					alt.CreateAttr("rel", "alternate")
-					alt.CreateAttr("hreflang", lang.Id)
-					alt.CreateAttr("href", "https://"+hostname+site.GetLink("model", config, hostName, lang.Id, true, "slug", item.Slug, "id", item.Id))
-				}
+		if page <= pages {
+			results, err := getSitemapModels(config.Hostname, config.Sitemap.ModelsAmount)
+			if err != nil {
+				log.Println(err)
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+				return
 			}
-			route.CreateElement("lastmod").CreateText(time.Now().UTC().Format(time.DateOnly))
-			route.CreateElement("changefreq").CreateText("hourly")
-			route.CreateElement("priority").CreateText("0.6")
-			num++
-			if num >= config.Sitemap.MaxLinks {
-				break
+			for _, item := range results.Items[(page-1)*config.Sitemap.MaxLinks:] {
+				route := urlSet.CreateElement("url")
+				route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink("model", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
+				if config.General.MultiLanguage {
+					selfAlt := route.CreateElement("xhtml:link")
+					selfAlt.CreateAttr("rel", "alternate")
+					selfAlt.CreateAttr("hreflang", config.General.DefaultLanguage)
+					selfAlt.CreateAttr("href", "https://"+config.Hostname+site.GetLink("model", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
+					xdef := route.CreateElement("xhtml:link")
+					xdef.CreateAttr("rel", "alternate")
+					xdef.CreateAttr("hreflang", "x-default")
+					xdef.CreateAttr("href", "https://"+config.Hostname+site.GetLink("model", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
+					for _, lang := range internal.GetLanguagesAvailableInSitemap(config) {
+						if lang.Id == config.General.DefaultLanguage {
+							continue
+						}
+						var hostname = config.Hostname
+						if d, ok := config.LanguageDomains[lang.Id]; ok && d != "" {
+							hostname = d
+						}
+						alt := route.CreateElement("xhtml:link")
+						alt.CreateAttr("rel", "alternate")
+						alt.CreateAttr("hreflang", lang.Id)
+						alt.CreateAttr("href", "https://"+hostname+site.GetLink("model", config, hostName, lang.Id, true, "slug", item.Slug, "id", item.Id))
+					}
+				}
+				route.CreateElement("lastmod").CreateText(time.Now().UTC().Format(time.DateOnly))
+				route.CreateElement("changefreq").CreateText("hourly")
+				route.CreateElement("priority").CreateText("0.6")
+				num++
+				if num >= config.Sitemap.MaxLinks {
+					break
+				}
 			}
 		}
 	case "channels":
@@ -168,38 +199,48 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		urlSet.CreateAttr("xmlns", "http://www.sitemaps.org/schemas/sitemap/0.9")
 		urlSet.CreateAttr("xmlns:video", `http://www.google.com/schemas/sitemap-video/1.1`)
 		urlSet.CreateAttr("xmlns:xhtml", `http://www.w3.org/1999/xhtml`)
-		results, err := getSitemapChannels(config.Hostname, config.Sitemap.ChannelsAmount)
-		if err != nil {
-			log.Println(err)
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			return
-		}
-		if int64(len(results.Items)) <= (page-1)*config.Sitemap.MaxLinks {
-			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-			return
-		}
+		pages := (config.Sitemap.ChannelsAmount + config.Sitemap.MaxLinks - 1) / config.Sitemap.MaxLinks
 		var num int64
-		for _, item := range results.Items[(page-1)*config.Sitemap.MaxLinks:] {
-			route := urlSet.CreateElement("url")
-			route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink("channel", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
-			if config.General.MultiLanguage {
-				for _, lang := range internal.GetLanguages(config) {
-					var hostname = config.Hostname
-					if d, ok := config.LanguageDomains[lang.Id]; ok && d != "" {
-						hostname = d
-					}
-					alt := route.CreateElement("xhtml:link")
-					alt.CreateAttr("rel", "alternate")
-					alt.CreateAttr("hreflang", lang.Id)
-					alt.CreateAttr("href", "https://"+hostname+site.GetLink("channel", config, hostName, lang.Id, true, "slug", item.Slug, "id", item.Id))
-				}
+		if page <= pages {
+			results, err := getSitemapChannels(config.Hostname, config.Sitemap.ChannelsAmount)
+			if err != nil {
+				log.Println(err)
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+				return
 			}
-			route.CreateElement("lastmod").CreateText(time.Now().UTC().Format(time.DateOnly))
-			route.CreateElement("changefreq").CreateText("hourly")
-			route.CreateElement("priority").CreateText("0.6")
-			num++
-			if num >= config.Sitemap.MaxLinks {
-				break
+			for _, item := range results.Items[(page-1)*config.Sitemap.MaxLinks:] {
+				route := urlSet.CreateElement("url")
+				route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink("channel", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
+				if config.General.MultiLanguage {
+					selfAlt := route.CreateElement("xhtml:link")
+					selfAlt.CreateAttr("rel", "alternate")
+					selfAlt.CreateAttr("hreflang", config.General.DefaultLanguage)
+					selfAlt.CreateAttr("href", "https://"+config.Hostname+site.GetLink("channel", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
+					xdef := route.CreateElement("xhtml:link")
+					xdef.CreateAttr("rel", "alternate")
+					xdef.CreateAttr("hreflang", "x-default")
+					xdef.CreateAttr("href", "https://"+config.Hostname+site.GetLink("channel", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
+					for _, lang := range internal.GetLanguagesAvailableInSitemap(config) {
+						if lang.Id == config.General.DefaultLanguage {
+							continue
+						}
+						var hostname = config.Hostname
+						if d, ok := config.LanguageDomains[lang.Id]; ok && d != "" {
+							hostname = d
+						}
+						alt := route.CreateElement("xhtml:link")
+						alt.CreateAttr("rel", "alternate")
+						alt.CreateAttr("hreflang", lang.Id)
+						alt.CreateAttr("href", "https://"+hostname+site.GetLink("channel", config, hostName, lang.Id, true, "slug", item.Slug, "id", item.Id))
+					}
+				}
+				route.CreateElement("lastmod").CreateText(time.Now().UTC().Format(time.DateOnly))
+				route.CreateElement("changefreq").CreateText("hourly")
+				route.CreateElement("priority").CreateText("0.6")
+				num++
+				if num >= config.Sitemap.MaxLinks {
+					break
+				}
 			}
 		}
 	case "videos":
@@ -211,81 +252,99 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		urlSet.CreateAttr("xmlns", "http://www.sitemaps.org/schemas/sitemap/0.9")
 		urlSet.CreateAttr("xmlns:video", `http://www.google.com/schemas/sitemap-video/1.1`)
 		urlSet.CreateAttr("xmlns:xhtml", `http://www.w3.org/1999/xhtml`)
-		results, err := getSitemapVideos(config.Hostname, config.Sitemap.MaxLinks, page)
-		if err != nil {
-			log.Println(err)
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			return
-		}
+		pages := (config.Sitemap.LastVideosAmount + config.Sitemap.MaxLinks - 1) / config.Sitemap.MaxLinks
 		var num int64
-		customContext := generateCustomContext(w, r, "sitemap-video")
-		for _, item := range results.Items {
-			var videoBytes []byte
-			videoBytes, err = site.ParseTemplate("sitemap-video", path, config, customContext, true, fmt.Sprintf("sitemap-video-%d", item.Id), 1, func() (ctx pongo2.Context, err error) {
-				ctx = pongo2.Context{
-					"content_item": item,
-				}
-				return
-			}, w, r)
-			if err == nil {
-				// получаем из шаблона url для видео
-				video := etree.NewDocument()
-				err = video.ReadFromBytes(videoBytes)
-				if err != nil {
-					log.Println(err, string(videoBytes))
-					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-					return
-				}
-				urlSet.AddChild(video.Root())
-				num++
-				if num >= config.Sitemap.MaxLinks {
-					break
-				}
-				continue
-			}
-			if !errors.Is(err, site.ErrTemplateNotFound) {
+		if page <= pages {
+			results, err := getSitemapVideos(config.Hostname, config.Sitemap.MaxLinks, page)
+			if err != nil {
 				log.Println(err)
 				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 				return
 			}
-			route := urlSet.CreateElement("url")
-			route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink(
-				"content_item", config, hostName, config.General.DefaultLanguage, false,
-				"slug", item.Slug, "id", item.Id, "categories", item.Categories))
-			if config.General.MultiLanguage {
-				for _, lang := range internal.GetLanguages(config) {
-					var hostname = config.Hostname
-					if d, ok := config.LanguageDomains[lang.Id]; ok && d != "" {
-						hostname = d
+			customContext := generateCustomContext(w, r, "sitemap-video")
+			for _, item := range results.Items {
+				var videoBytes []byte
+				videoBytes, err = site.ParseTemplate("sitemap-video", path, config, customContext, true, fmt.Sprintf("sitemap-video-%d", item.Id), 1, func() (ctx pongo2.Context, err error) {
+					ctx = pongo2.Context{
+						"content_item": item,
 					}
-					alt := route.CreateElement("xhtml:link")
-					alt.CreateAttr("rel", "alternate")
-					alt.CreateAttr("hreflang", lang.Id)
-					alt.CreateAttr("href", "https://"+hostname+site.GetLink(
-						"content_item", config, hostName, lang.Id, true,
+					return
+				}, w, r)
+				if err == nil {
+					// получаем из шаблона url для видео
+					video := etree.NewDocument()
+					err = video.ReadFromBytes(videoBytes)
+					if err != nil {
+						log.Println(err, string(videoBytes))
+						http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+						return
+					}
+					urlSet.AddChild(video.Root())
+					num++
+					if num >= config.Sitemap.MaxLinks {
+						break
+					}
+					continue
+				}
+				if !errors.Is(err, site.ErrTemplateNotFound) {
+					log.Println(err)
+					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+					return
+				}
+				route := urlSet.CreateElement("url")
+				route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink(
+					"content_item", config, hostName, config.General.DefaultLanguage, false,
+					"slug", item.Slug, "id", item.Id, "categories", item.Categories))
+				if config.General.MultiLanguage {
+					selfAlt := route.CreateElement("xhtml:link")
+					selfAlt.CreateAttr("rel", "alternate")
+					selfAlt.CreateAttr("hreflang", config.General.DefaultLanguage)
+					selfAlt.CreateAttr("href", "https://"+config.Hostname+site.GetLink(
+						"content_item", config, hostName, config.General.DefaultLanguage, false,
 						"slug", item.Slug, "id", item.Id, "categories", item.Categories))
+					xdef := route.CreateElement("xhtml:link")
+					xdef.CreateAttr("rel", "alternate")
+					xdef.CreateAttr("hreflang", "x-default")
+					xdef.CreateAttr("href", "https://"+config.Hostname+site.GetLink(
+						"content_item", config, hostName, config.General.DefaultLanguage, false,
+						"slug", item.Slug, "id", item.Id, "categories", item.Categories))
+					for _, lang := range internal.GetLanguagesAvailableInSitemap(config) {
+						if lang.Id == config.General.DefaultLanguage {
+							continue
+						}
+						var hostname = config.Hostname
+						if d, ok := config.LanguageDomains[lang.Id]; ok && d != "" {
+							hostname = d
+						}
+						alt := route.CreateElement("xhtml:link")
+						alt.CreateAttr("rel", "alternate")
+						alt.CreateAttr("hreflang", lang.Id)
+						alt.CreateAttr("href", "https://"+hostname+site.GetLink(
+							"content_item", config, hostName, lang.Id, true,
+							"slug", item.Slug, "id", item.Id, "categories", item.Categories))
+					}
 				}
-			}
-			route.CreateElement("lastmod").CreateText(time.Now().UTC().Format(time.DateOnly))
-			route.CreateElement("changefreq").CreateText("daily")
-			route.CreateElement("priority").CreateText("0.8")
-			/*
-				video := route.CreateElement("video:video")
-				video.CreateElement("video:thumbnail_loc").CreateText(item.HiresThumb())
-				video.CreateElement("video:title").CreateCData(item.Title)
-				if item.Description != nil && *item.Description != "" {
-					video.CreateElement("video:description").CreateCData(*item.Description)
+				route.CreateElement("lastmod").CreateText(time.Now().UTC().Format(time.DateOnly))
+				route.CreateElement("changefreq").CreateText("daily")
+				route.CreateElement("priority").CreateText("0.8")
+				/*
+					video := route.CreateElement("video:video")
+					video.CreateElement("video:thumbnail_loc").CreateText(item.HiresThumb())
+					video.CreateElement("video:title").CreateCData(item.Title)
+					if item.Description != nil && *item.Description != "" {
+						video.CreateElement("video:description").CreateCData(*item.Description)
+					}
+					video.CreateElement("video:view_count").CreateText(strconv.FormatInt(int64(item.Views), 10))
+					video.CreateElement("video:publication_date").CreateText(item.Dated.Format(time.DateOnly))
+					video.CreateElement("video:duration").CreateText(fmt.Sprintf("%d", item.Duration))
+					for _, cat := range item.Categories {
+						video.CreateElement("video:category").CreateCData(cat.Title)
+					}
+				*/
+				num++
+				if num >= config.Sitemap.MaxLinks {
+					break
 				}
-				video.CreateElement("video:view_count").CreateText(strconv.FormatInt(int64(item.Views), 10))
-				video.CreateElement("video:publication_date").CreateText(item.Dated.Format(time.DateOnly))
-				video.CreateElement("video:duration").CreateText(fmt.Sprintf("%d", item.Duration))
-				for _, cat := range item.Categories {
-					video.CreateElement("video:category").CreateCData(cat.Title)
-				}
-			*/
-			num++
-			if num >= config.Sitemap.MaxLinks {
-				break
 			}
 		}
 	case "searches":
@@ -302,26 +361,25 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		urlSet.CreateAttr("xmlns", "http://www.sitemaps.org/schemas/sitemap/0.9")
 		urlSet.CreateAttr("xmlns:video", `http://www.google.com/schemas/sitemap-video/1.1`)
 		urlSet.CreateAttr("xmlns:xhtml", `http://www.w3.org/1999/xhtml`)
-		results, err := getSitemapSearches(config.Hostname, lang, config.Sitemap.SearchesAmount)
-		if err != nil {
-			log.Println(err)
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			return
-		}
-		if int64(len(results)) <= (page-1)*config.Sitemap.MaxLinks {
-			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-			return
-		}
+		pages := (config.Sitemap.SearchesAmount + config.Sitemap.MaxLinks - 1) / config.Sitemap.MaxLinks
 		var num int64
-		for _, item := range results[(page-1)*config.Sitemap.MaxLinks:] {
-			route := urlSet.CreateElement("url")
-			route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink("search", config, hostName, lang, false, "query", item.Message))
-			route.CreateElement("lastmod").CreateText(time.Now().UTC().Format(time.DateOnly))
-			route.CreateElement("changefreq").CreateText("hourly")
-			route.CreateElement("priority").CreateText("0.6")
-			num++
-			if num >= config.Sitemap.MaxLinks {
-				break
+		if page <= pages {
+			results, err := getSitemapSearches(config.Hostname, lang, config.Sitemap.SearchesAmount)
+			if err != nil {
+				log.Println(err)
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+				return
+			}
+			for _, item := range results[(page-1)*config.Sitemap.MaxLinks:] {
+				route := urlSet.CreateElement("url")
+				route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink("search", config, hostName, lang, false, "query", item.Message))
+				route.CreateElement("lastmod").CreateText(time.Now().UTC().Format(time.DateOnly))
+				route.CreateElement("changefreq").CreateText("hourly")
+				route.CreateElement("priority").CreateText("0.6")
+				num++
+				if num >= config.Sitemap.MaxLinks {
+					break
+				}
 			}
 		}
 	default:
@@ -332,128 +390,85 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		main.CreateElement("loc").CreateText("https://" + config.Hostname + config.Sitemap.Route + "?type=main")
 		main.CreateElement("lastmod").CreateText(currentDate)
 		if config.Sitemap.CategoriesAmount > 0 && config.Routes.Category != "" && config.Routes.Category != "-" {
-			results, err := getSitemapCategories(config.Hostname, config.Sitemap.CategoriesAmount)
-			if err != nil {
-				log.Println(err)
-				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-				return
-			}
-			maxAmount := int64(len(results.Items))
-			var lastFrom int64
-			for lastFrom < maxAmount {
+			pages := (config.Sitemap.CategoriesAmount + config.Sitemap.MaxLinks - 1) / config.Sitemap.MaxLinks
+			for i := int64(0); i < pages; i++ {
 				categories := sitemapIndex.CreateElement("sitemap")
-				page := ""
-				if lastFrom > 0 {
-					page = fmt.Sprintf("&page=%d", lastFrom/config.Sitemap.MaxLinks+1)
+				pageStr := ""
+				if i > 0 {
+					pageStr = fmt.Sprintf("&page=%d", i+1)
 				}
 				categories.CreateElement("loc").CreateText(
-					fmt.Sprintf("https://%s%s?type=categories%s", config.Hostname, config.Sitemap.Route, page),
+					fmt.Sprintf("https://%s%s?type=categories%s", config.Hostname, config.Sitemap.Route, pageStr),
 				)
 				categories.CreateElement("lastmod").CreateText(currentDate)
-				lastFrom += config.Sitemap.MaxLinks
 			}
 		}
 		if config.Sitemap.ModelsAmount > 0 && config.Routes.Model != "" && config.Routes.Model != "-" {
-			results, err := getSitemapModels(config.Hostname, config.Sitemap.ModelsAmount)
-			if err != nil {
-				log.Println(err)
-				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-				return
-			}
-			maxAmount := int64(len(results.Items))
-			var lastFrom int64
-			for lastFrom < maxAmount {
+			pages := (config.Sitemap.ModelsAmount + config.Sitemap.MaxLinks - 1) / config.Sitemap.MaxLinks
+			for i := int64(0); i < pages; i++ {
 				models := sitemapIndex.CreateElement("sitemap")
-				page := ""
-				if lastFrom > 0 {
-					page = fmt.Sprintf("&page=%d", lastFrom/config.Sitemap.MaxLinks+1)
+				pageStr := ""
+				if i > 0 {
+					pageStr = fmt.Sprintf("&page=%d", i+1)
 				}
 				models.CreateElement("loc").CreateText(
-					fmt.Sprintf("https://%s%s?type=models%s", config.Hostname, config.Sitemap.Route, page),
+					fmt.Sprintf("https://%s%s?type=models%s", config.Hostname, config.Sitemap.Route, pageStr),
 				)
 				models.CreateElement("lastmod").CreateText(currentDate)
-				lastFrom += config.Sitemap.MaxLinks
 			}
 		}
 		if config.Sitemap.ChannelsAmount > 0 && config.Routes.Channel != "" && config.Routes.Channel != "-" {
-			results, err := getSitemapChannels(config.Hostname, config.Sitemap.CategoriesAmount)
-			if err != nil {
-				log.Println(err)
-				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-				return
-			}
-			maxAmount := int64(len(results.Items))
-			var lastFrom int64
-			for lastFrom < maxAmount {
-				models := sitemapIndex.CreateElement("sitemap")
-				page := ""
-				if lastFrom > 0 {
-					page = fmt.Sprintf("&page=%d", lastFrom/config.Sitemap.MaxLinks+1)
+			pages := (config.Sitemap.ChannelsAmount + config.Sitemap.MaxLinks - 1) / config.Sitemap.MaxLinks
+			for i := int64(0); i < pages; i++ {
+				channels := sitemapIndex.CreateElement("sitemap")
+				pageStr := ""
+				if i > 0 {
+					pageStr = fmt.Sprintf("&page=%d", i+1)
 				}
-				models.CreateElement("loc").CreateText(
-					fmt.Sprintf("https://%s%s?type=channels%s", config.Hostname, config.Sitemap.Route, page),
+				channels.CreateElement("loc").CreateText(
+					fmt.Sprintf("https://%s%s?type=channels%s", config.Hostname, config.Sitemap.Route, pageStr),
 				)
-				models.CreateElement("lastmod").CreateText(currentDate)
-				lastFrom += config.Sitemap.MaxLinks
+				channels.CreateElement("lastmod").CreateText(currentDate)
 			}
 		}
 		if config.Sitemap.LastVideosAmount > 0 && config.Routes.ContentItem != "" && config.Routes.ContentItem != "-" {
-			results, err := getSitemapVideos(config.Hostname, config.Sitemap.MaxLinks, 1)
-			if err != nil {
-				log.Println(err)
-				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-				return
-			}
-			maxAmount := config.Sitemap.LastVideosAmount
-			if results.Total < maxAmount {
-				maxAmount = results.Total
-			}
-			var lastFrom int64
-			for lastFrom < maxAmount {
+			pages := (config.Sitemap.LastVideosAmount + config.Sitemap.MaxLinks - 1) / config.Sitemap.MaxLinks
+			for i := int64(0); i < pages; i++ {
 				videos := sitemapIndex.CreateElement("sitemap")
-				page := ""
-				if lastFrom > 0 {
-					page = fmt.Sprintf("&page=%d", lastFrom/config.Sitemap.MaxLinks+1)
+				pageStr := ""
+				if i > 0 {
+					pageStr = fmt.Sprintf("&page=%d", i+1)
 				}
 				videos.CreateElement("loc").CreateText(
-					fmt.Sprintf("https://%s%s?type=videos%s", config.Hostname, config.Sitemap.Route, page),
+					fmt.Sprintf("https://%s%s?type=videos%s", config.Hostname, config.Sitemap.Route, pageStr),
 				)
 				videos.CreateElement("lastmod").CreateText(currentDate)
-				lastFrom += config.Sitemap.MaxLinks
 			}
 		}
 		if config.Sitemap.SearchesAmount > 0 && config.Routes.Search != "" && config.Routes.Search != "-" {
 			langs := []string{config.General.DefaultLanguage}
 			if config.General.MultiLanguage {
-				langs = lo.Map(internal.GetLanguages(config), func(t types.Language, i int) string {
+				langs = lo.Map(internal.GetLanguagesAvailableInSitemap(config), func(t types.Language, i int) string {
 					return t.Id
 				})
 			}
+			pages := (config.Sitemap.SearchesAmount + config.Sitemap.MaxLinks - 1) / config.Sitemap.MaxLinks
 			for _, lang := range langs {
-				results, err := getSitemapSearches(config.Hostname, lang, config.Sitemap.SearchesAmount)
-				if err != nil {
-					log.Println(err)
-					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-					return
-				}
-				maxAmount := int64(len(results))
-				var lastFrom int64
-				for lastFrom < maxAmount {
+				for i := int64(0); i < pages; i++ {
 					searches := sitemapIndex.CreateElement("sitemap")
-					page := ""
-					if lastFrom > 0 {
-						page = fmt.Sprintf("&page=%d", lastFrom/config.Sitemap.MaxLinks+1)
+					pageStr := ""
+					if i > 0 {
+						pageStr = fmt.Sprintf("&page=%d", i+1)
 					}
 					searches.CreateElement("loc").CreateText(
-						fmt.Sprintf("https://%s%s?type=searches&lang=%s%s", config.Hostname, config.Sitemap.Route, url.QueryEscape(lang), page),
+						fmt.Sprintf("https://%s%s?type=searches&lang=%s%s", config.Hostname, config.Sitemap.Route, url.QueryEscape(lang), pageStr),
 					)
 					searches.CreateElement("lastmod").CreateText(currentDate)
-					lastFrom += config.Sitemap.MaxLinks
 				}
 			}
 		}
 	}
-	doc.Indent(2)
+	// doc.Indent(2) // pretty-printing XML is CPU-expensive and not needed for sitemaps
 	if middlewares.HeadersSent(w) {
 		return
 	}

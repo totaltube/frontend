@@ -17,16 +17,17 @@ var Config *ConfigT
 
 type (
 	ConfigT struct {
-		MainPath     string
-		General      General
-		Frontend     Frontend
-		Database     Database
-		Options      *Options
-		Mail         Mail
-		Comments     Comments
-		Related      Related
-		Translations map[string]map[string]string `toml:"translations"`
-		Custom       map[string]string            `toml:"custom"`
+		MainPath      string
+		General       General
+		Frontend      Frontend
+		Database      Database
+		Options       *Options
+		Mail          Mail
+		Comments      Comments
+		Related       Related
+		CacheTimeouts CacheTimeouts                `toml:"cache_timeouts"`
+		Translations  map[string]map[string]string `toml:"translations"`
+		Custom        map[string]string            `toml:"custom"`
 	}
 	ConfigTranslations struct {
 		Translations map[string]map[string]string `toml:"translations"`
@@ -103,6 +104,29 @@ type (
 		TagsMaxQueryTerms            *int     `toml:"tags_max_query_terms"`
 		TagsBoost                    *float64 `toml:"tags_boost"`
 	}
+	CacheTimeouts struct {
+		ContentItem             types.Duration `toml:"content_item"`
+		Search                  types.Duration `toml:"search"`
+		SearchPagination        types.Duration `toml:"search_pagination"`
+		Popular                 types.Duration `toml:"popular"`
+		PopularPagination       types.Duration `toml:"popular_pagination"`
+		New                     types.Duration `toml:"new"`
+		NewPagination           types.Duration `toml:"new_pagination"`
+		Long                    types.Duration `toml:"long"`
+		LongPagination          types.Duration `toml:"long_pagination"`
+		Model                   types.Duration `toml:"model"`
+		ModelPagination         types.Duration `toml:"model_pagination"`
+		Models                  types.Duration `toml:"models"`
+		ModelsPagination        types.Duration `toml:"models_pagination"`
+		Channel                 types.Duration `toml:"channel"`
+		ChannelPagination       types.Duration `toml:"channel_pagination"`
+		Category                types.Duration `toml:"category"`
+		CategoryPagination      types.Duration `toml:"category_pagination"`
+		TopContent              types.Duration `toml:"top_content"`
+		TopContentPagination    types.Duration `toml:"top_content_pagination"`
+		TopCategories           types.Duration `toml:"top_categories"`
+		TopCategoriesPagination types.Duration `toml:"top_categories_pagination"`
+	}
 )
 
 var apiVersionRegex = regexp.MustCompile(`^(.*)/v\d+/?$`)
@@ -137,6 +161,29 @@ func InitConfig(configPath string) {
 		Comments: Comments{
 			ItemsPerPage: 30,
 			MaxReplies:   200,
+		},
+		CacheTimeouts: CacheTimeouts{
+			Category:                types.Duration(time.Minute * 3),
+			CategoryPagination:      types.Duration(time.Minute * 30),
+			TopContent:              types.Duration(time.Minute * 3),
+			TopContentPagination:    types.Duration(time.Minute * 30),
+			TopCategories:           types.Duration(time.Minute * 3),
+			TopCategoriesPagination: types.Duration(time.Minute * 30),
+			Channel:                 types.Duration(time.Minute * 60),
+			ChannelPagination:       types.Duration(time.Minute * 60),
+			Model:                   types.Duration(time.Minute * 60),
+			ModelPagination:         types.Duration(time.Minute * 60),
+			Models:                  types.Duration(time.Minute * 60),
+			ModelsPagination:        types.Duration(time.Minute * 60),
+			Search:                  types.Duration(time.Minute * 60),
+			SearchPagination:        types.Duration(time.Minute * 60),
+			Popular:                 types.Duration(time.Minute * 30),
+			PopularPagination:       types.Duration(time.Minute * 30),
+			New:                     types.Duration(time.Minute * 30),
+			NewPagination:           types.Duration(time.Minute * 30),
+			Long:                    types.Duration(time.Minute * 30),
+			LongPagination:          types.Duration(time.Minute * 30),
+			ContentItem:             types.Duration(time.Minute * 60),
 		},
 	}
 	if _, err := toml.DecodeFile(configPath, Config); err != nil {

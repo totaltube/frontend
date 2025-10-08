@@ -127,9 +127,18 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	)
 	filtered := channelId > 0 || channelSlug != "" || modelId > 0 || modelSlug != "" || sortBy != "" ||
 		durationTo > 0 || durationFrom > 0
-	cacheTtl := time.Minute * 3
+	var cacheTtl types.Duration
+	if config.CacheTimeouts.Category != nil {
+		cacheTtl = *config.CacheTimeouts.Category
+	} else {
+		cacheTtl = internal.Config.CacheTimeouts.Category
+	}
 	if page > 1 || filtered {
-		cacheTtl = time.Minute * 30
+		if config.CacheTimeouts.CategoryPagination != nil {
+			cacheTtl = *config.CacheTimeouts.CategoryPagination
+		} else {
+			cacheTtl = internal.Config.CacheTimeouts.CategoryPagination
+		}
 	}
 
 	userAgent := r.Header.Get("User-Agent")
@@ -166,7 +175,7 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var results = new(types.ContentResults)
 			if filtered {
 				var response []byte
-				response, err = db.GetCachedTimeout(cacheKey+":data", cacheTtl, cacheTtl, func() ([]byte, error) {
+				response, err = db.GetCachedTimeout(cacheKey+":data", time.Duration(cacheTtl), time.Duration(cacheTtl), func() ([]byte, error) {
 					return api.ContentRaw(hostName, api.ContentParams{
 						Lang:         langId,
 						Page:         page,
@@ -192,7 +201,7 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			} else {
 				ctx["count"] = true
 				var response []byte
-				response, err = db.GetCachedTimeout(cacheKey+":data", cacheTtl, cacheTtl, func() ([]byte, error) {
+				response, err = db.GetCachedTimeout(cacheKey+":data", time.Duration(cacheTtl), time.Duration(cacheTtl), func() ([]byte, error) {
 					return api.CategoryRaw(hostName, langId, categoryId, categorySlug, page, groupId)
 				}, nocache)
 				if err != nil {

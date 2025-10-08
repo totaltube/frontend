@@ -108,9 +108,18 @@ var TopCategories = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))
 	customContext := generateCustomContext(w, r, "top-categories")
 	cacheKey := fmt.Sprintf("top-categories:%s:%s:%d:%d", hostName, langId, page, groupId)
-	cacheTtl := time.Minute * 3
+	var cacheTtl types.Duration
+	if config.CacheTimeouts.TopCategories != nil {
+		cacheTtl = *config.CacheTimeouts.TopCategories
+	} else {
+		cacheTtl = internal.Config.CacheTimeouts.TopCategories
+	}
 	if page > 1 {
-		cacheTtl = time.Minute * 30
+		if config.CacheTimeouts.TopCategoriesPagination != nil {
+			cacheTtl = *config.CacheTimeouts.TopCategoriesPagination
+		} else {
+			cacheTtl = internal.Config.CacheTimeouts.TopCategoriesPagination
+		}
 	}
 	pageTtl := 0 * time.Second
 	randomizeRatio := config.General.RandomizeRatio
@@ -126,7 +135,7 @@ var TopCategories = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 			var results = new(types.CategoryResults)
 			var err error
 			var response json.RawMessage
-			response, err = db.GetCachedTimeout(cacheKey+":data", cacheTtl, cacheTtl, func() ([]byte, error) {
+			response, err = db.GetCachedTimeout(cacheKey+":data", time.Duration(cacheTtl), time.Duration(cacheTtl), func() ([]byte, error) {
 				bt, err := api.TopCategoriesRaw(hostName, langId, page, groupId)
 				return bt, err
 			}, nocache)

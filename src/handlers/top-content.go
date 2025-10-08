@@ -37,9 +37,18 @@ var TopContent = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	customContext := generateCustomContext(w, r, "top-content")
 	var groupId = internal.DetectCountryGroup(net.ParseIP(ip)).Id
 	cacheKey := fmt.Sprintf("top-content:%s:%s:%d:%d", hostName, langId, page, groupId)
-	cacheTtl := time.Minute * 3
+	var cacheTtl types.Duration
+	if config.CacheTimeouts.TopContent != nil {
+		cacheTtl = *config.CacheTimeouts.TopContent
+	} else {
+		cacheTtl = internal.Config.CacheTimeouts.TopContent
+	}
 	if page > 1 {
-		cacheTtl = time.Minute * 30
+		if config.CacheTimeouts.TopContentPagination != nil {
+			cacheTtl = *config.CacheTimeouts.TopContentPagination
+		} else {
+			cacheTtl = internal.Config.CacheTimeouts.TopContentPagination
+		}
 	}
 	pageTtl := 0 * time.Second
 	randomizeRatio := config.General.RandomizeRatio
@@ -55,7 +64,7 @@ var TopContent = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var results = new(types.ContentResults)
 			var err error
 			var response json.RawMessage
-			response, err = db.GetCachedTimeout(cacheKey+":data", cacheTtl, cacheTtl, func() ([]byte, error) {
+			response, err = db.GetCachedTimeout(cacheKey+":data", time.Duration(cacheTtl), time.Duration(cacheTtl), func() ([]byte, error) {
 				bt, err := api.TopContentRaw(hostName, langId, page, groupId)
 				return bt, err
 			}, nocache)

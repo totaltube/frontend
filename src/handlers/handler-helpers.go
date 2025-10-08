@@ -47,55 +47,57 @@ func generateCustomContext(_ http.ResponseWriter, r *http.Request, templateName 
 	userAgent := r.Header.Get("User-Agent")
 	var changedQuery = make(map[string]string)
 	for k, v := range query {
-		if k == config.Params.SortBy {
+		switch k {
+		case config.Params.SortBy:
 			k = "sort_by"
-			if v == config.Params.SortByRand {
+			switch v {
+			case config.Params.SortByRand:
 				v = "rand"
-			} else if v == config.Params.SortByViews {
+			case config.Params.SortByViews:
 				v = "views"
-			} else if v == config.Params.SortByDuration {
+			case config.Params.SortByDuration:
 				v = "duration"
-			} else if v == config.Params.SortByDate {
+			case config.Params.SortByDate:
 				v = "dated"
 			}
 			changedQuery[k] = v
-		} else if k == config.Params.SortByViewsTimeframe {
+		case config.Params.SortByViewsTimeframe:
 			k = "timeframe"
 			changedQuery[k] = v
-		} else if k == config.Params.ChannelSlug {
+		case config.Params.ChannelSlug:
 			k = "channel_slug"
 			changedQuery[k] = v
-		} else if k == config.Params.ChannelId {
+		case config.Params.ChannelId:
 			k = "channel_id"
 			changedQuery[k] = v
-		} else if k == config.Params.CategorySlug {
+		case config.Params.CategorySlug:
 			k = "category_slug"
 			changedQuery[k] = v
-		} else if k == config.Params.CategoryId {
+		case config.Params.CategoryId:
 			k = "category_id"
 			changedQuery[k] = v
-		} else if k == config.Params.ModelSlug {
+		case config.Params.ModelSlug:
 			k = "model_slug"
 			changedQuery[k] = v
-		} else if k == config.Params.ModelId {
+		case config.Params.ModelId:
 			k = "model_id"
 			changedQuery[k] = v
-		} else if k == config.Params.Page {
+		case config.Params.Page:
 			k = "page"
 			changedQuery[k] = v
-		} else if k == config.Params.ContentSlug {
+		case config.Params.ContentSlug:
 			k = "content_slug"
 			changedQuery[k] = v
-		} else if k == config.Params.ContentId {
+		case config.Params.ContentId:
 			k = "content_id"
 			changedQuery[k] = v
-		} else if k == config.Params.SearchQuery {
+		case config.Params.SearchQuery:
 			k = "search_query"
 			changedQuery[k] = v
-		} else if k == config.Params.DurationGte {
+		case config.Params.DurationGte:
 			k = "duration_gte"
 			changedQuery[k] = v
-		} else if k == config.Params.DurationLt {
+		case config.Params.DurationLt:
 			k = "duration_lt"
 			changedQuery[k] = v
 		}

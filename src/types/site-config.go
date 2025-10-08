@@ -10,6 +10,7 @@ type (
 		Sitemap         ConfigSitemap
 		Params          ConfigParams
 		Related         ConfigRelated
+		CacheTimeouts   CacheTimeouts                `toml:"cache_timeouts"`
 		LanguageDomains map[string]string            `toml:"language_domains"`
 		Translations    map[string]map[string]string `toml:"translations"`
 		Javascript      ConfigJs                     `json:"-"`
@@ -141,6 +142,7 @@ type (
 		NoRedirectDefaultLanguage          bool     `toml:"no_redirect_default_language"`
 		NoDetectLanguage                   bool     `toml:"no_detect_language"`
 		LanguagesAvailable                 []string `toml:"languages_available"`
+		LanguagesAvailableInSitemap        []string `toml:"languages_available_in_sitemap"`
 		MinifyHtml                         bool     `toml:"minify_html" json:"-"`
 		PaginationMaxRenderedLinks         int      `toml:"pagination_max_rendered_links"`
 		DisableCategoriesRedirect          bool     `toml:"disable_categories_redirect"`
@@ -152,6 +154,29 @@ type (
 		DeletedTaxonomiesToSearchPermanent bool     `toml:"deleted_taxonomies_to_search_permanent"`
 		RandomizeRatio                     float64  `toml:"randomize_ratio"`
 		CacheKeyQueryParams                []string `toml:"cache_key_query_params"` // query params to mention in cache key
+	}
+	CacheTimeouts struct {
+		ContentItem             *Duration `toml:"content_item"`
+		Search                  *Duration `toml:"search"`
+		SearchPagination        *Duration `toml:"search_pagination"`
+		Popular                 *Duration `toml:"popular"`
+		PopularPagination       *Duration `toml:"popular_pagination"`
+		New                     *Duration `toml:"new"`
+		NewPagination           *Duration `toml:"new_pagination"`
+		Long                    *Duration `toml:"long"`
+		LongPagination          *Duration `toml:"long_pagination"`
+		Model                   *Duration `toml:"model"`
+		ModelPagination         *Duration `toml:"model_pagination"`
+		Models                  *Duration `toml:"models"`
+		ModelsPagination        *Duration `toml:"models_pagination"`
+		Category                *Duration `toml:"category"`
+		CategoryPagination      *Duration `toml:"category_pagination"`
+		Channel                 *Duration `toml:"channel"`
+		ChannelPagination       *Duration `toml:"channel_pagination"`
+		TopContent              *Duration `toml:"top_content"`
+		TopContentPagination    *Duration `toml:"top_content_pagination"`
+		TopCategories           *Duration `toml:"top_categories"`
+		TopCategoriesPagination *Duration `toml:"top_categories_pagination"`
 	}
 )
 

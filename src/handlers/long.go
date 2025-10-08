@@ -61,14 +61,26 @@ var Long = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			modelId, modelSlug, durationFrom, durationTo, categoryId, categorySlug, groupId, amount),
 	)
 	userAgent := r.Header.Get("User-Agent")
-	cacheTtl := time.Minute * 15
-	parsed, err := site.ParseTemplate("long", path, config, customContext, nocache, cacheKey, cacheTtl,
+	var cacheTtl types.Duration
+	if config.CacheTimeouts.Long != nil {
+		cacheTtl = *config.CacheTimeouts.Long
+	} else {
+		cacheTtl = internal.Config.CacheTimeouts.Long
+	}
+	if page > 1 {
+		if config.CacheTimeouts.LongPagination != nil {
+			cacheTtl = *config.CacheTimeouts.LongPagination
+		} else {
+			cacheTtl = internal.Config.CacheTimeouts.LongPagination
+		}
+	}
+	parsed, err := site.ParseTemplate("long", path, config, customContext, nocache, cacheKey, time.Duration(cacheTtl),
 		func() (pongo2.Context, error) {
 			ctx := pongo2.Context{}
 			var results = new(types.ContentResults)
 			var err error
 			var response json.RawMessage
-			response, err = db.GetCachedTimeout(cacheKey+":data", cacheTtl, cacheTtl, func() ([]byte, error) {
+			response, err = db.GetCachedTimeout(cacheKey+":data", time.Duration(cacheTtl), time.Duration(cacheTtl), func() ([]byte, error) {
 				return api.ContentRaw(hostName, api.ContentParams{
 					Ip:           net.ParseIP(ip),
 					Lang:         langId,

@@ -91,9 +91,21 @@ var Search = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	ip := r.Context().Value(types.ContextKeyIp).(string)
 	groupId := internal.DetectCountryGroup(net.ParseIP(ip)).Id
 	userAgent := r.Header.Get("User-Agent")
-	cacheTtl := time.Minute * 15
+	var cacheTtl types.Duration
+	if config.CacheTimeouts.Search != nil {
+		cacheTtl = *config.CacheTimeouts.Search
+	} else {
+		cacheTtl = internal.Config.CacheTimeouts.Search
+	}
+	if page > 1 {
+		if config.CacheTimeouts.SearchPagination != nil {
+			cacheTtl = *config.CacheTimeouts.SearchPagination
+		} else {
+			cacheTtl = internal.Config.CacheTimeouts.SearchPagination
+		}
+	}
 	started := time.Now()
-	parsed, err := site.ParseTemplate("search", path, config, customContext, nocache, cacheKey, cacheTtl,
+	parsed, err := site.ParseTemplate("search", path, config, customContext, nocache, cacheKey, time.Duration(cacheTtl),
 		func() (pongo2.Context, error) {
 			ctx := pongo2.Context{}
 			var results *types.ContentResults
