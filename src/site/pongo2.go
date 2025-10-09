@@ -248,6 +248,10 @@ func InitPongo2() {
 	if err != nil {
 		log.Fatalln(err)
 	}
+	err = pongo2.RegisterTag("sitemap_alternates", pongo2SitemapAlternates)
+	if err != nil {
+		log.Fatalln(err)
+	}
 	err = pongo2.RegisterTag("page_link", pongo2PageLink)
 	if err != nil {
 		log.Fatalln(err)

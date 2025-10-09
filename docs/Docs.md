@@ -451,6 +451,23 @@ this tag outputs `<link rel="alternate">` tags for all languages for current pag
 </head>
 ```
 
+#### `{% sitemap_alternates %}`
+this tag outputs `<xhtml:link rel="alternate" ... />` tags for all languages for sitemap entries. Intended for use inside `sitemap-video` template when generating video URLs in `sitemap.xml`.
+
+Notes:
+- Works only for multilingual sites.
+- Requires `content_item` variable in context (provided by `sitemap-video`).
+- Uses `languages_available_in_sitemap` (if defined) and respects `language_domains` for absolute URLs.
+- Outputs links for default language, `x-default`, and all other languages.
+
+Example (inside `sitemap-video` template):
+```django
+<url>
+  <loc>{% link 'content_item', slug=content_item.Slug, id=content_item.Id, categories=content_item.Categories, as='loc' %}{{ loc }}</loc>
+  {% sitemap_alternates %}
+</url>
+```
+
 #### `{% canonical %}`
 this tag outputs `<link rel="canonical">` tag for current page. Useful to put it in `<head>` section of your site. It has no params. Example:
 ```django
@@ -635,6 +652,19 @@ const url = link("content",
   "full_url", true,
 )
 ```
+* `alternate_url` - returns absolute alternate URL for the given language code.
+  - Respects `language_domains` for language-specific hostnames.
+  - For `search` pages returns the root URL for the target language.
+  - In `sitemap-video` context builds URL to the `content_item` in target language.
+
+  Examples:
+  ```django
+  {# in HTML pages #}
+  <link rel="alternate" hreflang="ru" href="{{ alternate_url('ru') }}">
+
+  {# in sitemap-video template #}
+  <xhtml:link rel="alternate" hreflang="tr" href="{{ alternate_url('tr') }}" />
+  ```
 * `parse_ua` - function to parse user_agent (of current surfer or provided as first parameter) and return object with these properties: `URL`: url of bot, `Name`: name of browser/bot, `Version`: version of browser/bot, `OS`: name of OS, `OSVersion`: version of OS, `Device`: name of device, `Mobile`: true if mobile device, `Tablet`: true if tablet device, `Desktop`: true if desktop device, `Bot`: true if bot. Example:
 ```javascript
 const ua = parse_ua()

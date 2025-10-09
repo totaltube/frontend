@@ -124,6 +124,49 @@ func getAlternate(ctx pongo2.Context, langId string, page int64, q ...url.Values
 	}
 	return route
 }
+
+// GenerateAlternateURL builds absolute alternate URL with language domain respect
+func GenerateAlternateURL(ctx pongo2.Context, alternateLang string) string {
+	config := ctx["config"].(*types.Config)
+	hostName := ctx["host"].(string)
+	if templateName, ok := ctx["page_template"].(string); ok && templateName == "sitemap-video" {
+		if contentItem, ok := ctx["content_item"].(*types.ContentResult); ok && contentItem != nil {
+			langHost := hostName
+			if d, ok := config.LanguageDomains[alternateLang]; ok && d != "" {
+				langHost = d
+			}
+			return GetLink(
+				"content_item",
+				config,
+				langHost,
+				alternateLang,
+				true,
+				"slug", contentItem.Slug,
+				"id", contentItem.Id,
+				"categories", contentItem.Categories,
+				"full_url", true,
+			)
+		}
+	}
+	var page int64 = 1
+	if p, ok := ctx["page"].(int64); ok {
+		page = p
+	}
+	var canonicalUrl = strings.TrimSuffix(config.General.CanonicalUrl, "/")
+	if canonicalUrl == "" {
+		canonicalUrl = "https://" + hostName
+	}
+	if d, ok := config.LanguageDomains[alternateLang]; ok && d != "" {
+		canonicalUrl = "https://" + d
+	}
+	if templateName, ok := ctx["page_template"].(string); ok && templateName == "search" {
+		// Search page alternate falls back to root for target language
+		link := strings.ReplaceAll(config.Routes.LanguageTemplate, "{lang}", alternateLang)
+		link = strings.ReplaceAll(link, "{route}", "/")
+		return canonicalUrl + link
+	}
+	return canonicalUrl + getAlternate(ctx, alternateLang, page)
+}
 func (node *tagAlternateNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.TemplateWriter) *pongo2.Error {
 	context := pongo2.NewChildExecutionContext(ctx)
 	config := context.Public["config"].(*types.Config)

@@ -332,6 +332,9 @@ func generateCustomContext(_ http.ResponseWriter, r *http.Request, templateName 
 	customContext["get_var"] = func(name string) interface{} {
 		return globals[name]
 	}
+	customContext["alternate_url"] = func(lang string) string {
+		return site.GenerateAlternateURL(customContext, lang)
+	}
 	return customContext
 }
 
