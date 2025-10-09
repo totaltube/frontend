@@ -210,6 +210,17 @@ languages_available = ["en", "ru"] # if set, it will override languages availabl
 languages_available_in_sitemap = ["en", "ru"] # if set, it will override languages available for sitemap.xml limiting them to the list. If not set, languages available for sitemap.xml will be the same as languages available for site.
 ```
 
+Language-specific domains for alternates and sitemap:
+```toml
+[language_domains]
+en = "example.com"           # host only, without scheme
+ru = "ru.example.com"        # will be used in alternates and sitemap alternates
+tr = "tr.example.com"
+```
+Notes:
+- Values should be hostnames (no scheme). Some internal places tolerate schemes, but to avoid mismatches use hosts only.
+- Used by `alternate_url(lang)`, `{% alternates %}` and `{% sitemap_alternates %}` to build absolute URLs.
+
 In `[javascript]` and `[css]` sections you can define options to build js and css for the site. Example:
 ```toml
 [javascript]
@@ -279,6 +290,7 @@ Template names:
 * `top-categories.twig` - for top categories page (categories sorted by CTR)
 * `top-content.twig` - for top content page (content sorted by CTR)
 * `video-embed` - for video embed page for hosted video
+* `sitemap-video` - node template for video URLs inside `sitemap.xml`. The handler wraps it into `<urlset>` and appends namespaces.
 For custom routes you can create `custom-{route_name}.twig` files.
 We recommend to place some other template files, which can contains some common macros, in separate directory `common`. You can include templates and macros from this directory.
 
@@ -450,6 +462,7 @@ this tag outputs `<link rel="alternate">` tags for all languages for current pag
 ...
 </head>
 ```
+For sitemaps use `{% sitemap_alternates %}`.
 
 #### `{% sitemap_alternates %}`
 this tag outputs `<xhtml:link rel="alternate" ... />` tags for all languages for sitemap entries. Intended for use inside `sitemap-video` template when generating video URLs in `sitemap.xml`.
@@ -467,6 +480,7 @@ Example (inside `sitemap-video` template):
   {% sitemap_alternates %}
 </url>
 ```
+Tip: You can also build links individually with `alternate_url(lang)`.
 
 #### `{% canonical %}`
 this tag outputs `<link rel="canonical">` tag for current page. Useful to put it in `<head>` section of your site. It has no params. Example:
