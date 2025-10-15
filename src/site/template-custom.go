@@ -29,6 +29,12 @@ type redirectRet struct {
 	code int
 }
 
+type customSendRet struct {
+	data    []byte
+	headers http.Header
+	code    int
+}
+
 func doRedirect(url string, code ...int) (r redirectRet) {
 	r.url = url
 	r.code = 302
@@ -39,12 +45,12 @@ func doRedirect(url string, code ...int) (r redirectRet) {
 }
 
 type ErrSendResponse struct {
-	Redirect     string
-	RedirectCode int
-	JSON         interface{}
-	Text         string
-	Data         []byte
-	Headers      http.Header
+	Redirect string
+	JSON     interface{}
+	Text     string
+	Code     int
+	Data     []byte
+	Headers  http.Header
 }
 
 func (e ErrSendResponse) Error() string {
@@ -172,15 +178,19 @@ func ParseCustomTemplate(name, path string, config *types.Config,
 				log.Println("Redirected ", code, url)
 			}
 		}
-		ctx["custom_send"] = func(params ...any) {
+		ctx["custom_send"] = func(params ...any) customSendRet {
 			if len(params) == 0 {
-				return
+				return customSendRet{code: http.StatusOK, data: []byte("")}
 			}
-			var data string
+			var data []byte
 			var code = http.StatusOK
 			var headers = make(map[string]string)
 			if len(params) >= 1 {
-				data = fmt.Sprintf("%v", params[0])
+				if data1, ok := params[0].([]byte); ok {
+					data = data1
+				} else {
+					data = fmt.Appendf(nil, "%v", params[0])
+				}
 			}
 			k := ""
 			v := ""
@@ -196,15 +206,15 @@ func ParseCustomTemplate(name, path string, config *types.Config,
 					headers[k] = v
 				}
 			}
-			if len(params) >= 2 {
-				code1, _ := strconv.ParseInt(fmt.Sprintf("%v", params[1]), 10, 32)
-				code = int(code1)
+			// Вместо прямой записи, создаем ErrSendResponse и выбрасываем его как исключение Goja
+			var h http.Header
+			if len(headers) > 0 {
+				h = make(http.Header)
+				for k, v := range headers {
+					h.Set(k, v)
+				}
 			}
-			for k := range headers {
-				w.Header().Add(k, headers[k])
-			}
-			w.WriteHeader(code)
-			_, _ = w.Write([]byte(data))
+			return customSendRet{data: data, headers: h, code: code}
 		}
 	}
 	addDynamicFunctions(customContext)
@@ -317,7 +327,7 @@ func ParseCustomTemplate(name, path string, config *types.Config,
 				log.Println(err)
 				return
 			}
-			if ctx, ok := v.Export().(map[string]interface{}); ok {
+			if ctx, ok := v.Export().(map[string]any); ok {
 				prepareCtx = ctx
 			}
 			return
@@ -358,10 +368,17 @@ func ParseCustomTemplate(name, path string, config *types.Config,
 		}
 		v, err = vm.RunProgram(program)
 		if err != nil {
+			// Перехватываем Goja-исключение, если оно является ErrSendResponse
+			if gojaErr, ok := err.(*goja.Exception); ok {
+				if sendErr, isSendErr := gojaErr.Value().Export().(ErrSendResponse); isSendErr {
+					err = sendErr // Пробрасываем нашу кастомную ошибку дальше
+					return
+				}
+			}
 			log.Println(err)
 			return
 		}
-		if ret, ok := v.Export().(map[string]interface{}); ok {
+		if ret, ok := v.Export().(map[string]any); ok {
 			// if render() returns object - output it as json
 			e := ErrSendResponse{JSON: ret}
 			if h, ok := ctx["_headers"].(http.Header); ok {
@@ -389,8 +406,21 @@ func ParseCustomTemplate(name, path string, config *types.Config,
 			err = e
 			return
 		}
+		if ret, ok := v.Export().(customSendRet); ok {
+			e := ErrSendResponse{Data: ret.data, Headers: ret.headers, Code: ret.code}
+			err = e
+			return
+		}
+		if ret, ok := v.Export().([]any); ok {
+			e := ErrSendResponse{JSON: ret}
+			if h, ok := ctx["_headers"].(http.Header); ok {
+				e.Headers = h
+			}
+			err = e
+			return
+		}
 		if ret, ok := v.Export().(redirectRet); ok {
-			e := ErrSendResponse{Redirect: ret.url, RedirectCode: ret.code}
+			e := ErrSendResponse{Redirect: ret.url, Code: ret.code}
 			if h, ok := ctx["_headers"].(http.Header); ok {
 				e.Headers = h
 			}

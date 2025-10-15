@@ -211,6 +211,7 @@ Each `route-{route_name}.js` file must export the following four functions:
         *   **A string:** The string will be sent as is. `Content-Type: text/html` will be set by default, unless overridden.
         *   **A byte array (JS `Uint8Array`):** The data will be sent as is. Useful for returning binary data such as images.
         *   **The result of `redirect(url, [code])`:** An HTTP redirect to the specified URL will be performed. `code` defaults to 302, but 301 can be specified.
+        *   **The result of `custom_send(data, [status, key1, value1, key2, value2, ...])`:** Returns a special object (`customSendRet`) that signals to the Go backend to send custom data with optional status and additional headers. **Must be explicitly returned from `render()`**.
 
     *   **Examples:**
         ```javascript
@@ -234,8 +235,8 @@ Each `route-{route_name}.js` file must export the following four functions:
                 status: 'explicit',
                 message: 'This is a JSON response using custom_send!'
             };
-            custom_send(JSON.stringify(jsonData), 'Content-Type', 'application/json', 'X-Custom-Header', 'Explicit JSON');
-            // Note: custom_send does not return, it directly writes to the response
+            // IMPORTANT: custom_send must be returned
+            return custom_send(JSON.stringify(jsonData), 'Content-Type', 'application/json', 'X-Custom-Header', 'Explicit JSON', 'status', 201);
         }
 
         // Example 4: Returning HTML as a string
@@ -276,7 +277,7 @@ The following global variables and functions are available within `cacheKey()`, 
     *   `value`: The cookie value (any type, will be converted to a string).
     *   `expire`: The cookie's expiration time. Can be a `Date` object, `Duration` (e.g., `10 * time.Minute`), `int64` or `int` (number of days).
 *   **`add_header(name, value)`**: A function for adding an HTTP header to the response.
-*   **`custom_send(data, [status, key1, value1, key2, value2, ...])`**: A function for sending arbitrary data with optional status and additional headers.
+*   **`custom_send(data, [status, key1, value1, key2, value2, ...])`**: A function that returns a special object (`customSendRet`) that signals to the Go backend to send custom data with optional status and additional headers. **Must be explicitly returned from `render()`**.
     *   `data`: The main data to send (string or byte array).
     *   `status` (optional): The HTTP status code (defaults to `200`).
     *   `key1, value1, ...` (optional): Key-value pairs for additional HTTP headers (e.g., `'Content-Type', 'application/json'`).

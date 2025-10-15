@@ -38,12 +38,12 @@ var Custom = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 			if err1.Redirect != "" {
-				if err1.RedirectCode != 301 {
-					err1.RedirectCode = 302
+				if err1.Code != 301 {
+					err1.Code = 302
 				}
-				http.Redirect(w, r, err1.Redirect, err1.RedirectCode)
+				http.Redirect(w, r, err1.Redirect, err1.Code)
 				if internal.Config.General.EnableAccessLog {
-					log.Println(hostName, err1.RedirectCode, err1.Redirect)
+					log.Println(hostName, err1.Code, err1.Redirect)
 				}
 				return
 			}
@@ -52,11 +52,19 @@ var Custom = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			if err1.Data != nil {
+				if err1.Code != 0 {
+					w.WriteHeader(err1.Code)
+				}
 				_, _ = w.Write(err1.Data)
 				return
 			}
-			render.HTML(w, r, err1.Text)
-			return
+			if err1.Text != "" {
+				if err1.Code != 0 {
+					w.WriteHeader(err1.Code)
+				}
+				render.HTML(w, r, err1.Text)
+				return
+			}
 		}
 		if strings.Contains(err.Error(), "not found") {
 			log.Println(hostName, err)
