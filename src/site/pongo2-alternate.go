@@ -135,12 +135,13 @@ func GenerateAlternateURL(ctx pongo2.Context, alternateLang string) string {
 			if d, ok := config.LanguageDomains[alternateLang]; ok && d != "" {
 				langHost = d
 			}
+			changeLangLink := alternateLang != config.General.DefaultLanguage
 			return GetLink(
 				"content_item",
 				config,
 				langHost,
 				alternateLang,
-				true,
+				changeLangLink,
 				"slug", contentItem.Slug,
 				"id", contentItem.Id,
 				"categories", contentItem.Categories,

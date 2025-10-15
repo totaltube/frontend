@@ -160,6 +160,237 @@ file `route-{route_name}.js` in which must be 4 functions:
 - `render()` defines how to render this page. If this function returns nothing, script will try to render template with name `custom-{route_name}.twig`.
   If this function returns string or some other data - it will be used as output. If this function returns object, json will be the output.
 
+### Detailed description of `route-{route_name}.js`
+
+Each `route-{route_name}.js` file must export the following four functions:
+
+*   **`cacheKey()`**
+    *   **Purpose:** Defines a unique key for caching the page.
+    *   **Returns:** A string that will be used as part of the cache key. Use route parameters or querystring parameters to create a unique cache key.
+    *   **Example:**
+        ```javascript
+        function cacheKey() {
+            // Assuming the URL route is: /my-custom-route/{id}?param=value
+            const id = config.params.id; // Access route parameters
+            const queryParam = config.query.param; // Access querystring parameters
+            return `my_route_page_${id}_${queryParam}`;
+        }
+        ```
+
+*   **`cacheTtl()`**
+    *   **Purpose:** Defines the time-to-live (TTL) for the page cache.
+    *   **Returns:** An integer (in seconds) representing the duration for which the page will be cached. `0` or a negative value disables caching.
+    *   **Example:**
+        ```javascript
+        function cacheTtl() {
+            return 3600; // Cache the page for 1 hour (3600 seconds)
+        }
+        ```
+
+*   **`prepare()`**
+    *   **Purpose:** Prepares data that will be available in the `Pongo2` (Twig) template context.
+    *   **Returns:** A JavaScript object. The properties of this object will become available variables in your `custom-{route_name}.twig` template.
+    *   **Example:**
+        ```javascript
+        function prepare() {
+            // Data can be fetched from an API, database, etc.
+            const userData = fetch('https://api.example.com/user/1').Json();
+            return {
+                pageTitle: 'My Custom Page',
+                greeting: 'Hello from prepare!',
+                user: userData
+            };
+        }
+        ```
+
+*   **`render()`**
+    *   **Purpose:** Defines how the page will be rendered. This is the most flexible function, allowing full control over the HTTP response.
+    *   **Returns:**
+        *   **Nothing (or `undefined`):** If the function returns nothing, an attempt will be made to render the `custom-{route_name}.twig` template. The context for the template will include data from `prepare()` and other global variables.
+        *   **A JavaScript object:** The object will be serialized to JSON and sent to the client with `Content-Type: application/json` (unless overridden by a header).
+        *   **A string:** The string will be sent as is. `Content-Type: text/html` will be set by default, unless overridden.
+        *   **A byte array (JS `Uint8Array`):** The data will be sent as is. Useful for returning binary data such as images.
+        *   **The result of `redirect(url, [code])`:** An HTTP redirect to the specified URL will be performed. `code` defaults to 302, but 301 can be specified.
+
+    *   **Examples:**
+        ```javascript
+        // Example 1: Template rendering (render() returns nothing)
+        function render() {
+            // Simply use custom-my-route.twig
+        }
+
+        // Example 2: Returning JSON
+        function render() {
+            add_header('X-Custom-Header', 'Hello JSON'); // Add a custom header
+            return {
+                status: 'success',
+                message: 'This is a JSON response!'
+            };
+        }
+
+        // Example 3: Returning HTML as a string
+        function render() {
+            add_header('Content-Type', 'text/html; charset=utf-8');
+            return '<h1>Hello, World!</h1><p>This is an HTML page from JS.</p>';
+        }
+
+        // Example 4: Returning arbitrary data (e.g., an image)
+        function render() {
+            // Assume we have an image byte array
+            const imageData = new Uint8Array([/* ...image bytes... */]);
+            add_header('Content-Type', 'image/png');
+            return imageData;
+        }
+
+        // Example 5: Performing a redirect
+        function render() {
+            return redirect('/new-path', 301); // Redirect with 301 status code
+        }
+        ```
+
+### Available Variables and Functions in `route-{route_name}.js`
+
+The following global variables and functions are available within `cacheKey()`, `cacheTtl()`, `prepare()`, and `render()` functions:
+
+*   **`config`**: The site configuration object. Contains settings from `config.toml` (e.g., `config.General.MultiLanguage`, `config.Routes.Home`).
+*   **`fetch(url)`**: A function for making HTTP requests. It has a chaining style (`fetch(url).WithMethod('POST').WithJsonData({...}).Json()`). See "Custom functions -> `fetch(url string)`" for more details.
+*   **`nocache`**: A boolean value. `true` if the page is requested with a `nocache` parameter.
+*   **`redirect(url, [code])`**: A function for performing an HTTP redirect. `url` is the redirection target, `code` is the HTTP status code (defaults to `302`).
+*   **`cookies`**: An object containing all cookies from the current request. Keys are cookie names, values are their content.
+*   **`headers`**: An object containing all headers from the current request. Keys are header names, values are their content.
+*   **`ip`**: A string containing the client's IP address.
+*   **`country()`**: A function that returns the client's country code (e.g., "US", "RU").
+*   **`country_group()`**: A function that returns the client's country group.
+*   **`set_cookie(name, value, expire)`**: A function for setting an HTTP cookie.
+    *   `name`: The cookie name (string).
+    *   `value`: The cookie value (any type, will be converted to a string).
+    *   `expire`: The cookie's expiration time. Can be a `Date` object, `Duration` (e.g., `10 * time.Minute`), `int64` or `int` (number of days).
+*   **`add_header(name, value)`**: A function for adding an HTTP header to the response.
+*   **`custom_send(data, [status, key1, value1, key2, value2, ...])`**: A function for sending arbitrary data with optional status and additional headers.
+    *   `data`: The main data to send (string or byte array).
+    *   `status` (optional): The HTTP status code (defaults to `200`).
+    *   `key1, value1, ...` (optional): Key-value pairs for additional HTTP headers (e.g., `'Content-Type', 'application/json'`).
+*   **Functions from `extensions/function-*.js`**: All functions defined in `extensions/function-{function_name}.js` files are also available in the global context.
+
+### Examples of `custom routes` usage
+
+#### Example 1: Returning a JSON response with a custom header
+
+`config.toml`:
+```toml
+[routes.custom]
+my_json_route = "/api/data"
+```
+
+`route-my_json_route.js`:
+```javascript
+function cacheKey() {
+    return 'my_json_data';
+}
+
+function cacheTtl() {
+    return 60; // Cache for 60 seconds
+}
+
+function prepare() {
+    return {};
+}
+
+function render() {
+    add_header('X-API-Version', '1.0');
+    return {
+        timestamp: new Date().toISOString(),
+        items: [
+            { id: 1, name: 'Item A' },
+            { id: 2, name: 'Item B' }
+        ]
+    };
+}
+```
+
+#### Example 2: Returning an HTML page with dynamic data and cookies
+
+`config.toml`:
+```toml
+[routes.custom]
+my_html_page = "/my-page/{name}"
+```
+
+`route-my_html_page.js`:
+```javascript
+function cacheKey() {
+    return `my_html_page_${config.params.name}`;
+}
+
+function cacheTtl() {
+    return 0; // Do not cache
+}
+
+function prepare() {
+    // Get name from route parameters
+    const userName = config.params.name;
+    
+    // Set a cookie
+    set_cookie('last_visited_page', `/my-page/${userName}', 30); // Cookie for 30 days
+
+    return {
+        userName: userName,
+        currentTime: new Date().toLocaleString(),
+        browser: headers['User-Agent'] || 'Unknown'
+    };
+}
+
+function render() {
+    // Simply render the custom-my_html_page.twig template
+    // All variables from prepare() will be available in the template
+}
+```
+
+`templates/custom-my_html_page.twig`:
+```twig
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ pageTitle }}</title>
+</head>
+<body>
+    <h1>Hello, {{ userName }}!</h1>
+    <p>Current time: {{ currentTime }}</p>
+    <p>Your browser: {{ browser }}</p>
+    <p>Your IP: {{ ip }}</p>
+    <p>Your Country: {{ country() }}</p>
+</body>
+</html>
+```
+
+#### Example 3: Performing a redirect to an external resource
+
+`config.toml`:
+```toml
+[routes.custom]
+external_redirect = "/go-external"
+```
+
+`route-external_redirect.js`:
+```javascript
+function cacheKey() {
+    return 'external_redirect';
+}
+
+function cacheTtl() {
+    return 300; // Cache redirect for 5 minutes
+}
+
+function prepare() {
+    return {};
+}
+
+function render() {
+    add_header('X-Redirect-By', 'Custom Route JS');
+    return redirect('https://www.google.com', 302);
+}
+```
+
 In `[params]` section you can override default querystring param names for some pages. The section should look like this:
 ```toml
 [params] # Query params name override

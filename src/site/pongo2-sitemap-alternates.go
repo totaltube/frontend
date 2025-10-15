@@ -41,10 +41,10 @@ func (node *tagSitemapAlternatesNode) Execute(ctx *pongo2.ExecutionContext, writ
 		"full_url", true,
 	)
 	if defaultHref != "" {
-		if _, err := fmt.Fprintf(writer, `<xhtml:link rel="alternate" hreflang="%s" href="%s" />`, defaultLang, defaultHref); err != nil {
+		if _, err := fmt.Fprintf(writer, `<xhtml:link rel="alternate" hreflang="%s" href="%s"/></xhtml:link>`, defaultLang, defaultHref); err != nil {
 			return &pongo2.Error{Sender: "tag:sitemap_alternates", OrigError: err}
 		}
-		if _, err := fmt.Fprintf(writer, `<xhtml:link rel="alternate" hreflang="x-default" href="%s" />`, defaultHref); err != nil {
+		if _, err := fmt.Fprintf(writer, `<xhtml:link rel="alternate" hreflang="x-default" href="%s"/></xhtml:link>`, defaultHref); err != nil {
 			return &pongo2.Error{Sender: "tag:sitemap_alternates", OrigError: err}
 		}
 	}
@@ -57,7 +57,11 @@ func (node *tagSitemapAlternatesNode) Execute(ctx *pongo2.ExecutionContext, writ
 		// Prefer language-specific domain if configured
 		langHost := hostName
 		if d, ok := config.LanguageDomains[lang.Id]; ok && d != "" {
-			langHost = d
+			if httpRegex.MatchString(d) {
+				langHost = extractDomain(d)
+			} else {
+				langHost = d
+			}
 		}
 		href := GetLink(
 			"content_item",
@@ -73,7 +77,7 @@ func (node *tagSitemapAlternatesNode) Execute(ctx *pongo2.ExecutionContext, writ
 		if href == "" {
 			continue
 		}
-		if _, err := fmt.Fprintf(writer, `<xhtml:link rel="alternate" hreflang="%s" href="%s" />`, lang.Id, href); err != nil {
+		if _, err := fmt.Fprintf(writer, `<xhtml:link rel="alternate" hreflang="%s" href="%s"/></xhtml:link>`, lang.Id, href); err != nil {
 			return &pongo2.Error{Sender: "tag:sitemap_alternates", OrigError: err}
 		}
 	}

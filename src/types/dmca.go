@@ -7,4 +7,8 @@ type DmcaParams struct {
 	Lang            string `json:"lang"`
 	Reason          string `json:"reason"`
 	CaptchaResponse string `json:"h-captcha-response"`
+	Country         string `json:"country"`
+	UserAgent       string `json:"user_agent"`
+	Domain          string `json:"domain"`
+	Ip              string `json:"ip"`
 }

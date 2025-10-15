@@ -60,12 +60,14 @@ type CustomData map[string]interface{}
 type CustomTranslations map[string]string
 
 type ThumbFormat struct {
-	Name   string `json:"name"`
-	Width  int64  `json:"width"`
-	Height int64  `json:"height"`
-	Amount int64  `json:"amount"`
-	Type   string `json:"type"`
-	Retina bool   `json:"retina"`
+	Name                string   `json:"name"`
+	Width               int64    `json:"width"`
+	Height              int64    `json:"height"`
+	Amount              int64    `json:"amount"`
+	Type                string   `json:"type"`
+	Retina              bool     `json:"retina"`
+	VideoPreviewFormats []string `json:"video_preview_formats"`
+	VideoPreviewSize    Size     `json:"video_preview_size"`
 }
 
 type ContentGalleryInfo struct {
@@ -135,6 +137,10 @@ type ContentItemResult struct {
 	GalleryServer      string                         `json:"gallery_server,omitempty"`
 	VideoPath          string                         `json:"video_path,omitempty"`
 	GalleryPath        string                         `json:"gallery_path,omitempty"`
+	VideoPreviewServer string                         `json:"video_preview_server,omitempty"`
+	VideoPreviewPath   string                         `json:"video_preview_path,omitempty"`
+	PosterServer       string                         `json:"poster_server,omitempty"`
+	PosterPath         string                         `json:"poster_path,omitempty"`
 	GalleryItems       *map[string]ContentGalleryInfo `json:"gallery_items,omitempty"`
 	VideoSizes         *map[string]ContentVideoInfo   `json:"video_sizes,omitempty"`
 	ThumbFormats       []ThumbFormat                  `json:"thumb_formats"`
@@ -187,6 +193,10 @@ type ContentResult struct {
 	VideoSizes         *map[string]ContentVideoInfo   `json:"video_sizes,omitempty"`
 	ThumbsServer       string                         `json:"thumbs_server"` // thumb server url
 	ThumbsPath         string                         `json:"thumbs_path"`   // path to thumbs on thumb server
+	VideoPreviewServer string                         `json:"video_preview_server,omitempty"`
+	VideoPreviewPath   string                         `json:"video_preview_path,omitempty"`
+	PosterServer       string                         `json:"poster_server,omitempty"`
+	PosterPath         string                         `json:"poster_path,omitempty"`
 	ThumbFormats       []ThumbFormat                  `json:"thumb_formats"`
 	ThumbRetina        bool                           `json:"thumb_retina"`         // deprecated
 	ThumbWidth         int32                          `json:"thumb_width"`          // deprecated
@@ -341,6 +351,48 @@ func (c *ContentItemResult) HiresThumb(thumbFormatName ...string) string {
 	}
 }
 
+func (c *ContentItemResult) GetVideoPreview(thumbFormatName ...string) (res string) {
+	if len(c.ThumbFormats) == 0 {
+		return
+	}
+	thumbFormat := ""
+	videoPreviewType := ""
+	if len(thumbFormatName) > 0 {
+		thumbFormat = thumbFormatName[0]
+	}
+	if len(thumbFormatName) > 1 {
+		videoPreviewType = thumbFormatName[1]
+	}
+	var format ThumbFormat
+	for _, f := range c.ThumbFormats {
+		if len(f.VideoPreviewFormats) > 0 {
+			format = f
+			if videoPreviewType != "" && !lo.Contains(f.VideoPreviewFormats, videoPreviewType) {
+				continue
+			}
+		} else {
+			continue
+		}
+		if thumbFormat != "" {
+			if f.Name == thumbFormat {
+				if videoPreviewType != "" && !lo.Contains(f.VideoPreviewFormats, videoPreviewType) {
+					videoPreviewType = f.VideoPreviewFormats[0]
+					break
+				}
+			}
+		}
+	}
+	if format.Name == "" {
+		return
+	}
+	serverPath := c.VideoPreviewServer + c.VideoPreviewPath
+	if serverPath == "" {
+		serverPath = c.ThumbsServer + c.ThumbsPath
+	}
+	res = serverPath + "/video-preview-" + format.Name + "." + videoPreviewType
+	return
+}
+
 func (c ContentItemResult) GalleryInfo(formats ...string) ContentGalleryInfo {
 	if c.GalleryItems == nil {
 		return ContentGalleryInfo{}
@@ -469,7 +521,11 @@ func (c ContentItemResult) VideoPoster(formats ...string) string {
 	if info.PosterType == "" {
 		return ""
 	}
-	return c.VideoServer + c.VideoPath + "/poster-" + info.Name + "." + info.PosterType
+	serverPath := c.PosterServer + c.PosterPath
+	if serverPath == "" {
+		serverPath = c.VideoServer + c.VideoPath
+	}
+	return serverPath + "/poster-" + info.Name + "." + info.PosterType
 }
 
 func (c ContentItemResult) VideoTimeline(formats ...string) string {
@@ -617,6 +673,50 @@ func (c *ContentResult) HiresThumb(thumbFormatName ...string) string {
 	} else {
 		return c.Thumb(thumbFormatName...)
 	}
+}
+func (c *ContentResult) GetVideoPreview(thumbFormatName ...string) (res string) {
+	if len(c.ThumbFormats) == 0 {
+		return
+	}
+	thumbFormat := ""
+	videoPreviewType := ""
+	if len(thumbFormatName) > 0 {
+		thumbFormat = thumbFormatName[0]
+	}
+	if len(thumbFormatName) > 1 {
+		videoPreviewType = thumbFormatName[1]
+	}
+	var format ThumbFormat
+	for _, f := range c.ThumbFormats {
+		if len(f.VideoPreviewFormats) > 0 {
+			format = f
+			if videoPreviewType != "" && !lo.Contains(f.VideoPreviewFormats, videoPreviewType) {
+				continue
+			}
+		} else {
+			continue
+		}
+		if thumbFormat != "" {
+			if f.Name == thumbFormat {
+				if videoPreviewType != "" && !lo.Contains(f.VideoPreviewFormats, videoPreviewType) {
+					videoPreviewType = f.VideoPreviewFormats[0]
+					break
+				}
+			}
+		}
+	}
+	if format.Name == "" {
+		return
+	}
+	if videoPreviewType == "" {
+		videoPreviewType = format.VideoPreviewFormats[0]
+	}
+	serverPath := c.VideoPreviewServer + c.VideoPreviewPath
+	if serverPath == "" {
+		serverPath = c.ThumbsServer + c.ThumbsPath
+	}
+	res = serverPath + "/video-preview-" + format.Name + "." + videoPreviewType
+	return
 }
 
 func (c *ContentResult) SelectedThumb(thumbFormatName ...string) int {

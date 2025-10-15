@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"log"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -13,6 +14,7 @@ import (
 
 	"sersh.com/totaltube/frontend/api"
 	"sersh.com/totaltube/frontend/db"
+	"sersh.com/totaltube/frontend/geoip"
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/internal"
 	"sersh.com/totaltube/frontend/middlewares"
@@ -78,6 +80,11 @@ var Dmca = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
+		country, _ := geoip.Country(net.ParseIP(ip))
+		params.Country = country
+		params.Ip = ip
+		params.UserAgent = r.UserAgent()
+		params.Domain = hostName
 		err = api.Dmca(hostName, params)
 		if err != nil {
 			render.JSON(w, r, M{"success": false, "value": err.Error()})
