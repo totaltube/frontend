@@ -207,7 +207,7 @@ Each `route-{route_name}.js` file must export the following four functions:
     *   **Purpose:** Defines how the page will be rendered. This is the most flexible function, allowing full control over the HTTP response.
     *   **Returns:**
         *   **Nothing (or `undefined`):** If the function returns nothing, an attempt will be made to render the `custom-{route_name}.twig` template. The context for the template will include data from `prepare()` and other global variables.
-        *   **A JavaScript object:** The object will be serialized to JSON and sent to the client with `Content-Type: application/json` (unless overridden by a header).
+        *   **A JavaScript object:** If a JavaScript object is returned, it will be automatically serialized to JSON and sent to the client with `Content-Type: application/json` (unless overridden by a header).
         *   **A string:** The string will be sent as is. `Content-Type: text/html` will be set by default, unless overridden.
         *   **A byte array (JS `Uint8Array`):** The data will be sent as is. Useful for returning binary data such as images.
         *   **The result of `redirect(url, [code])`:** An HTTP redirect to the specified URL will be performed. `code` defaults to 302, but 301 can be specified.
@@ -219,22 +219,32 @@ Each `route-{route_name}.js` file must export the following four functions:
             // Simply use custom-my-route.twig
         }
 
-        // Example 2: Returning JSON
+        // Example 2: Returning JSON (automatic serialization)
         function render() {
             add_header('X-Custom-Header', 'Hello JSON'); // Add a custom header
             return {
                 status: 'success',
-                message: 'This is a JSON response!'
+                message: 'This is a JSON response from JS object!'
             };
         }
 
-        // Example 3: Returning HTML as a string
+        // Example 3: Returning JSON using custom_send for explicit control
+        function render() {
+            const jsonData = {
+                status: 'explicit',
+                message: 'This is a JSON response using custom_send!'
+            };
+            custom_send(JSON.stringify(jsonData), 'Content-Type', 'application/json', 'X-Custom-Header', 'Explicit JSON');
+            // Note: custom_send does not return, it directly writes to the response
+        }
+
+        // Example 4: Returning HTML as a string
         function render() {
             add_header('Content-Type', 'text/html; charset=utf-8');
             return '<h1>Hello, World!</h1><p>This is an HTML page from JS.</p>';
         }
 
-        // Example 4: Returning arbitrary data (e.g., an image)
+        // Example 5: Returning arbitrary data (e.g., an image)
         function render() {
             // Assume we have an image byte array
             const imageData = new Uint8Array([/* ...image bytes... */]);
@@ -242,7 +252,7 @@ Each `route-{route_name}.js` file must export the following four functions:
             return imageData;
         }
 
-        // Example 5: Performing a redirect
+        // Example 6: Performing a redirect
         function render() {
             return redirect('/new-path', 301); // Redirect with 301 status code
         }
@@ -1045,4 +1055,5 @@ Now you can install any new package from [NPM js](https://www.npmjs.com/) with c
 
 For building css for site, we use [Sass](https://sass-lang.com/documentation/). Sass is a stylesheet language that’s compiled to CSS. It allows you to use variables, nested rules, mixins, functions, and more, all with a fully CSS-compatible syntax. Sass helps keep large stylesheets well-organized and makes it easy to share design within and across projects. 
 
+All sass files are located in `scss` folder. Entry `scss` files are configured in [Site Configuration](#site-configuration). The result built `css` file with same name as entry file will be copied to `public` folder or to the [configured](#site-configuration) destination. Css will be built on each change of any `.scss` files. Errors, like with js building, will be in standard output for dev mode on `windows` and in standard logging system in production mode on `linux`. The building is very fast and takes tens of milliseconds.
 All sass files are located in `scss` folder. Entry `scss` files are configured in [Site Configuration](#site-configuration). The result built `css` file with same name as entry file will be copied to `public` folder or to the [configured](#site-configuration) destination. Css will be built on each change of any `.scss` files. Errors, like with js building, will be in standard output for dev mode on `windows` and in standard logging system in production mode on `linux`. The building is very fast and takes tens of milliseconds.
