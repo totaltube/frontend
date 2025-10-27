@@ -50,6 +50,7 @@ api_url = "http://minion-api-server/api/v1" # URL of Minion API
 api_secret = "secret" # Secret key for Minion API
 api_timeout = "5s" # API request timeout
 debug = false # Enable debug mode
+canonical_no_pagination = false # If true, canonical/alternate urls are without pagination
 
 [frontend]
 sites_path = "sites" # Path to sites directory
@@ -450,6 +451,7 @@ api_url = "" # if set, it will override minion api url in global config
 api_secret = "" # if set, it will override minion api secret in global config
 languages_available = ["en", "ru"] # if set, it will override languages available for site limiting them to the list.
 languages_available_in_sitemap = ["en", "ru"] # if set, it will override languages available for sitemap.xml limiting them to the list. If not set, languages available for sitemap.xml will be the same as languages available for site.
+canonical_no_pagination = true # if omitted, inherits from global [general].canonical_no_pagination
 ```
 
 Language-specific domains for alternates and sitemap:

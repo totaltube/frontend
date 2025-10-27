@@ -19,6 +19,9 @@ func (node *tagSitemapAlternatesNode) Execute(ctx *pongo2.ExecutionContext, writ
 	}
 
 	hostName := context.Public["host"].(string)
+	if d, ok := config.LanguageDomains["default"]; ok && d != "" {
+		hostName = d
+	}
 
 	// content_item required in sitemap-video template
 	contentItem, ok := context.Public["content_item"].(*types.ContentResult)
@@ -29,10 +32,14 @@ func (node *tagSitemapAlternatesNode) Execute(ctx *pongo2.ExecutionContext, writ
 
 	// Build default language link (self + x-default)
 	defaultLang := config.General.DefaultLanguage
+	defaultHost := hostName
+	if d, ok := config.LanguageDomains[defaultLang]; ok && d != "" {
+		defaultHost = d
+	}
 	defaultHref := GetLink(
 		"content_item",
 		config,
-		hostName,
+		defaultHost,
 		defaultLang,
 		false,
 		"slug", contentItem.Slug,

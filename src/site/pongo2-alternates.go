@@ -22,6 +22,9 @@ func (node *tagAlternatesNode) Execute(ctx *pongo2.ExecutionContext, writer pong
 	canonicalUrl := strings.TrimSuffix(config.General.CanonicalUrl, "/")
 	if canonicalUrl == "" {
 		canonicalUrl = "https://" + hostName
+		if d, ok := config.LanguageDomains["default"]; ok && d != "" {
+			canonicalUrl = "https://" + d
+		}
 	}
 	//langId := context.Public["lang"].(*types.Language).Id
 	languages := context.Public["languages"].([]types.Language)
@@ -55,15 +58,26 @@ func (node *tagAlternatesNode) Execute(ctx *pongo2.ExecutionContext, writer pong
 		if d, ok := config.LanguageDomains[l.Id]; ok {
 			canonical = "https://" + d
 		}
+		includePagination := true
+		if config.General.CanonicalNoPagination != nil && *config.General.CanonicalNoPagination {
+			includePagination = false
+		}
 		_, err := fmt.Fprintf(writer,
 			`<link rel="alternate" hreflang="%s" href="%s">`+"\n",
-			l.Id, canonical+getAlternate(context.Public, l.Id, page))
+			l.Id, canonical+getAlternate(context.Public, l.Id, page, includePagination))
 		if err != nil {
 			return &pongo2.Error{Sender: "tag:alternates", OrigError: err}
 		}
 	}
+	if d, ok := config.LanguageDomains[config.General.DefaultLanguage]; ok && d != "" {
+		canonicalUrl = "https://" + d
+	}
+	includePagination := true
+	if config.General.CanonicalNoPagination != nil && *config.General.CanonicalNoPagination {
+		includePagination = false
+	}
 	_, err := fmt.Fprintf(writer, `<link rel="alternate" hreflang="x-default" href="%s">`+"\n",
-		canonicalUrl+getAlternate(context.Public, config.General.DefaultLanguage, page))
+		canonicalUrl+getAlternate(context.Public, config.General.DefaultLanguage, page, includePagination))
 	if err != nil {
 		return &pongo2.Error{Sender: "tag:alternates", OrigError: err}
 	}

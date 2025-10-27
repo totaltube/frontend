@@ -154,6 +154,7 @@ type (
 		DeletedTaxonomiesToSearchPermanent bool     `toml:"deleted_taxonomies_to_search_permanent"`
 		RandomizeRatio                     float64  `toml:"randomize_ratio"`
 		CacheKeyQueryParams                []string `toml:"cache_key_query_params"` // query params to mention in cache key
+		CanonicalNoPagination              *bool    `toml:"canonical_no_pagination"`
 	}
 	CacheTimeouts struct {
 		ContentItem             *Duration `toml:"content_item"`
@@ -218,6 +219,7 @@ func NewConfig() *Config {
 			ContentRelatedAmount:       16,
 			DefaultLanguage:            "en",
 			RandomizeRatio:             -1,
+			CanonicalNoPagination:      nil,
 		},
 		Javascript: ConfigJs{
 			Entries: []string{"main.ts"},

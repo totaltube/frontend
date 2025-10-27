@@ -40,6 +40,11 @@ func readConfig(configPath string) (config *types.Config, configSource string, e
 		log.Println("error decoding config at", configPath, err)
 		return
 	}
+	// Если CanonicalNoPagination не задан в site config, возьмём из глобального
+	if config.General.CanonicalNoPagination == nil {
+		val := Config.General.CanonicalNoPagination
+		config.General.CanonicalNoPagination = &val
+	}
 	// прочитаем еще файл с окончанием -translations.toml
 	// для этого найдем базовый путь без экстеншена и добавим к нему -translations.toml
 	basePath := filepath.Dir(configPath)

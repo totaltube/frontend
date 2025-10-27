@@ -27,6 +27,16 @@ type tagLinkNode struct {
 func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.TemplateWriter) *pongo2.Error {
 	linkContext := pongo2.NewChildExecutionContext(ctx)
 	hostName := linkContext.Public["host"].(string)
+	var config *types.Config
+	if configI, ok := linkContext.Public["config"]; !ok {
+		return &pongo2.Error{
+			Sender:    "tag:link",
+			OrigError: errors.New("can't find config in public context"),
+		}
+	} else {
+		config = configI.(*types.Config)
+	}
+	// do not override hostName with default here; keep real request host
 	lang := "en"
 
 	if l, ok := linkContext.Public["lang"]; ok {
@@ -37,15 +47,7 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 	for k, v := range node.args {
 		copyArgs[k] = v
 	}
-	var config *types.Config
-	if configI, ok := linkContext.Public["config"]; !ok {
-		return &pongo2.Error{
-			Sender:    "tag:link",
-			OrigError: errors.New("can't find config in public context"),
-		}
-	} else {
-		config = configI.(*types.Config)
-	}
+
 	var changeLangLink bool // if true, then we need to change lang in link
 	if l, ok := node.args["lang"]; ok {
 		lv, err := l.Evaluate(linkContext)
@@ -85,7 +87,13 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 		args = append(args, name, value.Interface())
 	}
 	if d, ok := config.LanguageDomains[lang]; ok && d != "" {
+		// target language has its own domain -> force absolute to that domain
 		hostName = d
+		args = append(args, "full_url", true)
+	} else if def, ok := config.LanguageDomains["default"]; ok && def != "" && hostName != def {
+		// target language has no dedicated domain, but current host is not default ->
+		// force absolute to default domain
+		hostName = def
 		args = append(args, "full_url", true)
 	}
 	if what == "current" {

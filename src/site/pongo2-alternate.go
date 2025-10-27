@@ -69,7 +69,7 @@ func paginationRoute(route string, config *types.Config) string {
 	}
 	return route
 }
-func getAlternate(ctx pongo2.Context, langId string, page int64, q ...url.Values) string {
+func getAlternate(ctx pongo2.Context, langId string, page int64, includePagination bool, q ...url.Values) string {
 	if langId == "" {
 		langId = ctx["lang"].(*types.Language).Id
 	}
@@ -95,14 +95,18 @@ func getAlternate(ctx pongo2.Context, langId string, page int64, q ...url.Values
 	if route == config.Routes.VideoEmbed || route == config.Routes.FakePlayer {
 		route = config.Routes.ContentItem
 	}
-	if page > 1 {
+	if includePagination && page > 1 {
 		route = paginationRoute(route, config)
 	}
 	alternateQuery := url.Values(http.Header(ctx["canonical_query"].(url.Values)).Clone())
-	if strings.Contains(route, "{page}") {
-		route = strings.ReplaceAll(route, "{page}", strconv.FormatInt(page, 10))
-	} else if page > 1 {
-		alternateQuery.Set(config.Params.Page, strconv.FormatInt(page, 10))
+	if includePagination {
+		if strings.Contains(route, "{page}") {
+			route = strings.ReplaceAll(route, "{page}", strconv.FormatInt(page, 10))
+		} else if page > 1 {
+			alternateQuery.Set(config.Params.Page, strconv.FormatInt(page, 10))
+		}
+	} else if strings.Contains(route, "{page}") {
+		route = strings.ReplaceAll(route, "{page}", "1")
 	}
 	if params, ok := ctx["params"].(map[string]string); ok {
 		for paramKey, paramValue := range params {
@@ -132,6 +136,9 @@ func GenerateAlternateURL(ctx pongo2.Context, alternateLang string) string {
 	if templateName, ok := ctx["page_template"].(string); ok && templateName == "sitemap-video" {
 		if contentItem, ok := ctx["content_item"].(*types.ContentResult); ok && contentItem != nil {
 			langHost := hostName
+			if d, ok := config.LanguageDomains["default"]; ok && d != "" {
+				langHost = d
+			}
 			if d, ok := config.LanguageDomains[alternateLang]; ok && d != "" {
 				langHost = d
 			}
@@ -157,6 +164,9 @@ func GenerateAlternateURL(ctx pongo2.Context, alternateLang string) string {
 	if canonicalUrl == "" {
 		canonicalUrl = "https://" + hostName
 	}
+	if d, ok := config.LanguageDomains["default"]; ok && d != "" {
+		canonicalUrl = "https://" + d
+	}
 	if d, ok := config.LanguageDomains[alternateLang]; ok && d != "" {
 		canonicalUrl = "https://" + d
 	}
@@ -166,7 +176,11 @@ func GenerateAlternateURL(ctx pongo2.Context, alternateLang string) string {
 		link = strings.ReplaceAll(link, "{route}", "/")
 		return canonicalUrl + link
 	}
-	return canonicalUrl + getAlternate(ctx, alternateLang, page)
+	includePagination := true
+	if config.General.CanonicalNoPagination != nil && *config.General.CanonicalNoPagination {
+		includePagination = false
+	}
+	return canonicalUrl + getAlternate(ctx, alternateLang, page, includePagination)
 }
 func (node *tagAlternateNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.TemplateWriter) *pongo2.Error {
 	context := pongo2.NewChildExecutionContext(ctx)
@@ -182,10 +196,17 @@ func (node *tagAlternateNode) Execute(ctx *pongo2.ExecutionContext, writer pongo
 		canonicalUrl = "https://" + hostName
 	}
 	if !config.General.MultiLanguage {
+		if d, ok := config.LanguageDomains["default"]; ok && d != "" {
+			canonicalUrl = "https://" + d
+		}
 		if domain, ok := config.LanguageDomains[langId]; ok && domain != "" {
 			canonicalUrl = "https://" + domain
 		}
-		_, err := writer.WriteString(canonicalUrl + getAlternate(context.Public, langId, page))
+		includePagination := true
+		if config.General.CanonicalNoPagination != nil && *config.General.CanonicalNoPagination {
+			includePagination = false
+		}
+		_, err := writer.WriteString(canonicalUrl + getAlternate(context.Public, langId, page, includePagination))
 		if err != nil {
 			return &pongo2.Error{Sender: "tag:alternate", OrigError: err}
 		}
@@ -196,6 +217,9 @@ func (node *tagAlternateNode) Execute(ctx *pongo2.ExecutionContext, writer pongo
 		return &pongo2.Error{Sender: "tag:alternate", OrigError: err}
 	}
 	alternateLang := v.String()
+	if d, ok := config.LanguageDomains["default"]; ok && d != "" {
+		canonicalUrl = "https://" + d
+	}
 	if domain, ok := config.LanguageDomains[alternateLang]; ok && domain != "" {
 		canonicalUrl = "https://" + domain
 	}
@@ -210,7 +234,11 @@ func (node *tagAlternateNode) Execute(ctx *pongo2.ExecutionContext, writer pongo
 		}
 		return nil
 	}
-	_, err1 := writer.WriteString(canonicalUrl + getAlternate(context.Public, alternateLang, page))
+	includePagination := true
+	if config.General.CanonicalNoPagination != nil && *config.General.CanonicalNoPagination {
+		includePagination = false
+	}
+	_, err1 := writer.WriteString(canonicalUrl + getAlternate(context.Public, alternateLang, page, includePagination))
 	if err1 != nil {
 		return &pongo2.Error{Sender: "tag:alternate", OrigError: err1}
 	}

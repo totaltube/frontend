@@ -102,38 +102,46 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 				return
 			}
-			for _, item := range results.Items[(page-1)*config.Sitemap.MaxLinks:] {
-				route := urlSet.CreateElement("url")
-				route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink("category", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
-				if config.General.MultiLanguage {
-					selfAlt := route.CreateElement("xhtml:link")
-					selfAlt.CreateAttr("rel", "alternate")
-					selfAlt.CreateAttr("hreflang", config.General.DefaultLanguage)
-					selfAlt.CreateAttr("href", "https://"+config.Hostname+site.GetLink("category", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
-					xdef := route.CreateElement("xhtml:link")
-					xdef.CreateAttr("rel", "alternate")
-					xdef.CreateAttr("hreflang", "x-default")
-					xdef.CreateAttr("href", "https://"+config.Hostname+site.GetLink("category", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
-					for _, lang := range internal.GetLanguagesAvailableInSitemap(config) {
-						if lang.Id == config.General.DefaultLanguage {
-							continue
-						}
-						alt := route.CreateElement("xhtml:link")
-						alt.CreateAttr("rel", "alternate")
-						alt.CreateAttr("hreflang", lang.Id)
-						var hostname = config.Hostname
-						if d, ok := config.LanguageDomains[lang.Id]; ok && d != "" {
-							hostname = d
-						}
-						alt.CreateAttr("href", "https://"+hostname+site.GetLink("category", config, hostName, lang.Id, true, "slug", item.Slug, "id", item.Id))
-					}
+			start := int((page - 1) * config.Sitemap.MaxLinks)
+			items := results.Items
+			if start < len(items) {
+				end := start + int(config.Sitemap.MaxLinks)
+				if end > len(items) {
+					end = len(items)
 				}
-				route.CreateElement("lastmod").CreateText(time.Now().UTC().Format(time.DateOnly))
-				route.CreateElement("changefreq").CreateText("hourly")
-				route.CreateElement("priority").CreateText("0.6")
-				num++
-				if num >= config.Sitemap.MaxLinks {
-					break
+				for _, item := range items[start:end] {
+					route := urlSet.CreateElement("url")
+					route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink("category", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
+					if config.General.MultiLanguage {
+						selfAlt := route.CreateElement("xhtml:link")
+						selfAlt.CreateAttr("rel", "alternate")
+						selfAlt.CreateAttr("hreflang", config.General.DefaultLanguage)
+						selfAlt.CreateAttr("href", "https://"+config.Hostname+site.GetLink("category", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
+						xdef := route.CreateElement("xhtml:link")
+						xdef.CreateAttr("rel", "alternate")
+						xdef.CreateAttr("hreflang", "x-default")
+						xdef.CreateAttr("href", "https://"+config.Hostname+site.GetLink("category", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
+						for _, lang := range internal.GetLanguagesAvailableInSitemap(config) {
+							if lang.Id == config.General.DefaultLanguage {
+								continue
+							}
+							alt := route.CreateElement("xhtml:link")
+							alt.CreateAttr("rel", "alternate")
+							alt.CreateAttr("hreflang", lang.Id)
+							var hostname = config.Hostname
+							if d, ok := config.LanguageDomains[lang.Id]; ok && d != "" {
+								hostname = d
+							}
+							alt.CreateAttr("href", "https://"+hostname+site.GetLink("category", config, hostName, lang.Id, true, "slug", item.Slug, "id", item.Id))
+						}
+					}
+					route.CreateElement("lastmod").CreateText(time.Now().UTC().Format(time.DateOnly))
+					route.CreateElement("changefreq").CreateText("hourly")
+					route.CreateElement("priority").CreateText("0.6")
+					num++
+					if num >= config.Sitemap.MaxLinks {
+						break
+					}
 				}
 			}
 		}
@@ -155,38 +163,46 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 				return
 			}
-			for _, item := range results.Items[(page-1)*config.Sitemap.MaxLinks:] {
-				route := urlSet.CreateElement("url")
-				route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink("model", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
-				if config.General.MultiLanguage {
-					selfAlt := route.CreateElement("xhtml:link")
-					selfAlt.CreateAttr("rel", "alternate")
-					selfAlt.CreateAttr("hreflang", config.General.DefaultLanguage)
-					selfAlt.CreateAttr("href", "https://"+config.Hostname+site.GetLink("model", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
-					xdef := route.CreateElement("xhtml:link")
-					xdef.CreateAttr("rel", "alternate")
-					xdef.CreateAttr("hreflang", "x-default")
-					xdef.CreateAttr("href", "https://"+config.Hostname+site.GetLink("model", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
-					for _, lang := range internal.GetLanguagesAvailableInSitemap(config) {
-						if lang.Id == config.General.DefaultLanguage {
-							continue
-						}
-						var hostname = config.Hostname
-						if d, ok := config.LanguageDomains[lang.Id]; ok && d != "" {
-							hostname = d
-						}
-						alt := route.CreateElement("xhtml:link")
-						alt.CreateAttr("rel", "alternate")
-						alt.CreateAttr("hreflang", lang.Id)
-						alt.CreateAttr("href", "https://"+hostname+site.GetLink("model", config, hostName, lang.Id, true, "slug", item.Slug, "id", item.Id))
-					}
+			start := int((page - 1) * config.Sitemap.MaxLinks)
+			items := results.Items
+			if start < len(items) {
+				end := start + int(config.Sitemap.MaxLinks)
+				if end > len(items) {
+					end = len(items)
 				}
-				route.CreateElement("lastmod").CreateText(time.Now().UTC().Format(time.DateOnly))
-				route.CreateElement("changefreq").CreateText("hourly")
-				route.CreateElement("priority").CreateText("0.6")
-				num++
-				if num >= config.Sitemap.MaxLinks {
-					break
+				for _, item := range items[start:end] {
+					route := urlSet.CreateElement("url")
+					route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink("model", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
+					if config.General.MultiLanguage {
+						selfAlt := route.CreateElement("xhtml:link")
+						selfAlt.CreateAttr("rel", "alternate")
+						selfAlt.CreateAttr("hreflang", config.General.DefaultLanguage)
+						selfAlt.CreateAttr("href", "https://"+config.Hostname+site.GetLink("model", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
+						xdef := route.CreateElement("xhtml:link")
+						xdef.CreateAttr("rel", "alternate")
+						xdef.CreateAttr("hreflang", "x-default")
+						xdef.CreateAttr("href", "https://"+config.Hostname+site.GetLink("model", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
+						for _, lang := range internal.GetLanguagesAvailableInSitemap(config) {
+							if lang.Id == config.General.DefaultLanguage {
+								continue
+							}
+							var hostname = config.Hostname
+							if d, ok := config.LanguageDomains[lang.Id]; ok && d != "" {
+								hostname = d
+							}
+							alt := route.CreateElement("xhtml:link")
+							alt.CreateAttr("rel", "alternate")
+							alt.CreateAttr("hreflang", lang.Id)
+							alt.CreateAttr("href", "https://"+hostname+site.GetLink("model", config, hostName, lang.Id, true, "slug", item.Slug, "id", item.Id))
+						}
+					}
+					route.CreateElement("lastmod").CreateText(time.Now().UTC().Format(time.DateOnly))
+					route.CreateElement("changefreq").CreateText("hourly")
+					route.CreateElement("priority").CreateText("0.6")
+					num++
+					if num >= config.Sitemap.MaxLinks {
+						break
+					}
 				}
 			}
 		}
@@ -208,38 +224,46 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 				return
 			}
-			for _, item := range results.Items[(page-1)*config.Sitemap.MaxLinks:] {
-				route := urlSet.CreateElement("url")
-				route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink("channel", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
-				if config.General.MultiLanguage {
-					selfAlt := route.CreateElement("xhtml:link")
-					selfAlt.CreateAttr("rel", "alternate")
-					selfAlt.CreateAttr("hreflang", config.General.DefaultLanguage)
-					selfAlt.CreateAttr("href", "https://"+config.Hostname+site.GetLink("channel", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
-					xdef := route.CreateElement("xhtml:link")
-					xdef.CreateAttr("rel", "alternate")
-					xdef.CreateAttr("hreflang", "x-default")
-					xdef.CreateAttr("href", "https://"+config.Hostname+site.GetLink("channel", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
-					for _, lang := range internal.GetLanguagesAvailableInSitemap(config) {
-						if lang.Id == config.General.DefaultLanguage {
-							continue
-						}
-						var hostname = config.Hostname
-						if d, ok := config.LanguageDomains[lang.Id]; ok && d != "" {
-							hostname = d
-						}
-						alt := route.CreateElement("xhtml:link")
-						alt.CreateAttr("rel", "alternate")
-						alt.CreateAttr("hreflang", lang.Id)
-						alt.CreateAttr("href", "https://"+hostname+site.GetLink("channel", config, hostName, lang.Id, true, "slug", item.Slug, "id", item.Id))
-					}
+			start := int((page - 1) * config.Sitemap.MaxLinks)
+			items := results.Items
+			if start < len(items) {
+				end := start + int(config.Sitemap.MaxLinks)
+				if end > len(items) {
+					end = len(items)
 				}
-				route.CreateElement("lastmod").CreateText(time.Now().UTC().Format(time.DateOnly))
-				route.CreateElement("changefreq").CreateText("hourly")
-				route.CreateElement("priority").CreateText("0.6")
-				num++
-				if num >= config.Sitemap.MaxLinks {
-					break
+				for _, item := range items[start:end] {
+					route := urlSet.CreateElement("url")
+					route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink("channel", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
+					if config.General.MultiLanguage {
+						selfAlt := route.CreateElement("xhtml:link")
+						selfAlt.CreateAttr("rel", "alternate")
+						selfAlt.CreateAttr("hreflang", config.General.DefaultLanguage)
+						selfAlt.CreateAttr("href", "https://"+config.Hostname+site.GetLink("channel", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
+						xdef := route.CreateElement("xhtml:link")
+						xdef.CreateAttr("rel", "alternate")
+						xdef.CreateAttr("hreflang", "x-default")
+						xdef.CreateAttr("href", "https://"+config.Hostname+site.GetLink("channel", config, hostName, config.General.DefaultLanguage, false, "slug", item.Slug, "id", item.Id))
+						for _, lang := range internal.GetLanguagesAvailableInSitemap(config) {
+							if lang.Id == config.General.DefaultLanguage {
+								continue
+							}
+							var hostname = config.Hostname
+							if d, ok := config.LanguageDomains[lang.Id]; ok && d != "" {
+								hostname = d
+							}
+							alt := route.CreateElement("xhtml:link")
+							alt.CreateAttr("rel", "alternate")
+							alt.CreateAttr("hreflang", lang.Id)
+							alt.CreateAttr("href", "https://"+hostname+site.GetLink("channel", config, hostName, lang.Id, true, "slug", item.Slug, "id", item.Id))
+						}
+					}
+					route.CreateElement("lastmod").CreateText(time.Now().UTC().Format(time.DateOnly))
+					route.CreateElement("changefreq").CreateText("hourly")
+					route.CreateElement("priority").CreateText("0.6")
+					num++
+					if num >= config.Sitemap.MaxLinks {
+						break
+					}
 				}
 			}
 		}
@@ -370,15 +394,22 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 				return
 			}
-			for _, item := range results[(page-1)*config.Sitemap.MaxLinks:] {
-				route := urlSet.CreateElement("url")
-				route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink("search", config, hostName, lang, false, "query", item.Message))
-				route.CreateElement("lastmod").CreateText(time.Now().UTC().Format(time.DateOnly))
-				route.CreateElement("changefreq").CreateText("hourly")
-				route.CreateElement("priority").CreateText("0.6")
-				num++
-				if num >= config.Sitemap.MaxLinks {
-					break
+			start := int((page - 1) * config.Sitemap.MaxLinks)
+			if start < len(results) {
+				end := start + int(config.Sitemap.MaxLinks)
+				if end > len(results) {
+					end = len(results)
+				}
+				for _, item := range results[start:end] {
+					route := urlSet.CreateElement("url")
+					route.CreateElement("loc").CreateText("https://" + config.Hostname + site.GetLink("search", config, hostName, lang, false, "query", item.Message))
+					route.CreateElement("lastmod").CreateText(time.Now().UTC().Format(time.DateOnly))
+					route.CreateElement("changefreq").CreateText("hourly")
+					route.CreateElement("priority").CreateText("0.6")
+					num++
+					if num >= config.Sitemap.MaxLinks {
+						break
+					}
 				}
 			}
 		}

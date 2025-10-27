@@ -32,13 +32,24 @@ func getCanonical(ctx pongo2.Context, page int64, q ...url.Values) string {
 	}
 	//isSearchPage := route == config.Routes.Search
 	alternateQuery := url.Values(http.Header(ctx["canonical_query"].(url.Values)).Clone())
-	if page > 1 {
-		route = paginationRoute(route, config)
+	canonicalNoPagination := false
+	if config.General.CanonicalNoPagination != nil {
+		canonicalNoPagination = *config.General.CanonicalNoPagination
 	}
-	if strings.Contains(route, "{page}") {
-		route = strings.ReplaceAll(route, "{page}", strconv.FormatInt(page, 10))
-	} else if page > 1 {
-		alternateQuery.Set(config.Params.Page, strconv.FormatInt(page, 10))
+	if !canonicalNoPagination {
+		if page > 1 {
+			route = paginationRoute(route, config)
+		}
+		if strings.Contains(route, "{page}") {
+			route = strings.ReplaceAll(route, "{page}", strconv.FormatInt(page, 10))
+		} else if page > 1 {
+			alternateQuery.Set(config.Params.Page, strconv.FormatInt(page, 10))
+		}
+	} else {
+		// strip pagination markers entirely
+		if strings.Contains(route, "{page}") {
+			route = strings.ReplaceAll(route, "{page}", "1")
+		}
 	}
 	if params, ok := ctx["params"].(map[string]string); ok {
 		for paramKey, paramValue := range params {
@@ -50,6 +61,9 @@ func getCanonical(ctx pongo2.Context, page int64, q ...url.Values) string {
 		canonicalPrefix = strings.TrimSuffix(config.General.CanonicalUrl, "/")
 	} else {
 		canonicalPrefix = "https://" + hostName
+		if d, ok := config.LanguageDomains["default"]; ok && d != "" {
+			canonicalPrefix = "https://" + d
+		}
 	}
 	replacedLang := false
 	if config.General.MultiLanguage && config.LanguageDomains[langId] != "" {

@@ -54,6 +54,7 @@ type (
 		RandomizeRatio                     float64        `toml:"randomize_ratio"`
 		DebugRoute                         string         `toml:"debug_route"`
 		TranslateStreams                   uint16         `toml:"translate_streams"` // number of simultaneous streams for translation
+		CanonicalNoPagination              bool           `toml:"canonical_no_pagination"`
 	}
 	Frontend struct {
 		SitesPath                string   `toml:"sites_path"`

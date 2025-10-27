@@ -140,7 +140,12 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 			if isRaw {
 				fetchContext.Private["fetch_response"] = string(cached)
 			} else {
-				fetchContext.Private["fetch_response"] = objx.MustFromJSON(string(cached))
+				parsed, err := objx.FromJSON(string(cached))
+				if err != nil {
+					log.Println(err)
+					return &pongo2.Error{Sender: "tag:fetch", OrigError: err}
+				}
+				fetchContext.Private["fetch_response"] = parsed
 			}
 		} else {
 			raw, err := f.Do()
@@ -151,7 +156,12 @@ func (node *tagFetchNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Te
 			if isRaw {
 				fetchContext.Private["fetch_response"] = string(raw)
 			} else {
-				fetchContext.Private["fetch_response"] = objx.MustFromJSON(string(raw))
+				parsed, err := objx.FromJSON(string(raw))
+				if err != nil {
+					log.Println(err)
+					return &pongo2.Error{Sender: "tag:fetch", OrigError: err}
+				}
+				fetchContext.Private["fetch_response"] = parsed
 			}
 		}
 		err := node.wrapper.Execute(fetchContext, writer)
