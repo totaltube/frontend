@@ -10,16 +10,26 @@ import (
 	"sersh.com/totaltube/frontend/types"
 )
 
+type RelatedParams struct {
+	TitleTranslated              *bool
+	TitleTranslatedMinTermFreq   *int
+	TitleTranslatedMaxQueryTerms *int
+	TitleTranslatedBoost         *float64
+	RandomizeLast                int
+	Title                        *bool
+	TitleMinTermFreq             *int
+	TitleMaxQueryTerms           *int
+	TitleBoost                   *float64
+	Tags                         *bool
+	TagsMinTermFreq              *int
+	TagsMaxQueryTerms            *int
+	TagsBoost                    *float64
+}
+
 func ContentItem(siteDomain, lang, slug string, id int64, omitRelatedForLink bool, relatedAmount int64, groupId int64,
-	relatedTitleTranslated *bool, relatedTitleTranslatedMinTermFreq *int, relatedTitleTranslatedMaxQueryTerms *int, relatedTitleTranslatedBoost *float64,
-	relatedTitle *bool, relatedTitleMinTermFreq *int, relatedTitleMaxQueryTerms *int, relatedTitleBoost *float64,
-	relatedTags *bool, relatedTagsMinTermFreq *int, relatedTagsMaxQueryTerms *int, relatedTagsBoost *float64) (
-	results *types.ContentItemResult, err error) {
+	related *RelatedParams) (results *types.ContentItemResult, err error) {
 	var response json.RawMessage
-	response, err = ContentItemRaw(siteDomain, lang, slug, id, omitRelatedForLink, relatedAmount, groupId,
-		relatedTitleTranslated, relatedTitleTranslatedMinTermFreq, relatedTitleTranslatedMaxQueryTerms, relatedTitleTranslatedBoost,
-		relatedTitle, relatedTitleMinTermFreq, relatedTitleMaxQueryTerms, relatedTitleBoost,
-		relatedTags, relatedTagsMinTermFreq, relatedTagsMaxQueryTerms, relatedTagsBoost)
+	response, err = ContentItemRaw(siteDomain, lang, slug, id, omitRelatedForLink, relatedAmount, groupId, related)
 	if err != nil {
 		return
 	}
@@ -41,42 +51,48 @@ func ContentItem(siteDomain, lang, slug string, id int64, omitRelatedForLink boo
 }
 
 func ContentItemRaw(siteDomain, lang, slug string, id int64, omitRelatedForLink bool, relatedAmount int64, groupId int64,
-	relatedTitleTranslated *bool, relatedTitleTranslatedMinTermFreq *int, relatedTitleTranslatedMaxQueryTerms *int, relatedTitleTranslatedBoost *float64,
-	relatedTitle *bool, relatedTitleMinTermFreq *int, relatedTitleMaxQueryTerms *int, relatedTitleBoost *float64,
-	relatedTags *bool, relatedTagsMinTermFreq *int, relatedTagsMaxQueryTerms *int, relatedTagsBoost *float64) (response json.RawMessage, err error) {
+	related *RelatedParams) (response json.RawMessage, err error) {
 	params := url.Values{}
-	if relatedTitleTranslated != nil {
-		params.Add("related_title_translated", strconv.FormatBool(*relatedTitleTranslated))
-	}
-	if relatedTitleTranslatedMinTermFreq != nil {
-		params.Add("related_title_translated_min_term_freq", strconv.Itoa(*relatedTitleTranslatedMinTermFreq))
-	}
-	if relatedTitleTranslatedMaxQueryTerms != nil {
-		params.Add("related_title_translated_max_query_terms", strconv.Itoa(*relatedTitleTranslatedMaxQueryTerms))
-	}
-	if relatedTitle != nil {
-		params.Add("related_title", strconv.FormatBool(*relatedTitle))
-	}
-	if relatedTitleMinTermFreq != nil {
-		params.Add("related_title_min_term_freq", strconv.Itoa(*relatedTitleMinTermFreq))
-	}
-	if relatedTitleMaxQueryTerms != nil {
-		params.Add("related_title_max_query_terms", strconv.Itoa(*relatedTitleMaxQueryTerms))
-	}
-	if relatedTitleBoost != nil {
-		params.Add("related_title_boost", strconv.FormatFloat(*relatedTitleBoost, 'f', -1, 64))
-	}
-	if relatedTags != nil {
-		params.Add("related_tags", strconv.FormatBool(*relatedTags))
-	}
-	if relatedTagsMinTermFreq != nil {
-		params.Add("related_tags_min_term_freq", strconv.Itoa(*relatedTagsMinTermFreq))
-	}
-	if relatedTagsMaxQueryTerms != nil {
-		params.Add("related_tags_max_query_terms", strconv.Itoa(*relatedTagsMaxQueryTerms))
-	}
-	if relatedTagsBoost != nil {
-		params.Add("related_tags_boost", strconv.FormatFloat(*relatedTagsBoost, 'f', -1, 64))
+	if related != nil {
+		if related.RandomizeLast > 0 {
+			params.Add("related_randomize_last", strconv.Itoa(related.RandomizeLast))
+		}
+		if related.TitleTranslated != nil {
+			params.Add("related_title_translated", strconv.FormatBool(*related.TitleTranslated))
+		}
+		if related.TitleTranslatedMinTermFreq != nil {
+			params.Add("related_title_translated_min_term_freq", strconv.Itoa(*related.TitleTranslatedMinTermFreq))
+		}
+		if related.TitleTranslatedMaxQueryTerms != nil {
+			params.Add("related_title_translated_max_query_terms", strconv.Itoa(*related.TitleTranslatedMaxQueryTerms))
+		}
+		if related.TitleTranslatedBoost != nil {
+			params.Add("related_title_translated_boost", strconv.FormatFloat(*related.TitleTranslatedBoost, 'f', -1, 64))
+		}
+		if related.Title != nil {
+			params.Add("related_title", strconv.FormatBool(*related.Title))
+		}
+		if related.TitleMinTermFreq != nil {
+			params.Add("related_title_min_term_freq", strconv.Itoa(*related.TitleMinTermFreq))
+		}
+		if related.TitleMaxQueryTerms != nil {
+			params.Add("related_title_max_query_terms", strconv.Itoa(*related.TitleMaxQueryTerms))
+		}
+		if related.TitleBoost != nil {
+			params.Add("related_title_boost", strconv.FormatFloat(*related.TitleBoost, 'f', -1, 64))
+		}
+		if related.Tags != nil {
+			params.Add("related_tags", strconv.FormatBool(*related.Tags))
+		}
+		if related.TagsMinTermFreq != nil {
+			params.Add("related_tags_min_term_freq", strconv.Itoa(*related.TagsMinTermFreq))
+		}
+		if related.TagsMaxQueryTerms != nil {
+			params.Add("related_tags_max_query_terms", strconv.Itoa(*related.TagsMaxQueryTerms))
+		}
+		if related.TagsBoost != nil {
+			params.Add("related_tags_boost", strconv.FormatFloat(*related.TagsBoost, 'f', -1, 64))
+		}
 	}
 	params.Add("lang", lang)
 	params.Add("slug", slug)

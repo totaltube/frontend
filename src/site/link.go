@@ -1,6 +1,7 @@
 package site
 
 import (
+	"encoding/base64"
 	"fmt"
 	"log"
 	"net/url"
@@ -109,6 +110,23 @@ func GetLink(route string, config *types.Config, host string, langId string, cha
 				log.Println("no query param for search route")
 			} else {
 				link = strings.ReplaceAll(link, "{query}", strings.ReplaceAll(url.PathEscape(strings.ReplaceAll(strings.TrimSpace(fmt.Sprintf("%v", queryParam.Value)), "  ", " ")), "%20", "+"))
+				params = fastRemove(params, queryIndex)
+			}
+		} else if strings.Contains(link, "{query_base64}") {
+			queryParam, queryIndex, ok := lo.FindIndexOf(params, func(p linkParam) bool { return p.Type == "query" || p.Type == "search_query" })
+			if !ok {
+				log.Println("no query param for search route")
+			} else {
+				base64Query := base64.RawURLEncoding.EncodeToString([]byte(strings.ReplaceAll(strings.TrimSpace(fmt.Sprintf("%v", queryParam.Value)), "  ", " ")))
+				link = strings.ReplaceAll(link, "{query_base64}", base64Query)
+				params = fastRemove(params, queryIndex)
+			}
+		} else if strings.Contains(link, "{query_htmlentities}") {
+			queryParam, queryIndex, ok := lo.FindIndexOf(params, func(p linkParam) bool { return p.Type == "query" || p.Type == "search_query" })
+			if !ok {
+				log.Println("no query param for search route")
+			} else {
+				link = strings.ReplaceAll(link, "{query_htmlentities}", url.QueryEscape(helpers.HtmlEntitiesAll(strings.ReplaceAll(strings.TrimSpace(fmt.Sprintf("%v", queryParam.Value)), "  ", " "))))
 				params = fastRemove(params, queryIndex)
 			}
 		}

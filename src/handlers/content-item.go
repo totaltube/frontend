@@ -158,10 +158,31 @@ var ContentItem = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 	if relatedTagsBoost == nil {
 		relatedTagsBoost = internal.Config.Related.TagsBoost
 	}
-	cacheKey := fmt.Sprintf("%s:%s:%d:%s:%v:%d:%d:%v:%v:%v:%v:%v:%v:%v:%v:%v:%v:%v:%v", hostName, langId, id, slug, orfl, relatedAmount, groupId,
+	relatedRandomizeLast := 0
+	if config.Related.Randomize != nil {
+		relatedRandomizeLast = *config.Related.Randomize
+	} else if internal.Config.Related.Randomize != nil {
+		relatedRandomizeLast = *internal.Config.Related.Randomize
+	}
+	relatedParams := &api.RelatedParams{
+		TitleTranslated:              relatedTitleTranslated,
+		TitleTranslatedMinTermFreq:   relatedTitleTranslatedMinTermFreq,
+		TitleTranslatedMaxQueryTerms: relatedTitleTranslatedMaxQueryTerms,
+		TitleTranslatedBoost:         relatedTitleTranslatedBoost,
+		Title:                        relatedTitle,
+		TitleMinTermFreq:             relatedTitleMinTermFreq,
+		TitleMaxQueryTerms:           relatedTitleMaxQueryTerms,
+		TitleBoost:                   relatedTitleBoost,
+		Tags:                         relatedTags,
+		TagsMinTermFreq:              relatedTagsMinTermFreq,
+		TagsMaxQueryTerms:            relatedTagsMaxQueryTerms,
+		TagsBoost:                    relatedTagsBoost,
+		RandomizeLast:                relatedRandomizeLast,
+	}
+	cacheKey := fmt.Sprintf("%s:%s:%d:%s:%v:%d:%d:%v:%v:%v:%v:%v:%v:%v:%v:%v:%v:%v:%v:%d", hostName, langId, id, slug, orfl, relatedAmount, groupId,
 		relatedTitleTranslated, relatedTitleTranslatedMinTermFreq, relatedTitleTranslatedMaxQueryTerms, relatedTitleTranslatedBoost,
 		relatedTitle, relatedTitleMinTermFreq, relatedTitleMaxQueryTerms, relatedTitleBoost,
-		relatedTags, relatedTagsMinTermFreq, relatedTagsMaxQueryTerms, relatedTagsBoost,
+		relatedTags, relatedTagsMinTermFreq, relatedTagsMaxQueryTerms, relatedTagsBoost, relatedRandomizeLast,
 	)
 	for _, param := range config.General.CacheKeyQueryParams {
 		v := r.URL.Query().Get(param)
@@ -184,11 +205,7 @@ var ContentItem = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 			var err error
 			var response json.RawMessage
 			response, err = db.GetCachedTimeout(cacheKey+":data", time.Duration(cacheTtl), time.Duration(cacheTtl), func() ([]byte, error) {
-				return api.ContentItemRaw(hostName, langId, slug, id, orfl, int64(relatedAmount), groupId,
-					relatedTitleTranslated, relatedTitleTranslatedMinTermFreq, relatedTitleTranslatedMaxQueryTerms, relatedTitleTranslatedBoost,
-					relatedTitle, relatedTitleMinTermFreq, relatedTitleMaxQueryTerms, relatedTitleBoost,
-					relatedTags, relatedTagsMinTermFreq, relatedTagsMaxQueryTerms, relatedTagsBoost,
-				)
+				return api.ContentItemRaw(hostName, langId, slug, id, orfl, int64(relatedAmount), groupId, relatedParams)
 			}, nocache)
 			if err != nil {
 				if strings.Contains(err.Error(), "not found") {
@@ -316,6 +333,27 @@ func getContentItemFunc(hostName string, config *types.Config, langId string, gr
 	if relatedTagsBoost == nil {
 		relatedTagsBoost = internal.Config.Related.TagsBoost
 	}
+	relatedRandomizeLast := 0
+	if config.Related.Randomize != nil {
+		relatedRandomizeLast = *config.Related.Randomize
+	} else if internal.Config.Related.Randomize != nil {
+		relatedRandomizeLast = *internal.Config.Related.Randomize
+	}
+	relatedParams := &api.RelatedParams{
+		TitleTranslated:              relatedTitleTranslated,
+		TitleTranslatedMinTermFreq:   relatedTitleTranslatedMinTermFreq,
+		TitleTranslatedMaxQueryTerms: relatedTitleTranslatedMaxQueryTerms,
+		TitleTranslatedBoost:         relatedTitleTranslatedBoost,
+		Title:                        relatedTitle,
+		TitleMinTermFreq:             relatedTitleMinTermFreq,
+		TitleMaxQueryTerms:           relatedTitleMaxQueryTerms,
+		TitleBoost:                   relatedTitleBoost,
+		Tags:                         relatedTags,
+		TagsMinTermFreq:              relatedTagsMinTermFreq,
+		TagsMaxQueryTerms:            relatedTagsMaxQueryTerms,
+		TagsBoost:                    relatedTagsBoost,
+		RandomizeLast:                relatedRandomizeLast,
+	}
 	var cacheTime types.Duration
 	if config.CacheTimeouts.ContentItem != nil {
 		cacheTime = *config.CacheTimeouts.ContentItem
@@ -359,14 +397,10 @@ func getContentItemFunc(hostName string, config *types.Config, langId string, gr
 			return nil
 		}
 		cacheKey := "content-item:" + helpers.Md5Hash(
-			fmt.Sprintf("%s:%s:%d:%s:%v:%d:%d", hostName, langId, id, slug, orfl, relatedAmount, groupId),
+			fmt.Sprintf("%s:%s:%d:%s:%v:%d:%d:%d", hostName, langId, id, slug, orfl, relatedAmount, groupId, relatedRandomizeLast),
 		)
 		results, err := db.GetCachedTimeout(cacheKey+":data", time.Duration(cacheTime), time.Duration(cacheTime), func() ([]byte, error) {
-			return api.ContentItemRaw(hostName, langId, slug, id, orfl, relatedAmount, groupId,
-				relatedTitleTranslated, relatedTitleTranslatedMinTermFreq, relatedTitleTranslatedMaxQueryTerms, relatedTitleTranslatedBoost,
-				relatedTitle, relatedTitleMinTermFreq, relatedTitleMaxQueryTerms, relatedTitleBoost,
-				relatedTags, relatedTagsMinTermFreq, relatedTagsMaxQueryTerms, relatedTagsBoost,
-			)
+			return api.ContentItemRaw(hostName, langId, slug, id, orfl, relatedAmount, groupId, relatedParams)
 		}, nocache)
 		if err != nil {
 			log.Println("can't get content item:", err, hostName)

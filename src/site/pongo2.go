@@ -10,6 +10,7 @@ import (
 	"github.com/flosch/pongo2/v6"
 	"github.com/pkg/errors"
 
+	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/types"
 )
 
@@ -219,6 +220,20 @@ func InitPongo2() {
 	}
 	err = pongo2.RegisterFilter("string", func(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err *pongo2.Error) {
 		out = pongo2.AsValue(fmt.Sprintf("%v", in.Interface()))
+		return
+	})
+	if err != nil {
+		log.Fatalln(err)
+	}
+	err = pongo2.RegisterFilter("htmlentities", func(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err *pongo2.Error) {
+		out = pongo2.AsValue(helpers.HtmlEntitiesAll(in.String()))
+		return
+	})
+	if err != nil {
+		log.Fatalln(err)
+	}
+	err = pongo2.RegisterFilter("base64_raw_url", func(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err *pongo2.Error) {
+		out = pongo2.AsValue(helpers.Base64RawUrl([]byte(in.String())))
 		return
 	})
 	if err != nil {

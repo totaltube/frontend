@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"encoding/base64"
 	"fmt"
+	"html"
 	"log"
 	"net"
 	"net/http"
@@ -33,10 +35,31 @@ var Search = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	if page <= 0 {
 		page = 1
 	}
+	// Try path parameters first
 	searchQuery, _ := url.PathUnescape(strings.ReplaceAll(chi.URLParam(r, "query"), "+", "%20"))
+	if searchQuery == "" {
+		// Try query_base64 from path
+		if queryBase64Path := chi.URLParam(r, "query_base64"); queryBase64Path != "" {
+			if decoded, err := base64.RawURLEncoding.DecodeString(queryBase64Path); err == nil {
+				searchQuery = string(decoded)
+			}
+		}
+	}
+	if searchQuery == "" {
+		// Try query_htmlentities from path
+		if queryHtmlEntitiesPath := chi.URLParam(r, "query_htmlentities"); queryHtmlEntitiesPath != "" {
+			if unescaped, err := url.PathUnescape(queryHtmlEntitiesPath); err == nil {
+				searchQuery = html.UnescapeString(unescaped)
+			} else {
+				searchQuery = html.UnescapeString(queryHtmlEntitiesPath)
+			}
+		}
+	}
+	// If not found in path, try query parameters
 	if searchQuery == "" {
 		searchQuery = r.URL.Query().Get(config.Params.SearchQuery)
 	}
+	searchQuery = strings.TrimSpace(strings.ReplaceAll(searchQuery, "  ", " "))
 	if searchQuery == "" {
 		Output404(w, r, "search query not set")
 		return

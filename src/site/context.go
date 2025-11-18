@@ -3,7 +3,6 @@ package site
 import (
 	"fmt"
 	"log"
-	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -58,28 +57,30 @@ func generateContext(name string, sitePath string, customContext pongo2.Context)
 	var mu sync.Mutex
 	refreshTranslations, _ := customContext["refreshTranslations"].(bool)
 	var ctx = pongo2.Context{
-		"flate":        helpers.Flate,
-		"deflate":      helpers.Deflate,
-		"bytes":        helpers.Bytes,
-		"gzip":         helpers.Gzip,
-		"ungzip":       helpers.Ungzip,
-		"zip":          helpers.Zip,
-		"unzip":        helpers.Unzip,
-		"base64":       helpers.Base64,
-		"base64_url":   helpers.Base64Url,
-		"sha1":         helpers.Sha1Hash,
-		"sha1_raw":     helpers.Sha1HashRaw,
-		"md5":          helpers.Md5Hash,
-		"md5_raw":      helpers.Md5HashRaw,
-		"md4":          helpers.Md4Hash,
-		"md4_raw":      helpers.Md4HashRaw,
-		"sha256":       helpers.Sha256Hash,
-		"sha256_raw":   helpers.Sha256HashRaw,
-		"sha512":       helpers.Sha512Hash,
-		"sha512_raw":   helpers.Sha512HashRaw,
-		"time8601":     helpers.Time8601,
-		"duration8601": helpers.Duration8601,
-		"slugify":      helpers.Slugify,
+		"flate":          helpers.Flate,
+		"deflate":        helpers.Deflate,
+		"bytes":          helpers.Bytes,
+		"gzip":           helpers.Gzip,
+		"ungzip":         helpers.Ungzip,
+		"zip":            helpers.Zip,
+		"unzip":          helpers.Unzip,
+		"base64":         helpers.Base64,
+		"base64_url":     helpers.Base64Url,
+		"base64_raw_url": helpers.Base64RawUrl,
+		"htmlentities":   helpers.HtmlEntitiesAll,
+		"sha1":           helpers.Sha1Hash,
+		"sha1_raw":       helpers.Sha1HashRaw,
+		"md5":            helpers.Md5Hash,
+		"md5_raw":        helpers.Md5HashRaw,
+		"md4":            helpers.Md4Hash,
+		"md4_raw":        helpers.Md4HashRaw,
+		"sha256":         helpers.Sha256Hash,
+		"sha256_raw":     helpers.Sha256HashRaw,
+		"sha512":         helpers.Sha512Hash,
+		"sha512_raw":     helpers.Sha512HashRaw,
+		"time8601":       helpers.Time8601,
+		"duration8601":   helpers.Duration8601,
+		"slugify":        helpers.Slugify,
 		"translate": func(text interface{}) interface{} {
 			return deferredTranslate("en", customContext["lang"].(*types.Language).Id, text, "page-text", refreshTranslations, customContext["config"].(*types.Config))
 		},
@@ -166,55 +167,72 @@ func generateContext(name string, sitePath string, customContext pongo2.Context)
 					prevState = PaginationItemStateDisabled
 				}
 				pagination = append(pagination, PaginationItem{Type: PaginationItemTypePrev, State: prevState, Page: page - 1})
-				var beforeCurrentPageLinks int64
-				var beforeEllipsis bool
-				var afterCurrentPageLinks int64
-				var afterEllipsis bool
-				if config.General.PaginationMaxRenderedLinks > 0 && config.General.PaginationMaxRenderedLinks < int(pages-2) {
-					// amount of rendered links before current
-					beforeCurrentPageLinks = int64(math.Min(float64(page-1), math.Round(float64(config.General.PaginationMaxRenderedLinks)/2)))
-					if beforeCurrentPageLinks < page-1 {
-						beforeEllipsis = true
+
+				maxLinks := config.General.PaginationMaxRenderedLinks
+				// If maxLinks is not set or is large enough, show all pages
+				if maxLinks <= 0 || maxLinks >= int(pages-2) {
+					for p := int64(1); p <= pages; p++ {
+						var pageState = PaginationItemStateDefault
+						if page == p {
+							pageState = PaginationItemStateActive
+						}
+						pagination = append(pagination, PaginationItem{Type: PaginationItemTypePage, State: pageState, Page: p})
 					}
-					afterCurrentPageLinks = int64(math.Min(
-						float64(int64(config.General.PaginationMaxRenderedLinks)-beforeCurrentPageLinks-1),
-						float64(pages-beforeCurrentPageLinks-1),
-					))
-					if afterCurrentPageLinks < pages-page {
-						afterEllipsis = true
+				} else {
+					// Calculate window around current page
+					// We want to show maxLinks pages total, with current page in the middle when possible
+					maxLinks64 := int64(maxLinks)
+
+					// Calculate how many pages to show before and after current page
+					// Try to balance: if we have odd number, give one extra to the side with more pages
+					windowHalf := (maxLinks64 - 1) / 2
+					windowStart := page - windowHalf
+					windowEnd := page + windowHalf
+
+					// Adjust window if it goes beyond boundaries
+					if windowStart < 1 {
+						windowStart = 1
+						windowEnd = min(maxLinks64, pages)
+					}
+					if windowEnd > pages {
+						windowEnd = pages
+						windowStart = max(1, pages-maxLinks64+1)
+					}
+
+					// Determine if we need ellipsis
+					needBeforeEllipsis := windowStart > 2
+					needAfterEllipsis := windowEnd < pages-1
+
+					// Show first page if needed
+					if windowStart > 1 {
+						pagination = append(pagination, PaginationItem{Type: PaginationItemTypePage, State: PaginationItemStateDefault, Page: 1})
+						if needBeforeEllipsis {
+							pagination = append(pagination, PaginationItem{Type: paginationItemTypeEllipsis})
+						}
+					}
+
+					// Show pages in window
+					for p := windowStart; p <= windowEnd; p++ {
+						var pageState = PaginationItemStateDefault
+						if page == p {
+							pageState = PaginationItemStateActive
+						}
+						pagination = append(pagination, PaginationItem{Type: PaginationItemTypePage, State: pageState, Page: p})
+					}
+
+					// Show ellipsis and last page if needed
+					if windowEnd < pages {
+						if needAfterEllipsis {
+							pagination = append(pagination, PaginationItem{Type: paginationItemTypeEllipsis})
+						}
+						pagination = append(pagination, PaginationItem{
+							Type:  PaginationItemTypePage,
+							State: PaginationItemStateDefault,
+							Page:  pages,
+						})
 					}
 				}
-				for p := int64(1); p <= pages; p++ {
-					if beforeCurrentPageLinks > 0 && p < page-beforeCurrentPageLinks {
-						if p == 1 && beforeEllipsis {
-							// show first page link and ellipsis
-							pagination = append(pagination, PaginationItem{Type: PaginationItemTypePage, State: PaginationItemStateDefault, Page: p})
-							if p < page-beforeCurrentPageLinks-1 {
-								pagination = append(pagination, PaginationItem{Type: paginationItemTypeEllipsis})
-							}
-						}
-						continue // do not render some items before current page
-					}
-					if afterCurrentPageLinks > 0 && p > page+afterCurrentPageLinks {
-						if p == pages && afterEllipsis {
-							// show ellipsis and last page link
-							if p > page+afterCurrentPageLinks+1 {
-								pagination = append(pagination, PaginationItem{Type: paginationItemTypeEllipsis})
-							}
-							pagination = append(pagination, PaginationItem{
-								Type:  PaginationItemTypePage,
-								State: PaginationItemStateDefault,
-								Page:  p,
-							})
-						}
-						continue // do not render some items after current page
-					}
-					var pageState = PaginationItemStateDefault
-					if page == p {
-						pageState = PaginationItemStateActive
-					}
-					pagination = append(pagination, PaginationItem{Type: PaginationItemTypePage, State: pageState, Page: p})
-				}
+
 				nextState := PaginationItemStateDefault
 				if page == pages {
 					nextState = PaginationItemStateDisabled

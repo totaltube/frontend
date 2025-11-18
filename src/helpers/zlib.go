@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"strconv"
+	"strings"
 
 	"github.com/klauspost/compress/flate"
 	"github.com/klauspost/compress/gzip"
@@ -20,6 +22,12 @@ func FromBase64(data string) ([]byte, error) {
 }
 func Base64Url(data []byte) string {
 	return base64.URLEncoding.EncodeToString(data)
+}
+func Base64RawUrl(data []byte) string {
+	return base64.RawURLEncoding.EncodeToString(data)
+}
+func FromBase64RawUrl(data string) ([]byte, error) {
+	return base64.RawURLEncoding.DecodeString(data)
 }
 func FromBase64Url(data string) ([]byte, error) {
 	return base64.URLEncoding.DecodeString(data)
@@ -84,4 +92,15 @@ func Unzip(data []byte) []byte {
 	zr, _ := zlib.NewReader(b)
 	s, _ := io.ReadAll(zr)
 	return s
+}
+
+// HtmlEntitiesAll converts every character in the string to numeric HTML entities (&#code;)
+func HtmlEntitiesAll(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		b.WriteString("&#")
+		b.WriteString(strconv.Itoa(int(r)))
+		b.WriteString(";")
+	}
+	return b.String()
 }

@@ -22,11 +22,28 @@ var RedirectToContentItem = http.HandlerFunc(func(w http.ResponseWriter, r *http
 		Output404(w, r, "page not found")
 		return
 	}
-	results, err := api.ContentItem(hostName, langId, slug, id, true, 0, 0,
-		config.Related.TitleTranslated, config.Related.TitleTranslatedMinTermFreq, config.Related.TitleTranslatedMaxQueryTerms, config.Related.TitleTranslatedBoost,
-		config.Related.Title, config.Related.TitleMinTermFreq, config.Related.TitleMaxQueryTerms, config.Related.TitleBoost,
-		config.Related.Tags, config.Related.TagsMinTermFreq, config.Related.TagsMaxQueryTerms, config.Related.TagsBoost,
-	)
+	relatedRandomizeLast := 0
+	if config.Related.Randomize != nil {
+		relatedRandomizeLast = *config.Related.Randomize
+	} else if internal.Config.Related.Randomize != nil {
+		relatedRandomizeLast = *internal.Config.Related.Randomize
+	}
+	relatedParams := &api.RelatedParams{
+		TitleTranslated:              config.Related.TitleTranslated,
+		TitleTranslatedMinTermFreq:   config.Related.TitleTranslatedMinTermFreq,
+		TitleTranslatedMaxQueryTerms: config.Related.TitleTranslatedMaxQueryTerms,
+		TitleTranslatedBoost:         config.Related.TitleTranslatedBoost,
+		Title:                        config.Related.Title,
+		TitleMinTermFreq:             config.Related.TitleMinTermFreq,
+		TitleMaxQueryTerms:           config.Related.TitleMaxQueryTerms,
+		TitleBoost:                   config.Related.TitleBoost,
+		Tags:                         config.Related.Tags,
+		TagsMinTermFreq:              config.Related.TagsMinTermFreq,
+		TagsMaxQueryTerms:            config.Related.TagsMaxQueryTerms,
+		TagsBoost:                    config.Related.TagsBoost,
+		RandomizeLast:                relatedRandomizeLast,
+	}
+	results, err := api.ContentItem(hostName, langId, slug, id, true, 0, 0, relatedParams)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "no rows") {
 			Output404(w, r, "content item not found")

@@ -96,6 +96,7 @@ type (
 		TitleTranslatedMinTermFreq   *int     `toml:"title_translated_min_term_freq"`
 		TitleTranslatedMaxQueryTerms *int     `toml:"title_translated_max_query_terms"`
 		TitleTranslatedBoost         *float64 `toml:"title_translated_boost"`
+		Randomize                    *int     `toml:"randomize"`
 		Title                        *bool    `toml:"title"`
 		TitleMinTermFreq             *int     `toml:"title_min_term_freq"`
 		TitleMaxQueryTerms           *int     `toml:"title_max_query_terms"`

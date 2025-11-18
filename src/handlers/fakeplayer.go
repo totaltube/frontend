@@ -45,6 +45,27 @@ var FakePlayer = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	params := customContext["params"].(map[string]string)
 	ip := r.Context().Value(types.ContextKeyIp).(string)
 	groupId := internal.DetectCountryGroup(net.ParseIP(ip)).Id
+	relatedRandomizeLast := 0
+	if config.Related.Randomize != nil {
+		relatedRandomizeLast = *config.Related.Randomize
+	} else if internal.Config.Related.Randomize != nil {
+		relatedRandomizeLast = *internal.Config.Related.Randomize
+	}
+	relatedParams := &api.RelatedParams{
+		TitleTranslated:              config.Related.TitleTranslated,
+		TitleTranslatedMinTermFreq:   config.Related.TitleTranslatedMinTermFreq,
+		TitleTranslatedMaxQueryTerms: config.Related.TitleTranslatedMaxQueryTerms,
+		TitleTranslatedBoost:         config.Related.TitleTranslatedBoost,
+		Title:                        config.Related.Title,
+		TitleMinTermFreq:             config.Related.TitleMinTermFreq,
+		TitleMaxQueryTerms:           config.Related.TitleMaxQueryTerms,
+		TitleBoost:                   config.Related.TitleBoost,
+		Tags:                         config.Related.Tags,
+		TagsMinTermFreq:              config.Related.TagsMinTermFreq,
+		TagsMaxQueryTerms:            config.Related.TagsMaxQueryTerms,
+		TagsBoost:                    config.Related.TagsBoost,
+		RandomizeLast:                relatedRandomizeLast,
+	}
 	cacheKey := "fake-player:" + helpers.Md5Hash(
 		fmt.Sprintf("%s:%s:%d:%s:%v:%d:%d", hostName, langId, id, slug, orfl, relatedAmount, groupId),
 	)
@@ -63,11 +84,7 @@ var FakePlayer = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var err error
 			var response json.RawMessage
 			response, err = db.GetCachedTimeout(cacheKey+":data", time.Duration(cacheTtl), time.Duration(cacheTtl), func() ([]byte, error) {
-				return api.ContentItemRaw(hostName, langId, slug, id, orfl, int64(relatedAmount), groupId,
-					config.Related.TitleTranslated, config.Related.TitleTranslatedMinTermFreq, config.Related.TitleTranslatedMaxQueryTerms, config.Related.TitleTranslatedBoost,
-					config.Related.Title, config.Related.TitleMinTermFreq, config.Related.TitleMaxQueryTerms, config.Related.TitleBoost,
-					config.Related.Tags, config.Related.TagsMinTermFreq, config.Related.TagsMaxQueryTerms, config.Related.TagsBoost,
-				)
+				return api.ContentItemRaw(hostName, langId, slug, id, orfl, int64(relatedAmount), groupId, relatedParams)
 			}, nocache)
 			if err != nil {
 				if strings.Contains(err.Error(), "not found") {
