@@ -437,7 +437,10 @@ func ParseCustomTemplate(name, path string, config *types.Config,
 			return
 		}
 		if config.General.MinifyHtml {
-			parsed = helpers.MinifyBytes(parsed)
+			parsed, err = helpers.MinifyBytes(parsed)
+			if err != nil {
+				log.Println("can't minify html:", err, name, path, config.Hostname)
+			}
 		}
 		return
 	}

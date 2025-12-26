@@ -65,7 +65,7 @@ var TopContent = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var err error
 			var response json.RawMessage
 			response, err = db.GetCachedTimeout(cacheKey+":data", time.Duration(cacheTtl), time.Duration(cacheTtl), func() ([]byte, error) {
-				bt, err := api.TopContentRaw(hostName, langId, page, groupId)
+				bt, err := api.TopContentRaw(config, langId, page, groupId, []string{})
 				return bt, err
 			}, nocache)
 			if err != nil {
@@ -107,7 +107,7 @@ var TopContent = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	render.HTML(w, r, string(parsed))
 })
 
-func getTopContentFunc(hostName string, langId string, groupId int64, config *types.Config) func(args ...interface{}) *types.ContentResults {
+func getTopContentFunc(config *types.Config, langId string, groupId int64) func(args ...interface{}) *types.ContentResults {
 	return func(args ...interface{}) *types.ContentResults {
 		parsingName := true
 		var page int64 = 1
@@ -129,7 +129,7 @@ func getTopContentFunc(hostName string, langId string, groupId int64, config *ty
 				groupId, _ = strconv.ParseInt(val, 10, 32)
 			}
 		}
-		results, err := api.TopContent(hostName, langId, page, groupId)
+		results, err := api.TopContent(config, langId, page, groupId, []string{})
 		if err != nil {
 			log.Println("can't get top content:", err)
 			return nil

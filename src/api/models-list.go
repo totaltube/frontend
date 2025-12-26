@@ -8,9 +8,9 @@ import (
 	"sersh.com/totaltube/frontend/types"
 )
 
-func ModelsList(siteDomain, lang string, page int64, sort SortBy, amount int64, searchQuery string, groupId int64) (
+func ModelsList(siteConfig *types.Config, lang string, page int64, sort SortBy, amount int64, searchQuery string, groupId int64) (
 	results *types.ModelResults, response json.RawMessage, err error) {
-	response, err = ModelsListRaw(siteDomain, lang, page, sort, amount, searchQuery, groupId)
+	response, err = ModelsListRaw(siteConfig, lang, page, sort, amount, searchQuery, groupId)
 	if err != nil {
 		return
 	}
@@ -19,8 +19,8 @@ func ModelsList(siteDomain, lang string, page int64, sort SortBy, amount int64, 
 	return
 }
 
-func ModelsListRaw(siteDomain, lang string, page int64, sort SortBy, amount int64, searchQuery string, groupId int64) (response json.RawMessage, err error) {
-	response, err = Request(siteDomain, methodGet, uriModelsList, url.Values{
+func ModelsListRaw(siteConfig *types.Config, lang string, page int64, sort SortBy, amount int64, searchQuery string, groupId int64) (response json.RawMessage, err error) {
+	response, err = Request(siteConfig, methodGet, uriModelsList, url.Values{
 		"lang":     []string{lang},
 		"sort":     []string{string(sort)},
 		"amount":   []string{strconv.FormatInt(amount, 10)},

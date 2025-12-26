@@ -1,16 +1,19 @@
 package site
 
 import (
+	"encoding/base64"
 	"errors"
 	"html/template"
 	"net/http"
 	"net/url"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/dlclark/regexp2"
 	"github.com/flosch/pongo2/v6"
 
+	"sersh.com/totaltube/frontend/internal"
 	"sersh.com/totaltube/frontend/types"
 )
 
@@ -18,6 +21,15 @@ var httpRegex = regexp.MustCompile(`(?i)^(https?://|//)`)
 
 // language=Regexp
 var paramRegex = regexp2.MustCompile(`\{([\w_]+)\}`, regexp2.None)
+
+func firstNonEmpty(values ...string) string {
+	for _, v := range values {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
+}
 
 type tagLinkNode struct {
 	what pongo2.IEvaluator
@@ -90,7 +102,7 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 		// target language has its own domain -> force absolute to that domain
 		hostName = d
 		args = append(args, "full_url", true)
-	} else if def, ok := config.LanguageDomains["default"]; ok && def != "" && hostName != def {
+	} else if def, ok := internal.GetDefaultLanguageDomainValue(config); ok && def != "" && hostName != def {
 		// target language has no dedicated domain, but current host is not default ->
 		// force absolute to default domain
 		hostName = def
@@ -138,6 +150,10 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 		} else {
 			currentParams := linkContext.Public["params"].(map[string]string)
 			for k, v := range currentParams {
+				if what == "search" && (k == "query_base64" || k == "query_htmlentities") {
+					// skip path-only params so they don't end up in query string
+					continue
+				}
 				if k == "id" && config.Routes.IdXorKey > 0 {
 					numericId, _ := strconv.ParseInt(v, 10, 64)
 					if numericId > 0 {
@@ -152,6 +168,31 @@ func (node *tagLinkNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 				for _, vv := range v {
 					// prepending query params, because they can be overwritten by template params
 					args = append([]interface{}{k, vv}, args...)
+				}
+			}
+			if what == "search" {
+				var rawQuery string
+				if base64Query := firstNonEmpty(currentParams["query_base64"], queryParams.Get("query_base64")); base64Query != "" {
+					if decodedQuery, err := base64.RawURLEncoding.DecodeString(base64Query); err == nil && len(decodedQuery) > 0 {
+						rawQuery = strings.TrimSpace(string(decodedQuery))
+					}
+				}
+				if rawQuery == "" {
+					searchParamName := config.Params.SearchQuery
+					rawQuery = strings.TrimSpace(firstNonEmpty(currentParams[searchParamName], queryParams.Get(searchParamName)))
+				}
+				if rawQuery != "" {
+					hasQueryArg := false
+					for i := 0; i+1 < len(args); i += 2 {
+						if key, ok := args[i].(string); ok && (key == "query" || key == "search_query") {
+							hasQueryArg = true
+							break
+						}
+					}
+					if !hasQueryArg {
+						// provide raw query so GetLink can rebuild {query_base64} placeholder properly
+						args = append(args, "query", rawQuery)
+					}
 				}
 			}
 		}

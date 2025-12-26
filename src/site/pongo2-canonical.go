@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"sersh.com/totaltube/frontend/internal"
 	"sersh.com/totaltube/frontend/types"
 
 	"github.com/flosch/pongo2/v6"
@@ -61,7 +62,7 @@ func getCanonical(ctx pongo2.Context, page int64, q ...url.Values) string {
 		canonicalPrefix = strings.TrimSuffix(config.General.CanonicalUrl, "/")
 	} else {
 		canonicalPrefix = "https://" + hostName
-		if d, ok := config.LanguageDomains["default"]; ok && d != "" {
+		if d, ok := internal.GetDefaultLanguageDomainValue(config); ok && d != "" {
 			canonicalPrefix = "https://" + d
 		}
 	}

@@ -1,7 +1,6 @@
 package helpers
 
 import (
-	"log"
 	"regexp"
 
 	"github.com/tdewolff/minify/v2"
@@ -32,22 +31,18 @@ func InitMinifier() {
 	minifier = m
 }
 
-func MinifyBytes(html []byte) (minified []byte) {
-	var err error
+func MinifyBytes(html []byte) (minified []byte, err error) {
 	minified, err = minifier.Bytes("text/html", html)
 	if err != nil {
-		log.Println("can't minify html:", err)
-		return html
+		return html, err
 	}
-	return minified
+	return minified, nil
 }
 
-func MinifyString(html string) (minified string) {
-	var err error
+func MinifyString(html string) (minified string, err error) {
 	minified, err = minifier.String("text/html", html)
 	if err != nil {
-		log.Println("can't minify html:", err)
-		return html
+		return html, err
 	}
-	return minified
+	return minified, nil
 }

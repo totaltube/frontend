@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/mileusna/useragent"
@@ -243,7 +244,7 @@ func generateCustomContext(_ http.ResponseWriter, r *http.Request, templateName 
 		}
 	}
 	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))
-	var globals = make(map[string]interface{})
+	var globals sync.Map
 	ip := r.Context().Value(types.ContextKeyIp).(string)
 	var countryGroup = internal.DetectCountryGroup(net.ParseIP(ip))
 	groupId := countryGroup.Id
@@ -275,18 +276,18 @@ func generateCustomContext(_ http.ResponseWriter, r *http.Request, templateName 
 			}
 			return useragent.Parse(r.UserAgent())
 		},
-		"get_content":         getContentFunc(hostName, langId, userAgent, ip, groupId),
-		"get_top_content":     getTopContentFunc(hostName, langId, groupId, config),
-		"get_top_categories":  getTopCategoriesFunc(hostName, langId, groupId, config),
-		"get_content_item":    getContentItemFunc(hostName, config, langId, groupId, nocache),
-		"get_models_list":     getModelsListFunc(hostName, langId, int64(config.General.ModelsPerPage), groupId),
-		"get_categories_list": getCategoriesListFunc(hostName, langId, 100, groupId),
-		"get_channels_list":   getChannelsListFunc(hostName, langId, 100, groupId),
-		"get_category_top":    getCategoryTopFunc(hostName, langId, groupId, config),
-		"get_category":        getCategoryFunc(hostName, langId),
-		"get_model":           getModelFunc(hostName, langId, groupId),
-		"get_top_searches":    getTopSearchesFunc(hostName, langId),
-		"get_random_searches": getRandomSearchesFunc(hostName, langId),
+		"get_content":         getContentFunc(config, langId, userAgent, ip, groupId),
+		"get_top_content":     getTopContentFunc(config, langId, groupId),
+		"get_top_categories":  getTopCategoriesFunc(config, langId, groupId),
+		"get_content_item":    getContentItemFunc(config, langId, groupId, nocache),
+		"get_models_list":     getModelsListFunc(config, langId, int64(config.General.ModelsPerPage), groupId),
+		"get_categories_list": getCategoriesListFunc(config, langId, 100, groupId),
+		"get_channels_list":   getChannelsListFunc(config, langId, 100, groupId),
+		"get_category_top":    getCategoryTopFunc(config, langId, groupId),
+		"get_category":        getCategoryFunc(config, langId),
+		"get_model":           getModelFunc(config, langId, groupId),
+		"get_top_searches":    getTopSearchesFunc(config, langId),
+		"get_random_searches": getRandomSearchesFunc(config, langId),
 		"xor_id": func(id *pongo2.Value) int64 {
 			idInt := int64(id.Integer())
 			if idInt > 0 && config.Routes.IdXorKey > 0 {
@@ -305,7 +306,7 @@ func generateCustomContext(_ http.ResponseWriter, r *http.Request, templateName 
 			if int(amt) <= len(items) {
 				return items
 			}
-			results, _, err := api.Content(hostName, api.ContentParams{
+			results, _, err := api.Content(config, api.ContentParams{
 				Ip:        net.ParseIP(ip),
 				UserAgent: userAgent,
 				Lang:      langId,
@@ -318,7 +319,7 @@ func generateCustomContext(_ http.ResponseWriter, r *http.Request, templateName 
 			}
 			return append(items, results.Items...)
 		},
-		"merge": func(dst, src interface{}) interface{} {
+		"merge": func(dst, src any) any {
 			dv := reflect.ValueOf(dst)
 			sv := reflect.ValueOf(src)
 			dv2 := reflect.AppendSlice(dv, sv)
@@ -326,11 +327,15 @@ func generateCustomContext(_ http.ResponseWriter, r *http.Request, templateName 
 		},
 	}
 	// Functions to set and get vars, which will be saved between calls.
-	customContext["set_var"] = func(name string, value interface{}) {
-		globals[name] = value
+	customContext["set_var"] = func(name string, value any) {
+		globals.Store(name, value)
 	}
-	customContext["get_var"] = func(name string) interface{} {
-		return globals[name]
+	customContext["get_var"] = func(name string) any {
+		value, ok := globals.Load(name)
+		if !ok {
+			return nil
+		}
+		return value
 	}
 	customContext["alternate_url"] = func(lang string) string {
 		return site.GenerateAlternateURL(customContext, lang)

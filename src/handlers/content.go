@@ -10,7 +10,7 @@ import (
 	"sersh.com/totaltube/frontend/types"
 )
 
-func getContentFunc(hostName string, langId string, userAgent string, ip string, groupId int64) func(args ...any) *types.ContentResults {
+func getContentFunc(config *types.Config, langId string, userAgent string, ip string, groupId int64) func(args ...any) *types.ContentResults {
 	return func(args ...any) *types.ContentResults {
 		parsingName := true
 		params := api.ContentParams{
@@ -67,7 +67,7 @@ func getContentFunc(hostName string, langId string, userAgent string, ip string,
 				params.GroupId, _ = strconv.ParseInt(val, 10, 32)
 			}
 		}
-		if results, _, err := api.Content(hostName, params); err != nil {
+		if results, _, err := api.Content(config, params); err != nil {
 			log.Println("error getting content: ", err)
 			return nil
 		} else {

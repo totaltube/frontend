@@ -28,17 +28,26 @@ var ToplistData = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 	nocache, _ := strconv.ParseBool(r.URL.Query().Get(config.Params.Nocache))
 	query := r.URL.Query().Get("query")
 	lang := r.URL.Query().Get("lang")
+	noParams := (query == "") && (lang == "")
 	if lang == "" {
-		lang = "en"
+		lang = config.General.DefaultLanguage
 	}
 	lang = strings.ToLower(strings.Split(lang, "-")[0])
 	if lang == "zh" {
 		lang = "zh-Hans"
 	}
-	lang = internal.DetectLanguage(lang, config.General.DefaultLanguage, lang).Id
 	ip := r.Context().Value(types.ContextKeyIp).(string)
 	groupId := internal.DetectCountryGroup(net.ParseIP(ip)).Id
-	cacheKey := fmt.Sprintf(`td:%s`, helpers.Md5Hash(fmt.Sprintf(`%s-%s-%s-%d`, hostName, query, lang, groupId)))
+	var additionalLanguages []string
+	/*if noParams {
+		additionalLanguages = lo.Map(internal.GetLanguages(config), func(language types.Language, _ int) string {
+			return language.Id
+		})
+		additionalLanguages = lo.Filter(additionalLanguages, func(language string, _ int) bool {
+			return language != config.General.DefaultLanguage
+		})
+	}*/
+	cacheKey := fmt.Sprintf(`td:%s`, helpers.Md5Hash(fmt.Sprintf(`%s-%s-%s-%d-%v`, hostName, query, lang, groupId, noParams)))
 	cacheTtl := time.Minute * 30
 
 	var mapToplistRes = func(item *types.ContentResult, _ int) types.ToplistItem {
@@ -56,10 +65,12 @@ var ToplistData = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 			category = item.Categories[0].Slug
 		}
 		return types.ToplistItem{
-			Title:       item.Title,
-			Description: description,
-			Thumb:       thumb,
-			HiresThumb:  hiresThumb,
+			Title:                   item.Title,
+			Description:             description,
+			TitleTranslations:       item.TitleTranslations,
+			DescriptionTranslations: item.DescriptionTranslations,
+			Thumb:                   thumb,
+			HiresThumb:              hiresThumb,
 			ContentData: types.ToplistContentData{
 				ContentId: item.Id,
 				Url:       site.GetLink("content-item", config, hostName, lang, false, "full_url", true, "id", item.Id, "slug", item.Slug, "category", category),
@@ -71,15 +82,21 @@ var ToplistData = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 		var toplistResults types.ToplistResults
 		toplistResults.Items = make([]types.ToplistItem, 0, 50)
 		toplistResults.Success = true
+		if noParams {
+			if links := buildToplistLanguageLinks(config, hostName); len(links) > 0 {
+				toplistResults.LanguageLinks = links
+			}
+		}
 		if query != "" {
 			var queryResult json.RawMessage
-			queryResult, err = api.ContentRaw(hostName, api.ContentParams{
-				Amount:      amount,
-				Lang:        lang,
-				Sort:        "popular",
-				SearchQuery: query,
-				GroupId:     groupId,
-				Page:        1,
+			queryResult, err = api.ContentRaw(config, api.ContentParams{
+				Amount:              amount,
+				Lang:                lang,
+				Sort:                api.SortPopular,
+				SearchQuery:         query,
+				GroupId:             groupId,
+				Page:                1,
+				AdditionalLanguages: additionalLanguages,
 			})
 			if err != nil {
 				log.Println(err)
@@ -100,12 +117,13 @@ var ToplistData = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 		}
 		// all remaining items will be taken from popular
 		var popularResult json.RawMessage
-		popularResult, err = api.ContentRaw(hostName, api.ContentParams{
-			Amount:  amount,
-			Lang:    lang,
-			Sort:    "popular",
-			GroupId: groupId,
-			Page:    1,
+		popularResult, err = api.ContentRaw(config, api.ContentParams{
+			Amount:              amount,
+			Lang:                lang,
+			Sort:                api.SortPopular,
+			GroupId:             groupId,
+			Page:                1,
+			AdditionalLanguages: additionalLanguages,
 		})
 		if err != nil {
 			log.Println(err)
@@ -133,3 +151,66 @@ var ToplistData = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 	w.Header().Set("X-Robots-Tag", "noindex")
 	_, _ = w.Write(result)
 })
+
+func buildToplistLanguageLinks(config *types.Config, fallbackHost string) map[string]string {
+	route := config.General.RouteForToplistLanguageLinks
+	if route == "" {
+		if config.Routes.TopContent == "/" {
+			route = "top-content"
+		} else if config.Routes.TopCategories == "/" {
+			route = "top-categories"
+		} else if config.Routes.Popular == "/" {
+			route = "popular"
+		} else if config.Routes.New == "/" {
+			route = "new"
+		}
+	}
+	if config == nil || !config.General.MultiLanguage || !config.General.IncludeToplistLanguageLinks || route == "" {
+		return nil
+	}
+	languages := internal.GetLanguages(config)
+	if len(languages) == 0 {
+		return nil
+	}
+	defaultTarget, _ := internal.GetDefaultLanguageDomainTarget(config)
+	languageLinks := make(map[string]string, len(languages))
+	for _, language := range languages {
+		if language.Id == "" {
+			continue
+		}
+		changeLangLink := true
+		if config.General.NoRedirectDefaultLanguage && language.Id == config.General.DefaultLanguage {
+			changeLangLink = false
+		}
+		hostForLink := strings.TrimSpace(fallbackHost)
+		if domainValue := strings.TrimSpace(config.LanguageDomains[language.Id]); domainValue != "" {
+			if target, ok := internal.ParseLanguageDomainTarget(domainValue); ok {
+				hostForLink = target.Host
+			} else {
+				hostForLink = internal.NormalizeHost(domainValue)
+			}
+		} else if defaultTarget != nil && defaultTarget.Host != "" {
+			hostForLink = defaultTarget.Host
+		} else if hostForLink == "" {
+			hostForLink = config.Hostname
+		}
+		if hostForLink == "" {
+			continue
+		}
+		args := make([]any, 0, 6)
+		args = append(args, "full_url", true)
+		link := site.GetLink(route, config, hostForLink, language.Id, changeLangLink, args...)
+		if link == "" {
+			continue
+		}
+		languageLinks[language.Id] = link
+		languageIdShort := strings.Split(language.Id, "-")[0]
+		if languageIdShort != language.Id {
+			languageLinks[languageIdShort] = link
+		}
+	}
+	if len(languageLinks) == 0 {
+		return nil
+	}
+	return languageLinks
+}

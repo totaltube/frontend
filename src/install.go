@@ -59,7 +59,6 @@ func Install() {
 		},
 		Frontend: internal.Frontend{
 			SitesPath:        filepath.Join(mainPath, "sites"),
-			DefaultSite:      "",
 			SecretKey:        helpers.RandStr(40),
 			CaptchaKey:       "",
 			MaxDmcaMinute:    3,
@@ -141,14 +140,6 @@ func Install() {
 		fmt.Println(err)
 		return
 	}
-	err = survey.AskOne(&survey.Input{
-		Message: "Default site domain",
-		Default: config.Frontend.DefaultSite,
-	}, &config.Frontend.DefaultSite)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
 	fmt.Println("Creating config file and directories...")
 	err = os.MkdirAll(filepath.Join(mainPath, "sites"), 0750)
 	if err != nil {
@@ -195,7 +186,6 @@ func Install() {
 		fmt.Println("done.")
 	}
 }
-
 
 func FreeBSDInstall(path string) error {
 	configPath := filepath.Join(path, "global-config.toml")
@@ -253,7 +243,6 @@ func FreeBSDInstall(path string) error {
 	_ = cmd.Start()
 	return nil
 }
-
 
 func SystemdInstall(path string) error {
 	configPath := filepath.Join(path, "global-config.toml")

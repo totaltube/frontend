@@ -8,9 +8,9 @@ import (
 	"sersh.com/totaltube/frontend/types"
 )
 
-func CategoriesList(siteDomain, lang string, page int64, sort SortBy, amount int64, groupId int64) (
+func CategoriesList(siteConfig *types.Config, lang string, page int64, sort SortBy, amount int64, groupId int64) (
 	results *types.CategoryResults, rawResponse json.RawMessage, err error) {
-	rawResponse, err = Request(siteDomain, methodGet, uriCategoriesList, url.Values{
+	rawResponse, err = Request(siteConfig, methodGet, uriCategoriesList, url.Values{
 		"lang":     []string{lang},
 		"sort":     []string{string(sort)},
 		"amount":   []string{strconv.FormatInt(amount, 10)},

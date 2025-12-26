@@ -8,8 +8,8 @@ import (
 	"sersh.com/totaltube/frontend/types"
 )
 
-func ChannelInfo(siteDomain, lang string, channelInfo int64, channelSlug string) (result *types.ChannelResult, rawResponse json.RawMessage, err error) {
-	rawResponse, err = Request(siteDomain, methodGet, uriChannelInfo, url.Values{
+func ChannelInfo(siteConfig *types.Config, lang string, channelInfo int64, channelSlug string) (result *types.ChannelResult, rawResponse json.RawMessage, err error) {
+	rawResponse, err = Request(siteConfig, methodGet, uriChannelInfo, url.Values{
 		"id":   []string{strconv.FormatInt(channelInfo, 10)},
 		"slug": []string{channelSlug},
 		"lang": []string{lang},

@@ -8,8 +8,8 @@ import (
 	"strconv"
 )
 
-func TopSearches(siteDomain, lang string, amount int64) (results []types.TopSearch, response json.RawMessage, err error) {
-	response, err = Request(siteDomain, methodGet, uriTopSearches, url.Values{
+func TopSearches(siteConfig *types.Config, lang string, amount int64) (results []types.TopSearch, response json.RawMessage, err error) {
+	response, err = Request(siteConfig, methodGet, uriTopSearches, url.Values{
 		"lang":   []string{lang},
 		"amount": []string{strconv.FormatInt(amount, 10)},
 	})

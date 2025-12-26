@@ -3,6 +3,8 @@ package api
 import (
 	"encoding/json"
 	"net/url"
+	
+	"sersh.com/totaltube/frontend/types"
 )
 
 type ContentIdResult struct {
@@ -10,9 +12,9 @@ type ContentIdResult struct {
 }
 
 // ContentIdBySlug получает ID контента по slug через API миньона
-func ContentIdBySlug(siteDomain, slug string) (result *ContentIdResult, err error) {
+func ContentIdBySlug(siteConfig *types.Config, slug string) (result *ContentIdResult, err error) {
 	var response json.RawMessage
-	response, err = ContentIdBySlugRaw(siteDomain, slug)
+	response, err = ContentIdBySlugRaw(siteConfig, slug)
 	if err != nil {
 		return
 	}
@@ -22,9 +24,9 @@ func ContentIdBySlug(siteDomain, slug string) (result *ContentIdResult, err erro
 }
 
 // ContentIdBySlugRaw получает сырой ответ от API для получения ID контента по slug
-func ContentIdBySlugRaw(siteDomain, slug string) (response json.RawMessage, err error) {
+func ContentIdBySlugRaw(siteConfig *types.Config, slug string) (response json.RawMessage, err error) {
 	params := url.Values{}
 	params.Add("slug", slug)
-	response, err = Request(siteDomain, methodGet, uriContentId, params)
+	response, err = Request(siteConfig, methodGet, uriContentId, params)
 	return
 }

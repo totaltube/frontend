@@ -82,7 +82,7 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 		w.Header().Set("Pragma", "no-cache")
 		w.Header().Set("Expires", "0")
-		toReturn := handleRotation(rotationParams, useTrade, config, r, w)
+		toReturn := handleRotation(rotationParams, useTrade, config, r, w, langId)
 		if toReturn {
 			return
 		}
@@ -157,7 +157,7 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			categoryInfoCacheKey := fmt.Sprintf("in:cinfo:%d:%s:%s", categoryId, categorySlug, langId)
 			categoryInfoCacheTtl := time.Hour*24 + time.Duration(rand.Intn(3600*6))*time.Second
 			categoryInfoCached, err := db.GetCachedTimeout(categoryInfoCacheKey, categoryInfoCacheTtl, time.Hour*4, func() ([]byte, error) {
-				_, rawResponse, err := api.CategoryInfo(hostName, langId, categoryId, categorySlug)
+				_, rawResponse, err := api.CategoryInfo(config, langId, categoryId, categorySlug)
 				return rawResponse, err
 			}, nocache)
 			if err != nil {
@@ -176,7 +176,7 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if filtered {
 				var response []byte
 				response, err = db.GetCachedTimeout(cacheKey+":data", time.Duration(cacheTtl), time.Duration(cacheTtl), func() ([]byte, error) {
-					return api.ContentRaw(hostName, api.ContentParams{
+					return api.ContentRaw(config, api.ContentParams{
 						Lang:         langId,
 						Page:         page,
 						Ip:           ip,
@@ -202,7 +202,7 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				ctx["count"] = true
 				var response []byte
 				response, err = db.GetCachedTimeout(cacheKey+":data", time.Duration(cacheTtl), time.Duration(cacheTtl), func() ([]byte, error) {
-					return api.CategoryRaw(hostName, langId, categoryId, categorySlug, page, groupId)
+					return api.CategoryRaw(config, langId, categoryId, categorySlug, page, groupId, []string{})
 				}, nocache)
 				if err != nil {
 					return ctx, err
@@ -255,7 +255,7 @@ var Category = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	render.HTML(w, r, string(parsed))
 })
 
-func getCategoryFunc(hostName string, langId string) func(args ...interface{}) *types.CategoryResult {
+func getCategoryFunc(config *types.Config, langId string) func(args ...interface{}) *types.CategoryResult {
 	return func(args ...interface{}) *types.CategoryResult {
 		parsingName := true
 		var categoryId int64
@@ -282,7 +282,7 @@ func getCategoryFunc(hostName string, langId string) func(args ...interface{}) *
 			log.Println("error getting category content - need to set category_id or category_slug param")
 			return nil
 		}
-		if results, _, err := api.CategoryInfo(hostName, langId, categoryId, categorySlug); err != nil {
+		if results, _, err := api.CategoryInfo(config, langId, categoryId, categorySlug); err != nil {
 			log.Println("error getting category content: ", err)
 			return nil
 		} else {
@@ -290,7 +290,7 @@ func getCategoryFunc(hostName string, langId string) func(args ...interface{}) *
 		}
 	}
 }
-func getCategoryTopFunc(hostName string, langId string, groupId int64, config *types.Config) func(args ...interface{}) *types.ContentResults {
+func getCategoryTopFunc(config *types.Config, langId string, groupId int64) func(args ...interface{}) *types.ContentResults {
 	return func(args ...interface{}) *types.ContentResults {
 		parsingName := true
 		var categoryId int64
@@ -322,7 +322,7 @@ func getCategoryTopFunc(hostName string, langId string, groupId int64, config *t
 			log.Println("error getting top category content - need to set category_id or category_slug param")
 			return nil
 		}
-		if results, err := api.Category(hostName, langId, categoryId, categorySlug, page, groupId); err != nil {
+		if results, err := api.Category(config, langId, categoryId, categorySlug, page, groupId, []string{}); err != nil {
 			log.Println("error getting category top content: ", err)
 			return nil
 		} else {

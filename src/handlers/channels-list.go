@@ -9,7 +9,7 @@ import (
 	"sersh.com/totaltube/frontend/types"
 )
 
-func getChannelsListFunc(hostName string, langId string, defaultAmount int64, groupId int64) func(args ...any) *types.ChannelResults {
+func getChannelsListFunc(config *types.Config, langId string, defaultAmount int64, groupId int64) func(args ...any) *types.ChannelResults {
 	return func(args ...any) *types.ChannelResults {
 		parsingName := true
 		var amount = defaultAmount
@@ -35,7 +35,7 @@ func getChannelsListFunc(hostName string, langId string, defaultAmount int64, gr
 				amount, _ = strconv.ParseInt(val, 10, 64)
 			}
 		}
-		results, _, err := api.ChannelsList(hostName, langId, page, sortBy, amount, groupId)
+		results, _, err := api.ChannelsList(config, langId, page, sortBy, amount, groupId)
 		if err != nil {
 			log.Println("can't get channels list:", err)
 			return nil

@@ -17,9 +17,9 @@ var topCategoriesCache sync.Map
 var topCategoriesCacheExpire sync.Map
 
 // GetCachedTopCategories triple cache for top categories
-func GetCachedTopCategories(siteDomain string, groupID int64) (results *types.CategoryResults, err error) {
+func GetCachedTopCategories(siteConfig *types.Config, requestHost string, groupID int64) (results *types.CategoryResults, err error) {
 	lang := "en"
-	var cacheKey = "in:topcat:" + siteDomain + ":" + lang + ":" + strconv.FormatInt(groupID, 10)
+	var cacheKey = "in:topcat:" + requestHost + ":" + lang + ":" + strconv.FormatInt(groupID, 10)
 	helpers.KeyMutex.Lock(cacheKey)
 	defer helpers.KeyMutex.Unlock(cacheKey)
 	if value, ok := topCategoriesCacheExpire.Load(cacheKey); ok && value.(time.Time).After(time.Now()) {
@@ -32,7 +32,7 @@ func GetCachedTopCategories(siteDomain string, groupID int64) (results *types.Ca
 	var cached []byte
 	if cached, err = GetCachedTimeout(cacheKey, ttl, time.Hour*2, func() ([]byte, error) {
 		var rawResponse json.RawMessage
-		_, rawResponse, err = api.CategoriesList(siteDomain, lang, 1, api.SortPopular, 150, groupID)
+		_, rawResponse, err = api.CategoriesList(siteConfig, lang, 1, api.SortPopular, 150, groupID)
 		return rawResponse, err
 	}, false); err != nil {
 		log.Println(err)

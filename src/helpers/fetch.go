@@ -34,6 +34,13 @@ type FetchRequest struct {
 	timeout time.Duration
 }
 
+func (f *FetchRequest) siteNameForLog() string {
+	if f == nil || f.config == nil {
+		return ""
+	}
+	return f.config.Hostname
+}
+
 func newFetchRequest(u string, config *types.Config) *FetchRequest {
 	var headers = map[string]string{
 		"User-Agent": "Totaltube Frontend/1.0 (+https://totaltraffictrader.com/)",
@@ -43,11 +50,13 @@ func newFetchRequest(u string, config *types.Config) *FetchRequest {
 	if err != nil || (parsed.Host == "" && parsed.Scheme == "") {
 		apiUrl := internal.Config.General.ApiUrl
 		apiSecret := internal.Config.General.ApiSecret
-		if config.General.ApiUrl != "" {
-			apiUrl = config.General.ApiUrl
-		}
-		if config.General.ApiSecret != "" {
-			apiSecret = config.General.ApiSecret
+		if config != nil {
+			if config.General.ApiUrl != "" {
+				apiUrl = config.General.ApiUrl
+			}
+			if config.General.ApiSecret != "" {
+				apiSecret = config.General.ApiSecret
+			}
 		}
 		if u == "translate" {
 			timeout = time.Second * 60
@@ -210,7 +219,7 @@ func (f *FetchRequest) Do() (response []byte, err error) {
 			} else {
 				dd, err = json.Marshal(f.data)
 				if err != nil {
-					log.Println("can't marshal to json fetch function data", f.config.Hostname, err)
+					log.Println("can't marshal to json fetch function data", f.siteNameForLog(), err)
 					return
 				} else {
 					body = bytes.NewReader(dd)
@@ -222,7 +231,7 @@ func (f *FetchRequest) Do() (response []byte, err error) {
 	var request *http.Request
 	request, err = http.NewRequestWithContext(ctx, f.method, requestUrl, body)
 	if err != nil {
-		log.Println("error creating client request:", err, f.config.Hostname)
+		log.Println("error creating client request:", err, f.siteNameForLog())
 		return
 	}
 	requestQuery := request.URL.Query()
@@ -244,7 +253,7 @@ func (f *FetchRequest) Do() (response []byte, err error) {
 	resp, err = client.Do(request)
 	elapsed := time.Since(started)
 	if elapsed > time.Second*2 && !strings.Contains(request.URL.String(), "/translate") {
-		log.Println("too long request for ", request.URL.String(), f.config.Hostname, elapsed)
+		log.Println("too long request for ", request.URL.String(), f.siteNameForLog(), elapsed)
 	}
 	if err != nil {
 		log.Println(err, request.Host)
@@ -253,19 +262,19 @@ func (f *FetchRequest) Do() (response []byte, err error) {
 
 	if resp.StatusCode >= 300 {
 		err = errors.New(fmt.Sprintf("wrong status code: %d", resp.StatusCode))
-		log.Println(f.url, err, request.Host, f.config.Hostname)
+		log.Println(f.url, err, request.Host, f.siteNameForLog())
 	}
 	if strings.Contains(request.Header.Get("Accept"), "application/json") {
 		if !strings.Contains(resp.Header.Get("Content-Type"), "/json") {
 			err = errors.New(fmt.Sprintf("wrong content type: %s", resp.Header.Get("Content-Type")))
 			resp, _ := io.ReadAll(resp.Body)
-			log.Println(err, string(resp), request.Host, f.config.Hostname)
+			log.Println(err, string(resp), request.Host, f.siteNameForLog())
 			return
 		}
 	}
 	response, err = io.ReadAll(resp.Body)
 	if err != nil {
-		log.Println(err, f.config.Hostname)
+		log.Println(err, f.siteNameForLog())
 	}
 	elapsed = time.Since(started)
 	if elapsed > time.Second*2 && !strings.Contains(request.URL.String(), "/translate") {
@@ -278,12 +287,12 @@ func (f *FetchRequest) Json() (response map[string]interface{}) {
 	f.headers["Accept"] = "application/json"
 	bt, err := f.Do()
 	if err != nil {
-		log.Println(err, f.config.Hostname)
+		log.Println(err, f.siteNameForLog())
 		return nil
 	}
 	err = json.Unmarshal(bt, &response)
 	if err != nil {
-		log.Println(err, string(bt), f.config.Hostname)
+		//log.Println(err, string(bt), f.siteNameForLog())
 		return nil
 	}
 	return
@@ -291,7 +300,7 @@ func (f *FetchRequest) Json() (response map[string]interface{}) {
 
 func (f *FetchRequest) Raw() []byte {
 	if res, err := f.Do(); err != nil {
-		log.Println(err, f.config.Hostname)
+		log.Println(err, f.siteNameForLog())
 		return nil
 	} else {
 		return res

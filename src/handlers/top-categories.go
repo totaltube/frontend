@@ -24,7 +24,7 @@ import (
 	"sersh.com/totaltube/frontend/types"
 )
 
-func getTopCategoriesFunc(hostName string, langId string, groupId int64, config *types.Config) func(args ...interface{}) *types.CategoryResults {
+func getTopCategoriesFunc(config *types.Config, langId string, groupId int64) func(args ...interface{}) *types.CategoryResults {
 	return func(args ...interface{}) *types.CategoryResults {
 		parsingName := true
 		var page int64 = 1
@@ -46,7 +46,7 @@ func getTopCategoriesFunc(hostName string, langId string, groupId int64, config 
 				groupId, _ = strconv.ParseInt(val, 10, 32)
 			}
 		}
-		results, err := api.TopCategories(hostName, langId, page, groupId)
+		results, err := api.TopCategories(config, langId, page, groupId)
 		if err != nil {
 			log.Println("can't get top categories:", err)
 			return nil
@@ -80,7 +80,7 @@ var TopCategories = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 			strings.TrimPrefix(strings.ToLower(u.Hostname()), "www.") != hostName &&
 			!botDetector.IsBot(r.Header.Get("User-Agent")) {
 			var s = strings.ToLower(u.Path + " " + u.RawQuery)
-			if categories, err := db.GetCachedTopCategories(hostName, groupId); err == nil {
+			if categories, err := db.GetCachedTopCategories(config, hostName, groupId); err == nil {
 				for _, cat := range categories.Items {
 					for _, t := range cat.Tags {
 						if strings.Contains(s, t) {
@@ -136,7 +136,7 @@ var TopCategories = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 			var err error
 			var response json.RawMessage
 			response, err = db.GetCachedTimeout(cacheKey+":data", time.Duration(cacheTtl), time.Duration(cacheTtl), func() ([]byte, error) {
-				bt, err := api.TopCategoriesRaw(hostName, langId, page, groupId)
+				bt, err := api.TopCategoriesRaw(config, langId, page, groupId)
 				return bt, err
 			}, nocache)
 			if err != nil {

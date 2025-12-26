@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/flosch/pongo2/v6"
+	"github.com/samber/lo"
 	"github.com/sersh88/timeago"
 
 	"sersh.com/totaltube/frontend/helpers"
@@ -56,6 +57,36 @@ var iframeHttpReplace = regexp.MustCompile(`(?i)^http://`)
 func generateContext(name string, sitePath string, customContext pongo2.Context) pongo2.Context {
 	var mu sync.Mutex
 	refreshTranslations, _ := customContext["refreshTranslations"].(bool)
+	translateFunc := func(text any, params ...any) any {
+		langFrom := "en"
+		langTo := customContext["lang"].(*types.Language).Id
+		Type := "page-text"
+		currentIndex := 0
+		for currentIndex+1 < len(params) {
+			if param, ok := params[currentIndex].(string); ok {
+				switch param {
+				case "from":
+					if langFromParam, ok := params[currentIndex+1].(*types.Language); ok {
+						langFrom = langFromParam.Id
+					} else if langFromParam, ok := params[currentIndex+1].(string); ok {
+						langFrom = langFromParam
+					}
+				case "to":
+					if langToParam, ok := params[currentIndex+1].(*types.Language); ok {
+						langTo = langToParam.Id
+					} else if langToParam, ok := params[currentIndex+1].(string); ok {
+						langTo = langToParam
+					}
+				case "type":
+					if TypeParam, ok := params[currentIndex+1].(string); ok && lo.Contains(types.TranslationTypes, TypeParam) {
+						Type = TypeParam
+					}
+				}
+				currentIndex += 2
+			}
+		}
+		return deferredTranslate(langFrom, langTo, text, Type, refreshTranslations, customContext["config"].(*types.Config))
+	}
 	var ctx = pongo2.Context{
 		"flate":          helpers.Flate,
 		"deflate":        helpers.Deflate,
@@ -81,17 +112,15 @@ func generateContext(name string, sitePath string, customContext pongo2.Context)
 		"time8601":       helpers.Time8601,
 		"duration8601":   helpers.Duration8601,
 		"slugify":        helpers.Slugify,
-		"translate": func(text interface{}) interface{} {
-			return deferredTranslate("en", customContext["lang"].(*types.Language).Id, text, "page-text", refreshTranslations, customContext["config"].(*types.Config))
+		"translate":      translateFunc,
+		"translate_title": func(text any, params ...any) any {
+			return translateFunc(text, append(params, "type", "content-title")...)
 		},
-		"translate_title": func(text interface{}) interface{} {
-			return deferredTranslate("en", customContext["lang"].(*types.Language).Id, text, "content-title", refreshTranslations, customContext["config"].(*types.Config))
+		"translate_description": func(text any, params ...any) any {
+			return translateFunc(text, append(params, "type", "content-description")...)
 		},
-		"translate_description": func(text interface{}) interface{} {
-			return deferredTranslate("en", customContext["lang"].(*types.Language).Id, text, "content-description", refreshTranslations, customContext["config"].(*types.Config))
-		},
-		"translate_query": func(text interface{}) interface{} {
-			return deferredTranslate("en", customContext["lang"].(*types.Language).Id, text, "query", refreshTranslations, customContext["config"].(*types.Config))
+		"translate_query": func(text any, params ...any) any {
+			return translateFunc(text, append(params, "type", "query")...)
 		},
 		"static": func(filePaths ...string) string {
 			filePath := strings.Join(filePaths, "")

@@ -119,108 +119,112 @@ type ContentResultUser struct {
 	Name  string `json:"name"`
 }
 type ContentItemResult struct {
-	Id                 int64                          `json:"id"`
-	Slug               string                         `json:"slug"`
-	Title              string                         `json:"title"`
-	TitleTranslated    bool                           `json:"title_translated,omitempty"`
-	OriginalTitle      string                         `json:"original_title"`
-	Description        *string                        `json:"description,omitempty"`
-	Channel            *ChannelShortResult            `json:"channel,omitempty"`
-	Content            *string                        `json:"content,omitempty"`
-	Link               *string                        `json:"link,omitempty"`
-	CreatedAt          time.Time                      `json:"created_at"`
-	Dated              time.Time                      `json:"dated"`
-	Duration           ContentDuration                `json:"duration"`
-	Tags               []string                       `json:"tags"`
-	Keywords           []string                       `json:"keywords,omitempty"`
-	VideoServer        string                         `json:"video_server,omitempty"`
-	GalleryServer      string                         `json:"gallery_server,omitempty"`
-	VideoPath          string                         `json:"video_path,omitempty"`
-	GalleryPath        string                         `json:"gallery_path,omitempty"`
-	VideoPreviewServer string                         `json:"video_preview_server,omitempty"`
-	VideoPreviewPath   string                         `json:"video_preview_path,omitempty"`
-	PosterServer       string                         `json:"poster_server,omitempty"`
-	PosterPath         string                         `json:"poster_path,omitempty"`
-	GalleryItems       *map[string]ContentGalleryInfo `json:"gallery_items,omitempty"`
-	VideoSizes         *map[string]ContentVideoInfo   `json:"video_sizes,omitempty"`
-	ThumbFormats       []ThumbFormat                  `json:"thumb_formats"`
-	ThumbsServer       string                         `json:"thumbs_server"`        // thumb server url
-	ThumbsPath         string                         `json:"thumbs_path"`          // path to thumbs on thumb server
-	ThumbRetina        bool                           `json:"thumb_retina"`         // deprecated
-	ThumbWidth         int32                          `json:"thumb_width"`          // deprecated
-	ThumbsWidth        int32                          `json:"thumbs_width"`         // deprecated
-	ThumbHeight        int32                          `json:"thumb_height"`         // deprecated
-	ThumbsHeight       int32                          `json:"thumbs_height"`        // deprecated
-	ThumbsAmount       int32                          `json:"thumbs_amount"`        // deprecated
-	ThumbFormat        string                         `json:"thumb_format"`         // deprecated
-	ThumbType          string                         `json:"thumb_type"`           // deprecated
-	BestThumb          *int16                         `json:"best_thumb,omitempty"` // best thumb indexed from 0
-	Type               string                         `json:"type"`
-	Priority           int16                          `json:"priority,omitempty"`
-	User               ContentResultUser              `json:"user"`
-	Categories         TaxonomyResults                `json:"categories,omitempty"`
-	Models             TaxonomyResults                `json:"models,omitempty"`
-	Views              int32                          `json:"views"`
-	Related            []*ContentResult               `json:"related,omitempty"` // similar content
-	SourceSiteId       string                         `json:"source_site_id"`
-	SourceSiteUniqueId string                         `json:"source_site_unique_id"`
-	CustomData         CustomData                     `json:"custom_data"`
-	CustomTranslations CustomTranslations             `json:"custom_translations"`
-	Ratings            RatingsResults                 `json:"ratings"`
-	selectedThumb      *int
+	Id                      int64                          `json:"id"`
+	Slug                    string                         `json:"slug"`
+	Title                   string                         `json:"title"`
+	TitleTranslated         bool                           `json:"title_translated,omitempty"`
+	TitleTranslations       map[string]string              `json:"title_translations,omitempty"`
+	DescriptionTranslations map[string]string              `json:"description_translations,omitempty"`
+	OriginalTitle           string                         `json:"original_title"`
+	Description             *string                        `json:"description,omitempty"`
+	Channel                 *ChannelShortResult            `json:"channel,omitempty"`
+	Content                 *string                        `json:"content,omitempty"`
+	Link                    *string                        `json:"link,omitempty"`
+	CreatedAt               time.Time                      `json:"created_at"`
+	Dated                   time.Time                      `json:"dated"`
+	Duration                ContentDuration                `json:"duration"`
+	Tags                    []string                       `json:"tags"`
+	Keywords                []string                       `json:"keywords,omitempty"`
+	VideoServer             string                         `json:"video_server,omitempty"`
+	GalleryServer           string                         `json:"gallery_server,omitempty"`
+	VideoPath               string                         `json:"video_path,omitempty"`
+	GalleryPath             string                         `json:"gallery_path,omitempty"`
+	VideoPreviewServer      string                         `json:"video_preview_server,omitempty"`
+	VideoPreviewPath        string                         `json:"video_preview_path,omitempty"`
+	PosterServer            string                         `json:"poster_server,omitempty"`
+	PosterPath              string                         `json:"poster_path,omitempty"`
+	GalleryItems            *map[string]ContentGalleryInfo `json:"gallery_items,omitempty"`
+	VideoSizes              *map[string]ContentVideoInfo   `json:"video_sizes,omitempty"`
+	ThumbFormats            []ThumbFormat                  `json:"thumb_formats"`
+	ThumbsServer            string                         `json:"thumbs_server"`        // thumb server url
+	ThumbsPath              string                         `json:"thumbs_path"`          // path to thumbs on thumb server
+	ThumbRetina             bool                           `json:"thumb_retina"`         // deprecated
+	ThumbWidth              int32                          `json:"thumb_width"`          // deprecated
+	ThumbsWidth             int32                          `json:"thumbs_width"`         // deprecated
+	ThumbHeight             int32                          `json:"thumb_height"`         // deprecated
+	ThumbsHeight            int32                          `json:"thumbs_height"`        // deprecated
+	ThumbsAmount            int32                          `json:"thumbs_amount"`        // deprecated
+	ThumbFormat             string                         `json:"thumb_format"`         // deprecated
+	ThumbType               string                         `json:"thumb_type"`           // deprecated
+	BestThumb               *int16                         `json:"best_thumb,omitempty"` // best thumb indexed from 0
+	Type                    string                         `json:"type"`
+	Priority                int16                          `json:"priority,omitempty"`
+	User                    ContentResultUser              `json:"user"`
+	Categories              TaxonomyResults                `json:"categories,omitempty"`
+	Models                  TaxonomyResults                `json:"models,omitempty"`
+	Views                   int32                          `json:"views"`
+	Related                 []*ContentResult               `json:"related,omitempty"` // similar content
+	SourceSiteId            string                         `json:"source_site_id"`
+	SourceSiteUniqueId      string                         `json:"source_site_unique_id"`
+	CustomData              CustomData                     `json:"custom_data"`
+	CustomTranslations      CustomTranslations             `json:"custom_translations"`
+	Ratings                 RatingsResults                 `json:"ratings"`
+	selectedThumb           *int
 }
 
 type ContentResult struct {
-	Id                 int64                          `json:"id"`
-	Slug               string                         `json:"slug"`
-	Title              string                         `json:"title"`
-	TitleTranslated    bool                           `json:"title_translated,omitempty"`
-	OriginalTitle      string                         `json:"original_title"`
-	Description        *string                        `json:"description,omitempty"`
-	Channel            *ChannelShortResult            `json:"channel,omitempty"`
-	Content            *string                        `json:"content,omitempty"`
-	Link               *string                        `json:"link,omitempty"`
-	CreatedAt          time.Time                      `json:"created_at"`
-	Dated              time.Time                      `json:"dated"`
-	Duration           ContentDuration                `json:"duration"`
-	Tags               []string                       `json:"tags"`
-	Keywords           []string                       `json:"keywords,omitempty"`
-	GalleryServer      string                         `json:"gallery_server"`
-	VideoServer        string                         `json:"video_server"`
-	GalleryPath        string                         `json:"gallery_path"`
-	VideoPath          string                         `json:"video_path"`
-	GalleryItems       *map[string]ContentGalleryInfo `json:"gallery_items,omitempty"`
-	VideoSizes         *map[string]ContentVideoInfo   `json:"video_sizes,omitempty"`
-	ThumbsServer       string                         `json:"thumbs_server"` // thumb server url
-	ThumbsPath         string                         `json:"thumbs_path"`   // path to thumbs on thumb server
-	VideoPreviewServer string                         `json:"video_preview_server,omitempty"`
-	VideoPreviewPath   string                         `json:"video_preview_path,omitempty"`
-	PosterServer       string                         `json:"poster_server,omitempty"`
-	PosterPath         string                         `json:"poster_path,omitempty"`
-	ThumbFormats       []ThumbFormat                  `json:"thumb_formats"`
-	ThumbRetina        bool                           `json:"thumb_retina"`         // deprecated
-	ThumbWidth         int32                          `json:"thumb_width"`          // deprecated
-	ThumbsWidth        int32                          `json:"thumbs_width"`         // deprecated
-	ThumbHeight        int32                          `json:"thumb_height"`         // deprecated
-	ThumbsHeight       int32                          `json:"thumbs_height"`        // deprecated
-	ThumbsAmount       int32                          `json:"thumbs_amount"`        // deprecated
-	ThumbFormat        string                         `json:"thumb_format"`         // deprecated
-	ThumbType          string                         `json:"thumb_type"`           // deprecated
-	BestThumb          *int16                         `json:"best_thumb,omitempty"` // best thumb indexed from 0
-	Type               string                         `json:"type"`
-	Priority           int16                          `json:"priority,omitempty"`
-	User               ContentResultUser              `json:"user"`
-	Categories         TaxonomyResults                `json:"categories,omitempty"`
-	Models             TaxonomyResults                `json:"models,omitempty"`
-	RotationStatus     *CtrsStatus                    `json:"rotation_status,omitempty"`
-	Ctr                *float32                       `json:"ctr,omitempty"`
-	Views              int32                          `json:"views"`
-	SourceSiteId       string                         `json:"source_site_id"`
-	SourceSiteUniqueId string                         `json:"source_site_unique_id"`
-	CustomData         CustomData                     `json:"custom_data"`
-	CustomTranslations CustomTranslations             `json:"custom_translations"`
-	Ratings            RatingsResults                 `json:"ratings"`
-	selectedThumb      *int
+	Id                      int64                          `json:"id"`
+	Slug                    string                         `json:"slug"`
+	Title                   string                         `json:"title"`
+	TitleTranslated         bool                           `json:"title_translated,omitempty"`
+	OriginalTitle           string                         `json:"original_title"`
+	Description             *string                        `json:"description,omitempty"`
+	TitleTranslations       map[string]string              `json:"title_translations,omitempty"`
+	DescriptionTranslations map[string]string              `json:"description_translations,omitempty"`
+	Channel                 *ChannelShortResult            `json:"channel,omitempty"`
+	Content                 *string                        `json:"content,omitempty"`
+	Link                    *string                        `json:"link,omitempty"`
+	CreatedAt               time.Time                      `json:"created_at"`
+	Dated                   time.Time                      `json:"dated"`
+	Duration                ContentDuration                `json:"duration"`
+	Tags                    []string                       `json:"tags"`
+	Keywords                []string                       `json:"keywords,omitempty"`
+	GalleryServer           string                         `json:"gallery_server"`
+	VideoServer             string                         `json:"video_server"`
+	GalleryPath             string                         `json:"gallery_path"`
+	VideoPath               string                         `json:"video_path"`
+	GalleryItems            *map[string]ContentGalleryInfo `json:"gallery_items,omitempty"`
+	VideoSizes              *map[string]ContentVideoInfo   `json:"video_sizes,omitempty"`
+	ThumbsServer            string                         `json:"thumbs_server"` // thumb server url
+	ThumbsPath              string                         `json:"thumbs_path"`   // path to thumbs on thumb server
+	VideoPreviewServer      string                         `json:"video_preview_server,omitempty"`
+	VideoPreviewPath        string                         `json:"video_preview_path,omitempty"`
+	PosterServer            string                         `json:"poster_server,omitempty"`
+	PosterPath              string                         `json:"poster_path,omitempty"`
+	ThumbFormats            []ThumbFormat                  `json:"thumb_formats"`
+	ThumbRetina             bool                           `json:"thumb_retina"`         // deprecated
+	ThumbWidth              int32                          `json:"thumb_width"`          // deprecated
+	ThumbsWidth             int32                          `json:"thumbs_width"`         // deprecated
+	ThumbHeight             int32                          `json:"thumb_height"`         // deprecated
+	ThumbsHeight            int32                          `json:"thumbs_height"`        // deprecated
+	ThumbsAmount            int32                          `json:"thumbs_amount"`        // deprecated
+	ThumbFormat             string                         `json:"thumb_format"`         // deprecated
+	ThumbType               string                         `json:"thumb_type"`           // deprecated
+	BestThumb               *int16                         `json:"best_thumb,omitempty"` // best thumb indexed from 0
+	Type                    string                         `json:"type"`
+	Priority                int16                          `json:"priority,omitempty"`
+	User                    ContentResultUser              `json:"user"`
+	Categories              TaxonomyResults                `json:"categories,omitempty"`
+	Models                  TaxonomyResults                `json:"models,omitempty"`
+	RotationStatus          *CtrsStatus                    `json:"rotation_status,omitempty"`
+	Ctr                     *float32                       `json:"ctr,omitempty"`
+	Views                   int32                          `json:"views"`
+	SourceSiteId            string                         `json:"source_site_id"`
+	SourceSiteUniqueId      string                         `json:"source_site_unique_id"`
+	CustomData              CustomData                     `json:"custom_data"`
+	CustomTranslations      CustomTranslations             `json:"custom_translations"`
+	Ratings                 RatingsResults                 `json:"ratings"`
+	selectedThumb           *int
 }
 
 type ContentResults struct {

@@ -39,7 +39,7 @@ func main() {
 		log.Println("Initializing configuration...")
 		internal.InitConfig(CLI.Config)
 		log.Println("Initializing minion options...")
-		internal.Config.Options, err = api.Options(internal.Config.Frontend.DefaultSite)
+		internal.Config.Options, err = api.Options(nil)
 		if err != nil {
 			panic(errors.Wrap(err, "Can't get sites options"))
 		}
@@ -49,7 +49,7 @@ func main() {
 		log.Println("Initializing configuration...")
 		internal.InitConfig(CLI.Config)
 		log.Println("Initializing minion options...")
-		internal.Config.Options, err = api.Options(internal.Config.Frontend.DefaultSite)
+		internal.Config.Options, err = api.Options(nil)
 		if err != nil {
 			panic(errors.Wrap(err, "Can't get sites options"))
 		}

@@ -23,6 +23,11 @@ func WatchJS(path string, configPath string) {
 		mu := sync.Mutex{}
 		lastChange := time.Now()
 		for {
+			// Check if path still exists before watching
+			if _, err := os.Stat(path); os.IsNotExist(err) {
+				log.Printf("js directory %s no longer exists, stopping watch", path)
+				break
+			}
 			func() {
 				defer func() {
 					if r := recover(); r != nil {
@@ -31,6 +36,11 @@ func WatchJS(path string, configPath string) {
 				}()
 				c := make(chan notify.EventInfo, 1)
 				if err := notify.Watch(path, c, notify.All); err != nil {
+					// Check if directory was deleted
+					if _, statErr := os.Stat(path); os.IsNotExist(statErr) {
+						log.Printf("js directory %s was deleted, stopping watch", path)
+						return
+					}
 					log.Panicln(err)
 				}
 				matches, _ := filepath.Glob(filepath.Join(path, "*"))
@@ -52,6 +62,11 @@ func WatchJS(path string, configPath string) {
 				defer notify.Stop(c)
 				// waiting the signal after changing template files
 				ei := <-c
+				// Check if directory was deleted
+				if _, err := os.Stat(path); os.IsNotExist(err) {
+					log.Printf("js directory %s was deleted, stopping watch", path)
+					return
+				}
 				mu.Lock()
 				lastChange = time.Now()
 				mu.Unlock()

@@ -251,7 +251,7 @@ func doTranslations() {
 		go func(t toTranslateT) {
 			defer wg.Done()
 			defer func() { <-sem }()
-			translation, err := api.Translate("", t.translate)
+			translation, err := api.Translate(t.translate)
 			if err != nil {
 				log.Printf("Error translating '%s' from %s to %s: %s", t.translate.Text, t.translate.From, t.translate.To, err.Error())
 				TryAgainTranslation(t.translate.From, t.translate.To, t.translate.Text)

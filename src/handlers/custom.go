@@ -71,6 +71,9 @@ var Custom = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			Output404(w, r, err.Error())
 			return
 		}
+		if err.Error() == "custom response" {
+			return
+		}
 		log.Println(hostName, err)
 		Output500(w, r, err)
 		return

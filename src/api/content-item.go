@@ -26,10 +26,10 @@ type RelatedParams struct {
 	TagsBoost                    *float64
 }
 
-func ContentItem(siteDomain, lang, slug string, id int64, omitRelatedForLink bool, relatedAmount int64, groupId int64,
+func ContentItem(siteConfig *types.Config, lang, slug string, id int64, omitRelatedForLink bool, relatedAmount int64, groupId int64,
 	related *RelatedParams) (results *types.ContentItemResult, err error) {
 	var response json.RawMessage
-	response, err = ContentItemRaw(siteDomain, lang, slug, id, omitRelatedForLink, relatedAmount, groupId, related)
+	response, err = ContentItemRaw(siteConfig, lang, slug, id, omitRelatedForLink, relatedAmount, groupId, related)
 	if err != nil {
 		return
 	}
@@ -50,7 +50,7 @@ func ContentItem(siteDomain, lang, slug string, id int64, omitRelatedForLink boo
 	return
 }
 
-func ContentItemRaw(siteDomain, lang, slug string, id int64, omitRelatedForLink bool, relatedAmount int64, groupId int64,
+func ContentItemRaw(siteConfig *types.Config, lang, slug string, id int64, omitRelatedForLink bool, relatedAmount int64, groupId int64,
 	related *RelatedParams) (response json.RawMessage, err error) {
 	params := url.Values{}
 	if related != nil {
@@ -100,7 +100,7 @@ func ContentItemRaw(siteDomain, lang, slug string, id int64, omitRelatedForLink 
 	params.Add("orfl", strconv.FormatBool(omitRelatedForLink))
 	params.Add("related", strconv.FormatInt(relatedAmount, 10))
 	params.Add("group_id", strconv.FormatInt(groupId, 10))
-	response, err = Request(siteDomain, methodGet, uriContentItem, params)
+	response, err = Request(siteConfig, methodGet, uriContentItem, params)
 	if err != nil && !strings.Contains(err.Error(), "not found") {
 		log.Println(err, "slug: ", slug, "id: ", id)
 	}

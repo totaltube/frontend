@@ -101,7 +101,7 @@ var Channel = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			channelInfoCacheKey := fmt.Sprintf("in:chinfo:%d:%s:%s", channelId, channelSlug, langId)
 			channelInfoCacheTtl := time.Hour*24 + time.Duration(rand.Intn(3600*6))*time.Second
 			channelInfoCached, err := db.GetCachedTimeout(channelInfoCacheKey, channelInfoCacheTtl, time.Hour*4, func() ([]byte, error) {
-				_, rawResponse, err := api.ChannelInfo(hostName, langId, channelId, channelSlug)
+				_, rawResponse, err := api.ChannelInfo(config, langId, channelId, channelSlug)
 				return rawResponse, err
 			}, nocache)
 			if err != nil {
@@ -117,7 +117,7 @@ var Channel = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var results = new(types.ContentResults)
 			var response json.RawMessage
 			response, err = db.GetCachedTimeout(cacheKey+":data", time.Duration(cacheTtl), time.Duration(cacheTtl), func() ([]byte, error) {
-				return api.ContentRaw(hostName, api.ContentParams{
+				return api.ContentRaw(config, api.ContentParams{
 					Lang:         langId,
 					Page:         page,
 					CategoryId:   categoryId,

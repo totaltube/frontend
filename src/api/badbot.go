@@ -4,12 +4,13 @@ import (
 	"encoding/json"
 
 	"github.com/tidwall/gjson"
+	"sersh.com/totaltube/frontend/types"
 )
 
 func BadbotRegister(
-	siteDomain, ip string, userAgent string, referer string,
+	siteConfig *types.Config, ip string, userAgent string, referer string,
 ) (err error) {
-	_, err = Request(siteDomain, methodPost, uriBadbotRegister, M{
+	_, err = Request(siteConfig, methodPost, uriBadbotRegister, M{
 		"ip":         ip,
 		"user_agent": userAgent,
 		"referer":    referer,
@@ -19,7 +20,7 @@ func BadbotRegister(
 
 func GetBadBots() (badBots []string, err error) {
 	var response json.RawMessage
-	response, err = Request("", methodGet, uriBadBotsList, nil)
+	response, err = Request(nil, methodGet, uriBadBotsList, nil)
 	if err != nil {
 		return
 	}
@@ -33,7 +34,7 @@ func GetBadBots() (badBots []string, err error) {
 
 func GetWhitelistBots() (whitelistBots []string, err error) {
 	var response json.RawMessage
-	response, err = Request("", methodGet, uriWhitelistBotsList, nil)
+	response, err = Request(nil, methodGet, uriWhitelistBotsList, nil)
 	if err != nil {
 		return
 	}

@@ -17,9 +17,9 @@ const (
 )
 
 func GetComments(
-	siteDomain string, contentId int64, from int, size int, sort CommentsSortBy, lang string,
+	siteConfig *types.Config, contentId int64, from int, size int, sort CommentsSortBy, lang string,
 ) (results *types.CommentsResult, response json.RawMessage, err error) {
-	response, err = Request(siteDomain, methodGet, uriCommentsGet, url.Values{
+	response, err = Request(siteConfig, methodGet, uriCommentsGet, url.Values{
 		"lang":       []string{lang},
 		"sort":       []string{string(sort)},
 		"size":       []string{strconv.FormatInt(int64(size), 10)},
@@ -34,8 +34,8 @@ func GetComments(
 	return
 }
 
-func GetReplyComments(siteDomain string, commentId int64) (results *types.ReplyCommentsResult, response json.RawMessage, err error) {
-	response, err = Request(siteDomain, methodGet, uriCommentsReplies, url.Values{
+func GetReplyComments(siteConfig *types.Config, commentId int64) (results *types.ReplyCommentsResult, response json.RawMessage, err error) {
+	response, err = Request(siteConfig, methodGet, uriCommentsReplies, url.Values{
 		"comment_id": []string{strconv.FormatInt(commentId, 10)},
 	})
 	if err != nil {

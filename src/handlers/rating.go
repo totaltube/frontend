@@ -14,7 +14,6 @@ import (
 
 var Rating = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	config := r.Context().Value(types.ContextKeyConfig).(*types.Config)
-	hostName := r.Context().Value(types.ContextKeyHostName).(string)
 	ip := r.Context().Value(types.ContextKeyIp).(string)
 	slug, _ := url.PathUnescape(chi.URLParam(r, "slug"))
 	id, _ := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
@@ -40,7 +39,7 @@ var Rating = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	}
 	// All calculations are done in background
 	go func() {
-		err := api.Rating(hostName, ip, id, slug, like)
+		err := api.Rating(config, ip, id, slug, like)
 		if err != nil {
 			log.Println(err)
 		}

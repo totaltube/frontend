@@ -54,7 +54,6 @@ canonical_no_pagination = false # If true, canonical/alternate urls are without 
 
 [frontend]
 sites_path = "sites" # Path to sites directory
-default_site = "example.com" # Default site
 secret_key = "random-secret" # Secret key for security
 captcha_key = "" # reCAPTCHA site key
 captcha_secret = "" # reCAPTCHA secret key
@@ -88,6 +87,13 @@ top_content_pagination = "30 minutes" # Cache timeout for top content pagination
 top_categories = "3 minutes" # Cache timeout for top categories
 top_categories_pagination = "30 minutes" # Cache timeout for top categories pagination
 ```
+
+### Host routing behavior
+
+Frontend selects site config by request `Host` header (matched against directories inside `sites_path`).
+
+- If there are no sites on disk, or request host doesn't match any site directory, frontend returns **HTTP 404**.
+- There is **no default/fallback site**.
 
 ## Command Line Interface
 Totaltube Frontend supports the following commands:

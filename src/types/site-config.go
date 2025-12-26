@@ -150,7 +150,9 @@ type (
 		Debug                              bool     `toml:"debug"`
 		ApiUrl                             string   `toml:"api_url"`
 		ApiSecret                          string   `toml:"api_secret"`
-		ToplistDataUrl                     string   `toml:"toplist_data_url"` // url to json file with toplist data for trade scripts
+		ToplistDataUrl                     string   `toml:"toplist_data_url"`                 // url to json file with toplist data for trade scripts
+		IncludeToplistLanguageLinks        bool     `toml:"include_toplist_language_links"`   // if true, language links will be included in toplist data
+		RouteForToplistLanguageLinks       string   `toml:"route_for_toplist_language_links"` // route to use for toplist language links
 		DeletedTaxonomiesToSearch          bool     `toml:"deleted_taxonomies_to_search"`
 		DeletedTaxonomiesToSearchPermanent bool     `toml:"deleted_taxonomies_to_search_permanent"`
 		RandomizeRatio                     float64  `toml:"randomize_ratio"`
@@ -214,13 +216,15 @@ func NewConfig() *Config {
 			LastVideosAmount: 500,
 		},
 		General: ConfigGeneral{
-			MinifyHtml:                 true,
-			PaginationMaxRenderedLinks: 10,
-			ModelsPerPage:              200,
-			ContentRelatedAmount:       16,
-			DefaultLanguage:            "en",
-			RandomizeRatio:             -1,
-			CanonicalNoPagination:      nil,
+			MinifyHtml:                  true,
+			PaginationMaxRenderedLinks:  10,
+			ModelsPerPage:               200,
+			ContentRelatedAmount:        16,
+			DefaultLanguage:             "en",
+			RandomizeRatio:              -1,
+			CanonicalNoPagination:       nil,
+			ToplistDataUrl:              "/_toplist_data.json",
+			IncludeToplistLanguageLinks: true,
 		},
 		Javascript: ConfigJs{
 			Entries: []string{"main.ts"},

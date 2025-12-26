@@ -3,10 +3,13 @@ package main
 import (
 	"context"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/samber/lo"
@@ -34,25 +37,132 @@ func fixPageAndIdRoute(pageRoute string) string {
 	return res
 }
 
+func normalizeHostHeader(hostHeader string) string {
+	hostHeader = strings.TrimSpace(hostHeader)
+	if hostHeader == "" {
+		return ""
+	}
+	normalizedHost := internal.NormalizeHost(hostHeader)
+	// Prefer proper host parsing if a port is present (handles IPv6 like "[::1]:8080")
+	if _, _, err := net.SplitHostPort(hostHeader); err == nil {
+		if h, _, err2 := net.SplitHostPort(hostHeader); err2 == nil {
+			normalizedHost = internal.NormalizeHost(h)
+		}
+	}
+	return normalizedHost
+}
+
 func InitRouter() http.Handler {
-	hosts := map[string]*hostRouter{}
-	defaultSiteOk := false
+	var hosts atomic.Value // map[string]*hostRouter
+	hosts.Store(map[string]*hostRouter{})
+
+	var primaryRoutersMu sync.Mutex
+	primaryRouters := map[string]*hostRouter{} // configPath -> router
+
+	var initialized atomic.Bool
+
+	rebuildCh := make(chan struct{}, 1)
+	triggerRebuild := func() {
+		if !initialized.Load() {
+			return
+		}
+		select {
+		case rebuildCh <- struct{}{}:
+		default:
+		}
+	}
+	updateFn := func(cfg *types.Config, configSource string) error {
+		// Trigger host map rebuild early; API update may retry/sleep.
+		triggerRebuild()
+		return api.UpdateConfigRetry(cfg, configSource)
+	}
+
+	rebuildHosts := func() {
+		primaryRoutersMu.Lock()
+		defer primaryRoutersMu.Unlock()
+
+		newHosts := map[string]*hostRouter{}
+		for _, hr := range primaryRouters {
+			primaryHost := internal.NormalizeHost(filepath.Base(hr.path))
+			if primaryHost == "" {
+				log.Printf("warning: empty host for site directory %q (config %q), skipping", hr.path, hr.configPath)
+				continue
+			}
+			if existing := newHosts[primaryHost]; existing != nil {
+				log.Printf("warning: host %q from %q already registered by %q, keeping the first one", primaryHost, hr.configPath, existing.configPath)
+				continue
+			}
+			newHosts[primaryHost] = hr
+
+			// Register additional host aliases from language_domains.
+			cfg := internal.GetConfig(hr.configPath, api.UpdateConfigRetry)
+			for langKey, raw := range cfg.LanguageDomains {
+				target, ok := internal.ParseLanguageDomainTarget(raw)
+				if !ok || target == nil {
+					continue
+				}
+				aliasHost := target.NormalizedHost
+				if aliasHost == "" || aliasHost == primaryHost {
+					continue
+				}
+				if existing := newHosts[aliasHost]; existing != nil && existing.configPath != hr.configPath {
+					log.Printf("warning: language domain host %q (key %q) from %q already registered by %q, skipping", aliasHost, langKey, hr.configPath, existing.configPath)
+					continue
+				}
+				newHosts[aliasHost] = hr
+			}
+		}
+
+		hosts.Store(newHosts)
+	}
+
+	// Debounced rebuild: collapse rapid consecutive config changes into a single hosts-map swap.
+	go func() {
+		var t *time.Timer
+		for range rebuildCh {
+			if t != nil {
+				if !t.Stop() {
+					select {
+					case <-t.C:
+					default:
+					}
+				}
+			}
+			t = time.NewTimer(250 * time.Millisecond)
+		Drain:
+			for {
+				select {
+				case <-rebuildCh:
+					if !t.Stop() {
+						select {
+						case <-t.C:
+						default:
+						}
+					}
+					t.Reset(250 * time.Millisecond)
+				case <-t.C:
+					rebuildHosts()
+					t = nil
+					break Drain
+				}
+			}
+		}
+	}()
+
 	matches, err := filepath.Glob(filepath.Join(internal.Config.Frontend.SitesPath, "*"))
 	if err != nil {
 		log.Fatalln(err)
 	}
 	for _, m := range matches {
-		m := m
 		configPath := filepath.Join(m, "config.toml")
 		if _, err := os.Stat(configPath); err != nil {
 			continue
 		}
-		config := internal.GetConfigAndWatch(configPath, api.UpdateConfigRetry)
+		config := internal.GetConfigAndWatch(configPath, updateFn)
 		h := hostRouter{
 			configPath: configPath,
 			path:       m,
 		}
-		hostName := filepath.Base(m)
 		jsPath := filepath.Join(m, "js")
 		if _, err := os.Stat(jsPath); err == nil {
 			site.WatchJS(jsPath, configPath) // Следить за директорией и пересоздавать js
@@ -70,13 +180,16 @@ func InitRouter() http.Handler {
 			log.Println("Using access log")
 		}
 		hr.Use(middleware.StripSlashes)
+		// Handle language domain redirect and set config in context
 		hr.Use(func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				config := internal.GetConfig(configPath, api.UpdateConfigRetry)
 				r = r.WithContext(context.WithValue(r.Context(), types.ContextKeyConfig, config))
 				r = r.WithContext(context.WithValue(r.Context(), types.ContextKeyPath, h.path))
-				r = r.WithContext(context.WithValue(r.Context(), types.ContextKeyHostName, hostName))
 				r = r.WithContext(context.WithValue(r.Context(), types.ContextKeyLang, config.General.DefaultLanguage))
+				if handlers.HandleLanguageDomainRedirect(w, r, config) {
+					return
+				}
 				next.ServeHTTP(w, r)
 			})
 		})
@@ -331,15 +444,15 @@ func InitRouter() http.Handler {
 		hr.NotFound(handlers.Handle404)
 		//hr.Handle("/*", handlers.Handle404)
 		h.handler = hr
-		hosts[hostName] = &h
-		if hostName == internal.Config.Frontend.DefaultSite {
-			defaultSiteOk = true
-		}
+		primaryRoutersMu.Lock()
+		primaryRouters[configPath] = &h
+		primaryRoutersMu.Unlock()
 	}
-	if !defaultSiteOk {
-		log.Fatalln("Default site", internal.Config.Frontend.DefaultSite,
-			"not present in", internal.Config.Frontend.SitesPath)
-	}
+
+	// Initial build: publish hosts map once, then allow hot rebuilds on config reload.
+	rebuildHosts()
+	initialized.Store(true)
+
 	r := chi.NewRouter()
 	r.Use(middleware.Recoverer)
 	r.Use(middlewares.Timeout(10 * time.Second))
@@ -347,15 +460,14 @@ func InitRouter() http.Handler {
 		r.Mount(internal.Config.General.DebugRoute, middleware.Profiler())
 	}
 	r.Mount("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		hostName := strings.TrimPrefix(strings.ToLower(r.Host), "www.")
-		host := hosts[hostName]
+		normalizedHost := normalizeHostHeader(r.Host)
+		hostsMap := hosts.Load().(map[string]*hostRouter)
+		host := hostsMap[normalizedHost]
 		if host == nil {
-			host = hosts[strings.Split(hostName, ":")[0]]
+			http.NotFound(w, r)
+			return
 		}
-		if host == nil {
-			log.Println("can't find hostname", hostName, ", defaulting to", internal.Config.Frontend.DefaultSite)
-			host = hosts[internal.Config.Frontend.DefaultSite]
-		}
+		r = r.WithContext(context.WithValue(r.Context(), types.ContextKeyHostName, normalizedHost))
 		// get first not empty value
 		ip := r.Header.Get(internal.Config.General.RealIpHeader)
 		if ip == "" {

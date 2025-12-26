@@ -22,7 +22,60 @@ import (
 	"sersh.com/totaltube/frontend/internal"
 )
 
-var urlRegex = regexp.MustCompile(`^https?://([^/]+)`)
+func redirectToLanguageDomain(w http.ResponseWriter, r *http.Request, target *internal.LanguageDomainTarget, status int, hostName, reason string) {
+	if target == nil {
+		return
+	}
+	redirectPath := path.Join(target.Path, strings.TrimPrefix(r.URL.Path, "/"))
+	if redirectPath == "" || redirectPath == "." {
+		redirectPath = target.Path
+	}
+	if redirectPath == "" {
+		redirectPath = "/"
+	}
+	if !strings.HasPrefix(redirectPath, "/") {
+		redirectPath = "/" + redirectPath
+	}
+	if r.URL.RawQuery != "" {
+		redirectPath += "?" + r.URL.RawQuery
+	}
+	location := target.Scheme + target.Host + redirectPath
+	http.Redirect(w, r, location, status)
+	if internal.Config.General.EnableAccessLog {
+		log.Println(hostName, status, reason, location)
+	}
+}
+
+// HandleLanguageDomainRedirect handles redirects for unknown domains only.
+// Known domains (in language_domains) are handled by LangHandlers which know about routes.
+// - Unknown domains (not in language_domains) → 301 redirect to default
+// - Known domains → no redirect, let handlers decide
+// Returns true if redirect happened.
+func HandleLanguageDomainRedirect(w http.ResponseWriter, r *http.Request, siteConfig *types.Config) bool {
+	if siteConfig == nil || len(siteConfig.LanguageDomains) == 0 {
+		return false
+	}
+	requestHost := internal.NormalizeHost(r.Host)
+	if requestHost == "" {
+		if ctxHost, ok := r.Context().Value(types.ContextKeyHostName).(string); ok {
+			requestHost = internal.NormalizeHost(ctxHost)
+		}
+	}
+	if requestHost == "" {
+		return false
+	}
+	// Known domain (in language_domains) → no redirect, let handlers decide
+	if internal.HostInLanguageDomains(requestHost, siteConfig.LanguageDomains) {
+		return false
+	}
+	// Unknown domain → 301 redirect to default
+	defaultDomain, hasDefault := internal.GetDefaultLanguageDomainTarget(siteConfig)
+	if !hasDefault {
+		return false
+	}
+	redirectToLanguageDomain(w, r, defaultDomain, http.StatusMovedPermanently, requestHost, "Unknown language domain")
+	return true
+}
 
 // LangHandlers Function creates language routes like /ru/someroute, /en/someroute etc.
 func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler http.Handler) {
@@ -54,35 +107,18 @@ func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler h
 			preparedRoute = strings.TrimSuffix(preparedRoute, "/")
 		}
 		hr.Handle(preparedRoute, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if d, ok := siteConfig.LanguageDomains[langId]; ok {
-				matches := urlRegex.FindStringSubmatch(d)
-				var scheme = "https://"
-				var uri = "/"
-				if len(matches) > 1 {
-					u, _ := url.Parse(d)
-					scheme = u.Scheme + "://"
-					uri = u.Path
-					d = u.Hostname()
-				}
-				if d != r.Context().Value(types.ContextKeyHostName) {
-					uriToRedirect := path.Join(uri, r.URL.Path)
+			currentHost := internal.NormalizeHost(r.Host)
+			// Check if we need to redirect to the correct domain for this language
+			if d, ok := siteConfig.LanguageDomains[langId]; ok && d != "" {
+				targetHost := internal.NormalizeHost(d)
+				if targetHost != currentHost {
+					// Current domain is not configured for this language, redirect
+					scheme := "https://"
+					redirectPath := r.URL.Path
 					if r.URL.RawQuery != "" {
-						uriToRedirect += "?" + r.URL.RawQuery
+						redirectPath += "?" + r.URL.RawQuery
 					}
-					http.Redirect(w, r, scheme+d+uriToRedirect, http.StatusMovedPermanently)
-					return
-				}
-			} else if siteConfig.General.CanonicalUrl != "" {
-				// detect canonicalDomain
-				canonicalParsed, _ := url.Parse(siteConfig.General.CanonicalUrl)
-				canonicalDomain := canonicalParsed.Hostname()
-				canonicalDomain = strings.TrimPrefix(canonicalDomain, "www.")
-				if canonicalDomain != r.Context().Value(types.ContextKeyHostName) {
-					uriToRedirect := r.URL.Path
-					if r.URL.RawQuery != "" {
-						uriToRedirect += "?" + r.URL.RawQuery
-					}
-					http.Redirect(w, r, "https://"+canonicalParsed.Host+uriToRedirect, http.StatusMovedPermanently)
+					http.Redirect(w, r, scheme+targetHost+redirectPath, http.StatusMovedPermanently)
 					return
 				}
 			}
@@ -172,6 +208,24 @@ func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler h
 		hr.Handle(route, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			langCookie, _ := r.Cookie(internal.Config.General.LangCookie)
 			hostName := r.Context().Value(types.ContextKeyHostName).(string)
+			// If on language-specific domain without cookie, redirect to default domain for lang detection
+			if langCookie == nil && len(siteConfig.LanguageDomains) > 0 {
+				defaultDomain, hasDefault := internal.GetDefaultLanguageDomainTarget(siteConfig)
+				currentHost := internal.NormalizeHost(r.Host)
+				if hasDefault && currentHost != defaultDomain.NormalizedHost && internal.HostInLanguageDomains(currentHost, siteConfig.LanguageDomains) {
+					redirectPath := r.URL.Path
+					if r.URL.RawQuery != "" {
+						redirectPath += "?" + r.URL.RawQuery
+					}
+					w.Header().Add("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+					w.Header().Add("Pragma", "no-cache")
+					http.Redirect(w, r, defaultDomain.Scheme+defaultDomain.Host+redirectPath, http.StatusFound)
+					if internal.Config.General.EnableAccessLog {
+						log.Println(hostName, 302, "Redirect to default domain for lang detection")
+					}
+					return
+				}
+			}
 			langValue := ""
 			if langCookie != nil {
 				langValue = langCookie.Value
@@ -200,7 +254,7 @@ func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler h
 					strings.TrimPrefix(strings.ToLower(u.Hostname()), "www.") != hostName &&
 					!botDetector.IsBot(r.Header.Get("User-Agent")) {
 					var s = strings.ToLower(u.Path + " " + u.RawQuery)
-					if categories, err := db.GetCachedTopCategories(hostName, groupId); err == nil {
+					if categories, err := db.GetCachedTopCategories(siteConfig, hostName, groupId); err == nil {
 						for _, cat := range categories.Items {
 							tags := make([]string, 0, len(cat.Tags)+1)
 							for _, t := range cat.Tags {
@@ -255,6 +309,24 @@ func LangHandlers(hr *chi.Mux, route string, siteConfig *types.Config, handler h
 	} else {
 		hr.Handle(route, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			langCookie, _ := r.Cookie(internal.Config.General.LangCookie)
+			// If on language-specific domain without cookie, redirect to default domain for lang detection
+			if langCookie == nil && len(siteConfig.LanguageDomains) > 0 {
+				defaultDomain, hasDefault := internal.GetDefaultLanguageDomainTarget(siteConfig)
+				currentHost := internal.NormalizeHost(r.Host)
+				if hasDefault && currentHost != defaultDomain.NormalizedHost && internal.HostInLanguageDomains(currentHost, siteConfig.LanguageDomains) {
+					redirectPath := r.URL.Path
+					if r.URL.RawQuery != "" {
+						redirectPath += "?" + r.URL.RawQuery
+					}
+					w.Header().Add("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+					w.Header().Add("Pragma", "no-cache")
+					http.Redirect(w, r, defaultDomain.Scheme+defaultDomain.Host+redirectPath, http.StatusFound)
+					if internal.Config.General.EnableAccessLog {
+						log.Println("Redirect to default domain for lang detection")
+					}
+					return
+				}
+			}
 			langValue := ""
 			if langCookie != nil {
 				langValue = langCookie.Value

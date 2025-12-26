@@ -308,7 +308,7 @@ func ParseTemplate(name, path string, config *types.Config, customContext pongo2
 				var v goja.Value
 				v, err = vm.RunProgram(program)
 				if err != nil {
-					log.Println(err, path, name, config.Hostname)
+					log.Println(err, path, name, config.Hostname, funcName+"("+argsString+")")
 					return nil
 				}
 				return v.Export()
@@ -349,7 +349,10 @@ func ParseTemplate(name, path string, config *types.Config, customContext pongo2
 		}
 		// выведем строку из result, которая содержит слово dynamic
 		if config.General.MinifyHtml {
-			result = helpers.MinifyBytes(result)
+			result, err = helpers.MinifyBytes(result)
+			if err != nil {
+				log.Println("can't minify html:", err, name, path, config.Hostname)
+			}
 		}
 		return
 	}

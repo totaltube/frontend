@@ -19,7 +19,7 @@ func (node *tagSitemapAlternatesNode) Execute(ctx *pongo2.ExecutionContext, writ
 	}
 
 	hostName := context.Public["host"].(string)
-	if d, ok := config.LanguageDomains["default"]; ok && d != "" {
+	if d, ok := internal.GetDefaultLanguageDomainValue(config); ok && d != "" {
 		hostName = d
 	}
 

@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"time"
 
@@ -21,6 +22,8 @@ import (
 	"sersh.com/totaltube/frontend/site"
 	"sersh.com/totaltube/frontend/types"
 )
+
+var urlRegex = regexp.MustCompile(`^https?://([^/]+)`)
 
 var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	config := r.Context().Value(types.ContextKeyConfig).(*types.Config)
@@ -96,7 +99,7 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		pages := (config.Sitemap.CategoriesAmount + config.Sitemap.MaxLinks - 1) / config.Sitemap.MaxLinks
 		var num int64
 		if page <= pages {
-			results, err := getSitemapCategories(config.Hostname, config.Sitemap.CategoriesAmount)
+			results, err := getSitemapCategories(config, config.Hostname, config.Sitemap.CategoriesAmount)
 			if err != nil {
 				log.Println(err)
 				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -157,7 +160,7 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		pages := (config.Sitemap.ModelsAmount + config.Sitemap.MaxLinks - 1) / config.Sitemap.MaxLinks
 		var num int64
 		if page <= pages {
-			results, err := getSitemapModels(config.Hostname, config.Sitemap.ModelsAmount)
+			results, err := getSitemapModels(config, config.Hostname, config.Sitemap.ModelsAmount)
 			if err != nil {
 				log.Println(err)
 				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -218,7 +221,7 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		pages := (config.Sitemap.ChannelsAmount + config.Sitemap.MaxLinks - 1) / config.Sitemap.MaxLinks
 		var num int64
 		if page <= pages {
-			results, err := getSitemapChannels(config.Hostname, config.Sitemap.ChannelsAmount)
+			results, err := getSitemapChannels(config, config.Hostname, config.Sitemap.ChannelsAmount)
 			if err != nil {
 				log.Println(err)
 				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -279,7 +282,7 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		pages := (config.Sitemap.LastVideosAmount + config.Sitemap.MaxLinks - 1) / config.Sitemap.MaxLinks
 		var num int64
 		if page <= pages {
-			results, err := getSitemapVideos(config.Hostname, config.Sitemap.MaxLinks, page)
+			results, err := getSitemapVideos(config, config.Hostname, config.Sitemap.MaxLinks, page)
 			if err != nil {
 				log.Println(err)
 				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -388,7 +391,7 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		pages := (config.Sitemap.SearchesAmount + config.Sitemap.MaxLinks - 1) / config.Sitemap.MaxLinks
 		var num int64
 		if page <= pages {
-			results, err := getSitemapSearches(config.Hostname, lang, config.Sitemap.SearchesAmount)
+			results, err := getSitemapSearches(config, config.Hostname, lang, config.Sitemap.SearchesAmount)
 			if err != nil {
 				log.Println(err)
 				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -510,12 +513,12 @@ var Sitemap = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	_, _ = doc.WriteTo(w)
 })
 
-func getSitemapCategories(hostName string, amount int64) (results *types.CategoryResults, err error) {
+func getSitemapCategories(siteConfig *types.Config, hostName string, amount int64) (results *types.CategoryResults, err error) {
 	var ttl = time.Hour*2 + time.Duration(rand.Intn(3600))*time.Second
 	var cached []byte
 	if cached, err = db.GetCachedTimeout(fmt.Sprintf("sitemap:%s:top-categories-%d", hostName, amount), ttl, time.Hour*2, func() ([]byte, error) {
 		var rawResponse json.RawMessage
-		_, rawResponse, err = api.CategoriesList(hostName, "en", 1, api.SortPopular, amount, 0)
+		_, rawResponse, err = api.CategoriesList(siteConfig, "en", 1, api.SortPopular, amount, 0)
 		return rawResponse, err
 	}, false); err != nil {
 		return
@@ -525,12 +528,12 @@ func getSitemapCategories(hostName string, amount int64) (results *types.Categor
 	return
 }
 
-func getSitemapModels(hostName string, amount int64) (results *types.ModelResults, err error) {
+func getSitemapModels(siteConfig *types.Config, hostName string, amount int64) (results *types.ModelResults, err error) {
 	var ttl = time.Hour*2 + time.Duration(rand.Intn(3600))*time.Second
 	var cached []byte
 	if cached, err = db.GetCachedTimeout(fmt.Sprintf("sitemap:%s:top-models-%d", hostName, amount), ttl, time.Hour*2, func() ([]byte, error) {
 		var rawResponse json.RawMessage
-		rawResponse, err = api.ModelsListRaw(hostName, "en", 1, api.SortPopular, amount, "", 0)
+		rawResponse, err = api.ModelsListRaw(siteConfig, "en", 1, api.SortPopular, amount, "", 0)
 		return rawResponse, err
 	}, false); err != nil {
 		return
@@ -540,12 +543,12 @@ func getSitemapModels(hostName string, amount int64) (results *types.ModelResult
 	return
 }
 
-func getSitemapChannels(hostName string, amount int64) (results *types.ChannelResults, err error) {
+func getSitemapChannels(siteConfig *types.Config, hostName string, amount int64) (results *types.ChannelResults, err error) {
 	var ttl = time.Hour*2 + time.Duration(rand.Intn(3600))*time.Second
 	var cached []byte
 	if cached, err = db.GetCachedTimeout(fmt.Sprintf("sitemap:%s:top-channels-%d", hostName, amount), ttl, time.Hour*2, func() ([]byte, error) {
 		var rawResponse json.RawMessage
-		_, rawResponse, err = api.ChannelsList(hostName, "en", 1, api.SortPopular, amount, 0)
+		_, rawResponse, err = api.ChannelsList(siteConfig, "en", 1, api.SortPopular, amount, 0)
 		return rawResponse, err
 	}, false); err != nil {
 		return
@@ -555,12 +558,12 @@ func getSitemapChannels(hostName string, amount int64) (results *types.ChannelRe
 	return
 }
 
-func getSitemapVideos(hostName string, amount int64, page int64) (results *types.ContentResults, err error) {
+func getSitemapVideos(siteConfig *types.Config, hostName string, amount int64, page int64) (results *types.ContentResults, err error) {
 	var ttl = time.Hour*2 + time.Duration(rand.Intn(3600))*time.Second
 	var cached []byte
 	if cached, err = db.GetCachedTimeout(fmt.Sprintf("sitemap:%s:top-videos-%d-%d", hostName, amount, page), ttl, time.Hour*2, func() ([]byte, error) {
 		var rawResponse json.RawMessage
-		rawResponse, err = api.ContentRaw(hostName, api.ContentParams{
+		rawResponse, err = api.ContentRaw(siteConfig, api.ContentParams{
 			Amount: amount,
 			Sort:   api.SortDated,
 			Page:   page,
@@ -578,12 +581,12 @@ func getSitemapVideos(hostName string, amount int64, page int64) (results *types
 	return
 }
 
-func getSitemapSearches(hostName string, lang string, amount int64) (results []types.TopSearch, err error) {
+func getSitemapSearches(siteConfig *types.Config, hostName string, lang string, amount int64) (results []types.TopSearch, err error) {
 	var ttl = time.Hour + time.Duration(rand.Intn(3600))*time.Second
 	var cached []byte
 	if cached, err = db.GetCachedTimeout(fmt.Sprintf("sitemap:%s:%s:top-searches-%d", hostName, lang, amount), ttl, ttl, func() ([]byte, error) {
 		var rawResponse json.RawMessage
-		_, rawResponse, err = api.TopSearches(hostName, lang, amount)
+		_, rawResponse, err = api.TopSearches(siteConfig, lang, amount)
 		return rawResponse, err
 	}, false); err != nil {
 		log.Println(err)

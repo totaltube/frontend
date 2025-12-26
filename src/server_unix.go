@@ -111,6 +111,12 @@ func startServer() {
 		go handleRequest(client, childPid)
 	}
 }
+
+/*
+handleRequest is a function that handles a request from a client to a child process.
+It connects to the child process via a unix socket and copies the data between the client and the child process.
+If the connection to the child process is lost, it reloads the child process.
+*/
 func handleRequest(src net.Conn, pid int) {
 	defer src.Close()
 	socketFile := filepath.Join(os.TempDir(), fmt.Sprintf("totaltube-frontend-%d.sock", pid))

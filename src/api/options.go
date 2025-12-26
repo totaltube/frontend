@@ -5,11 +5,12 @@ import (
 	"net/url"
 
 	"sersh.com/totaltube/frontend/internal"
+	"sersh.com/totaltube/frontend/types"
 )
 
-func Options(siteDomain string) (results *internal.Options, err error) {
+func Options(siteConfig *types.Config) (results *internal.Options, err error) {
 	var response json.RawMessage
-	response, err = Request(siteDomain, methodGet, uriOptions, url.Values{})
+	response, err = Request(siteConfig, methodGet, uriOptions, url.Values{})
 	if err != nil {
 		return
 	}

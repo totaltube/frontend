@@ -109,7 +109,13 @@ func GetConfigAndWatch(configPath string, updateConfig func(config *types.Config
 	go func() {
 		var m sync.Mutex
 		var lastChange time.Time
+		watchDir := filepath.Dir(configPath)
 		for {
+			// Check if directory still exists before watching
+			if _, err := os.Stat(watchDir); os.IsNotExist(err) {
+				log.Printf("config directory %s no longer exists, stopping watch", watchDir)
+				break
+			}
 			func() {
 				defer func() {
 					if r := recover(); r != nil {
@@ -118,13 +124,23 @@ func GetConfigAndWatch(configPath string, updateConfig func(config *types.Config
 					}
 				}()
 				c := make(chan notify.EventInfo, 1)
-				if err := notify.Watch(filepath.Dir(configPath), c, notify.Write); err != nil {
+				if err := notify.Watch(watchDir, c, notify.Write, notify.Remove); err != nil {
+					// Check if directory was deleted
+					if _, statErr := os.Stat(watchDir); os.IsNotExist(statErr) {
+						log.Printf("config directory %s was deleted, stopping watch", watchDir)
+						return
+					}
 					log.Panicln(configPath, err)
 				}
 				defer notify.Stop(c)
 				// waiting for signal of file changing
 				for {
 					info := <-c
+					// Check if directory was deleted
+					if _, err := os.Stat(watchDir); os.IsNotExist(err) {
+						log.Printf("config directory %s was deleted, stopping watch", watchDir)
+						return
+					}
 					if filepath.Base(info.Path()) == "config.toml" || filepath.Base(info.Path()) == "config-translations.toml" {
 						break
 					}

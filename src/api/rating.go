@@ -4,10 +4,11 @@ import (
 	"log"
 
 	"sersh.com/totaltube/frontend/internal"
+	"sersh.com/totaltube/frontend/types"
 )
 
 func Rating(
-	siteDomain, ip string, id int64, slug string, isLike bool,
+	siteConfig *types.Config, ip string, id int64, slug string, isLike bool,
 ) (err error) {
 	likes := 0
 	dislikes := 0
@@ -17,9 +18,13 @@ func Rating(
 		dislikes = 1
 	}
 	if internal.Config.General.EnableAccessLog {
-		log.Println("Rating", siteDomain, ip, id, slug, likes, dislikes)
+		siteName := ""
+		if siteConfig != nil {
+			siteName = siteConfig.Hostname
+		}
+		log.Println("Rating", siteName, ip, id, slug, likes, dislikes)
 	}
-	_, err = Request(siteDomain, methodPost, uriRating, M{
+	_, err = Request(siteConfig, methodPost, uriRating, M{
 		"ip":       ip,
 		"id":       id,
 		"slug":     slug,

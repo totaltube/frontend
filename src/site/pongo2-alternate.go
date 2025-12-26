@@ -8,6 +8,7 @@ import (
 
 	"github.com/flosch/pongo2/v6"
 
+	"sersh.com/totaltube/frontend/internal"
 	"sersh.com/totaltube/frontend/types"
 )
 
@@ -136,7 +137,7 @@ func GenerateAlternateURL(ctx pongo2.Context, alternateLang string) string {
 	if templateName, ok := ctx["page_template"].(string); ok && templateName == "sitemap-video" {
 		if contentItem, ok := ctx["content_item"].(*types.ContentResult); ok && contentItem != nil {
 			langHost := hostName
-			if d, ok := config.LanguageDomains["default"]; ok && d != "" {
+			if d, ok := internal.GetDefaultLanguageDomainValue(config); ok && d != "" {
 				langHost = d
 			}
 			if d, ok := config.LanguageDomains[alternateLang]; ok && d != "" {
@@ -164,7 +165,7 @@ func GenerateAlternateURL(ctx pongo2.Context, alternateLang string) string {
 	if canonicalUrl == "" {
 		canonicalUrl = "https://" + hostName
 	}
-	if d, ok := config.LanguageDomains["default"]; ok && d != "" {
+	if d, ok := internal.GetDefaultLanguageDomainValue(config); ok && d != "" {
 		canonicalUrl = "https://" + d
 	}
 	if d, ok := config.LanguageDomains[alternateLang]; ok && d != "" {
@@ -196,7 +197,7 @@ func (node *tagAlternateNode) Execute(ctx *pongo2.ExecutionContext, writer pongo
 		canonicalUrl = "https://" + hostName
 	}
 	if !config.General.MultiLanguage {
-		if d, ok := config.LanguageDomains["default"]; ok && d != "" {
+		if d, ok := internal.GetDefaultLanguageDomainValue(config); ok && d != "" {
 			canonicalUrl = "https://" + d
 		}
 		if domain, ok := config.LanguageDomains[langId]; ok && domain != "" {
@@ -217,7 +218,7 @@ func (node *tagAlternateNode) Execute(ctx *pongo2.ExecutionContext, writer pongo
 		return &pongo2.Error{Sender: "tag:alternate", OrigError: err}
 	}
 	alternateLang := v.String()
-	if d, ok := config.LanguageDomains["default"]; ok && d != "" {
+	if d, ok := internal.GetDefaultLanguageDomainValue(config); ok && d != "" {
 		canonicalUrl = "https://" + d
 	}
 	if domain, ok := config.LanguageDomains[alternateLang]; ok && domain != "" {

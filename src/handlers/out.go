@@ -20,6 +20,7 @@ import (
 var botDetector = botdetector.New()
 
 type countInfo struct {
+	siteConfig    *types.Config
 	hostName      string
 	categoryId    int64
 	contentId     int64
@@ -94,6 +95,7 @@ var Out = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		countType = types.CountTypeCategoryView
 	}
 	info := countInfo{
+		siteConfig:    config,
 		hostName:      hostName,
 		categoryId:    categoryId,
 		contentId:     contentId,
@@ -142,7 +144,7 @@ func doCount() {
 					sess.LastViewType = info.countType.String()
 					sess.LastViewId = countId
 					// Let's count view of this content
-					err := api.CountView(info.hostName, types.CountViewParams{
+					err := api.CountView(info.siteConfig, types.CountViewParams{
 						Type:    "content",
 						Id:      countId,
 						Ip:      info.ip,
@@ -162,7 +164,7 @@ func doCount() {
 				}
 				sess.LastClickType = info.countType.String()
 				sess.LastClickId = countId
-				err := api.TopCategoriesClick(info.hostName, types.CountClickParams{
+				err := api.TopCategoriesClick(info.siteConfig, types.CountClickParams{
 					Ip:        info.ip,
 					Id:        countId,
 					GroupId:   groupId,
@@ -178,7 +180,7 @@ func doCount() {
 				}
 				sess.LastClickType = info.countType.String()
 				sess.LastClickId = countId
-				err := api.TopContentClick(info.hostName, types.CountClickParams{
+				err := api.TopContentClick(info.siteConfig, types.CountClickParams{
 					Ip:        info.ip,
 					Id:        countId,
 					GroupId:   groupId,
@@ -194,7 +196,7 @@ func doCount() {
 				}
 				sess.LastClickType = info.countType.String()
 				sess.LastClickId = countId
-				err := api.CategoryClick(info.hostName, info.categoryId, types.CountClickParams{
+				err := api.CategoryClick(info.siteConfig, info.categoryId, types.CountClickParams{
 					Ip:        info.ip,
 					Id:        countId,
 					GroupId:   groupId,

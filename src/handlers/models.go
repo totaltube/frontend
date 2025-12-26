@@ -65,7 +65,7 @@ var Models = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var err error
 			var response json.RawMessage
 			response, err = db.GetCachedTimeout(cacheKey+":data", time.Duration(cacheTtl), time.Duration(cacheTtl), func() ([]byte, error) {
-				return api.ModelsListRaw(hostName, langId, page, api.SortBy(sortBy), int64(amount), query, groupId)
+				return api.ModelsListRaw(config, langId, page, api.SortBy(sortBy), int64(amount), query, groupId)
 			}, nocache)
 			if err != nil {
 				return ctx, err
@@ -99,7 +99,7 @@ var Models = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	render.HTML(w, r, string(parsed))
 })
 
-func getModelFunc(hostName string, langId string, groupId int64) func(args ...interface{}) *types.ModelResult {
+func getModelFunc(config *types.Config, langId string, groupId int64) func(args ...interface{}) *types.ModelResult {
 	return func(args ...interface{}) *types.ModelResult {
 		parsingName := true
 		var modelId int64
@@ -120,7 +120,7 @@ func getModelFunc(hostName string, langId string, groupId int64) func(args ...in
 				modelSlug = val
 			}
 		}
-		results, _, err := api.ModelInfo(hostName, langId, modelId, modelSlug, groupId)
+		results, _, err := api.ModelInfo(config, langId, modelId, modelSlug, groupId)
 		if err != nil {
 			log.Println("can't get model info:", err)
 			return nil
@@ -128,7 +128,7 @@ func getModelFunc(hostName string, langId string, groupId int64) func(args ...in
 		return results
 	}
 }
-func getModelsListFunc(hostName string, langId string, defaultAmount int64, groupId int64) func(args ...interface{}) *types.ModelResults {
+func getModelsListFunc(config *types.Config, langId string, defaultAmount int64, groupId int64) func(args ...interface{}) *types.ModelResults {
 	return func(args ...interface{}) *types.ModelResults {
 		parsingName := true
 		var amount = defaultAmount
@@ -157,7 +157,7 @@ func getModelsListFunc(hostName string, langId string, defaultAmount int64, grou
 				searchQuery = val
 			}
 		}
-		results, _, err := api.ModelsList(hostName, langId, page, sortBy, amount, searchQuery, groupId)
+		results, _, err := api.ModelsList(config, langId, page, sortBy, amount, searchQuery, groupId)
 		if err != nil {
 			log.Println("can't get models list:", err)
 			return nil

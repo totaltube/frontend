@@ -58,7 +58,6 @@ type (
 	}
 	Frontend struct {
 		SitesPath                string   `toml:"sites_path"`
-		DefaultSite              string   `toml:"default_site"`
 		SecretKey                string   `toml:"secret_key"`
 		CaptchaKey               string   `toml:"captcha_key"`
 		CaptchaSecret            string   `toml:"captcha_secret"`

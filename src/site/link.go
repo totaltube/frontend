@@ -474,6 +474,7 @@ func GetLink(route string, config *types.Config, host string, langId string, cha
 			tradeUrl = strings.ReplaceAll(tradeUrl, "{{encoded_url}}", url.QueryEscape(link))
 			tradeUrl = strings.ReplaceAll(tradeUrl, "{{url}}", link)
 			tradeUrl = strings.ReplaceAll(tradeUrl, "{{skim}}", skim)
+			tradeUrl = strings.ReplaceAll(tradeUrl, "{{lang}}", langId)
 			if strings.Contains(config.General.TradeUrlTemplate, "{{encoded_url}}") || strings.Contains(config.General.TradeUrlTemplate, "{{url}}") {
 				outlinkParams.Set(config.Params.CountRedirect, helpers.EncryptBase64(tradeUrl))
 			} else {
@@ -501,6 +502,7 @@ func GetLink(route string, config *types.Config, host string, langId string, cha
 		tradeUrl = strings.ReplaceAll(tradeUrl, "{{encoded_url}}", url.QueryEscape(link))
 		tradeUrl = strings.ReplaceAll(tradeUrl, "{{url}}", link)
 		tradeUrl = strings.ReplaceAll(tradeUrl, "{{skim}}", skim)
+		tradeUrl = strings.ReplaceAll(tradeUrl, "{{lang}}", langId)
 		link = tradeUrl
 	}
 	if isFullUrl && !strings.HasPrefix(link, "https://") && !strings.HasPrefix(link, "http://") {

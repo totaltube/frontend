@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"sersh.com/totaltube/frontend/types"
 )
@@ -30,30 +31,31 @@ const (
 )
 
 type ContentParams struct {
-	Ip             net.IP
-	Lang           string
-	Page           int64
-	Amount         int64
-	CategoryId     int64
-	CategorySlug   string
-	ChannelId      int64
-	ChannelSlug    string
-	ModelId        int64
-	ModelSlug      string
-	RelatedMessage string // на основании которого будет выдан related контент ( для модели это title модели )
-	Sort           SortBy
-	Timeframe      string // таймфрейм при сортировке по views
-	Tag            string
-	DurationGte    int64
-	DurationLt     int64
-	SearchQuery    string
-	IsNatural      bool   // true, если поисковый запрос создан самим пользователем, а не выбран в автокомплите
-	UserAgent      string // UserAgent текущего клиента
-	GroupId        int64
+	Ip                  net.IP
+	Lang                string
+	Page                int64
+	Amount              int64
+	CategoryId          int64
+	CategorySlug        string
+	ChannelId           int64
+	ChannelSlug         string
+	ModelId             int64
+	ModelSlug           string
+	RelatedMessage      string // на основании которого будет выдан related контент ( для модели это title модели )
+	Sort                SortBy
+	Timeframe           string // таймфрейм при сортировке по views
+	Tag                 string
+	DurationGte         int64
+	DurationLt          int64
+	SearchQuery         string
+	IsNatural           bool   // true, если поисковый запрос создан самим пользователем, а не выбран в автокомплите
+	UserAgent           string // UserAgent текущего клиента
+	GroupId             int64
+	AdditionalLanguages []string
 }
 
-func Content(siteDomain string, params ContentParams) (results *types.ContentResults, rawResponse json.RawMessage, err error) {
-	rawResponse, err = ContentRaw(siteDomain, params)
+func Content(siteConfig *types.Config, params ContentParams) (results *types.ContentResults, rawResponse json.RawMessage, err error) {
+	rawResponse, err = ContentRaw(siteConfig, params)
 	if err != nil {
 		return
 	}
@@ -68,7 +70,7 @@ func Content(siteDomain string, params ContentParams) (results *types.ContentRes
 	return
 }
 
-func ContentRaw(siteDomain string, params ContentParams) (rawResponse json.RawMessage, err error) {
+func ContentRaw(siteConfig *types.Config, params ContentParams) (rawResponse json.RawMessage, err error) {
 	var data = url.Values{}
 	if params.Ip != nil {
 		data.Add("ip", params.Ip.String())
@@ -129,6 +131,9 @@ func ContentRaw(siteDomain string, params ContentParams) (rawResponse json.RawMe
 	if params.RelatedMessage != "" {
 		data.Add("related_message", params.RelatedMessage)
 	}
-	rawResponse, err = Request(siteDomain, methodGet, uriContent, data)
+	if len(params.AdditionalLanguages) > 0 {
+		data.Add("additional_languages", strings.Join(params.AdditionalLanguages, ","))
+	}
+	rawResponse, err = Request(siteConfig, methodGet, uriContent, data)
 	return
 }

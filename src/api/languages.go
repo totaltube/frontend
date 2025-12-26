@@ -7,9 +7,9 @@ import (
 	"sersh.com/totaltube/frontend/types"
 )
 
-func Languages(siteDomain string) (results []types.Language, err error) {
+func Languages(siteConfig *types.Config) (results []types.Language, err error) {
 	var response json.RawMessage
-	response, err = Request(siteDomain, methodGet, uriLanguages, url.Values{})
+	response, err = Request(siteConfig, methodGet, uriLanguages, url.Values{})
 	if err != nil {
 		return
 	}

@@ -85,7 +85,7 @@ var Dmca = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		params.Ip = ip
 		params.UserAgent = r.UserAgent()
 		params.Domain = hostName
-		err = api.Dmca(hostName, params)
+		err = api.Dmca(config, params)
 		if err != nil {
 			render.JSON(w, r, M{"success": false, "value": err.Error()})
 			return

@@ -8,9 +8,9 @@ import (
 	"sersh.com/totaltube/frontend/types"
 )
 
-func TopCategories(siteDomain, lang string, page int64, groupId int64) (results *types.CategoryResults, err error) {
+func TopCategories(siteConfig *types.Config, lang string, page int64, groupId int64) (results *types.CategoryResults, err error) {
 	var response json.RawMessage
-	response, err = TopCategoriesRaw(siteDomain, lang, page, groupId)
+	response, err = TopCategoriesRaw(siteConfig, lang, page, groupId)
 	if err != nil {
 		return
 	}
@@ -19,8 +19,8 @@ func TopCategories(siteDomain, lang string, page int64, groupId int64) (results 
 	return
 }
 
-func TopCategoriesRaw(siteDomain, lang string, page int64, groupId int64) (response json.RawMessage, err error) {
-	return Request(siteDomain, methodGet, uriTopCategories, url.Values{
+func TopCategoriesRaw(siteConfig *types.Config, lang string, page int64, groupId int64) (response json.RawMessage, err error) {
+	return Request(siteConfig, methodGet, uriTopCategories, url.Values{
 		"lang": []string{lang},
 		"page": []string{strconv.FormatInt(page, 10)},
 		"group_id": []string{strconv.FormatInt(groupId, 10)},

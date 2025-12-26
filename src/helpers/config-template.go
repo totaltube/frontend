@@ -1,6 +1,6 @@
 package helpers
 
-//language="Go Template"
+// language="Go Template"
 var ConfigFileTemplate = `[general]
 port = {{.General.Port}}
 real_ip_header = "{{.General.RealIpHeader}}"
@@ -15,7 +15,6 @@ development = {{.General.Development}}
 
 [frontend]
 sites_path = "{{.Frontend.SitesPath}}"
-default_site = "{{.Frontend.DefaultSite}}"
 secret_key = "{{.Frontend.SecretKey}}"
 captcha_key = "{{.Frontend.CaptchaKey}}" # For DMCA
 captcha_secret = "{{.Frontend.CaptchaSecret}}" # For DMCA

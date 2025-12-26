@@ -133,7 +133,7 @@ var Search = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := pongo2.Context{}
 			var results *types.ContentResults
 			var err error
-			results, _, err = api.Content(hostName, api.ContentParams{
+			results, _, err = api.Content(config, api.ContentParams{
 				Ip:           net.ParseIP(ip),
 				SearchQuery:  searchQuery,
 				IsNatural:    isNatural,
@@ -186,7 +186,7 @@ var Search = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	render.HTML(w, r, string(parsed))
 })
 
-func getTopSearchesFunc(hostName string, langId string) func(args ...any) []types.TopSearch {
+func getTopSearchesFunc(config *types.Config, langId string) func(args ...any) []types.TopSearch {
 	return func(args ...any) []types.TopSearch {
 		currentName := ""
 		parsingName := true
@@ -202,7 +202,7 @@ func getTopSearchesFunc(hostName string, langId string) func(args ...any) []type
 				}
 			}
 		}
-		results, _, err := api.TopSearches(hostName, langId, int64(amount))
+		results, _, err := api.TopSearches(config, langId, int64(amount))
 		if err != nil {
 			log.Println(err)
 			return nil
@@ -211,7 +211,7 @@ func getTopSearchesFunc(hostName string, langId string) func(args ...any) []type
 	}
 }
 
-func getRandomSearchesFunc(hostName string, langId string) func(args ...any) []types.TopSearch {
+func getRandomSearchesFunc(config *types.Config, langId string) func(args ...any) []types.TopSearch {
 	return func(args ...any) []types.TopSearch {
 		currentName := ""
 		parsingName := true
@@ -231,7 +231,7 @@ func getRandomSearchesFunc(hostName string, langId string) func(args ...any) []t
 				}
 			}
 		}
-		results, _, err := api.RandomSearches(hostName, langId, int64(amount), int64(minSearches))
+		results, _, err := api.RandomSearches(config, langId, int64(amount), int64(minSearches))
 		if err != nil {
 			log.Println(err)
 			return nil

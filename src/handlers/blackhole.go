@@ -10,7 +10,7 @@ import (
 )
 
 var Blackhole = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	hostName := r.Context().Value(types.ContextKeyHostName).(string)
+	config := r.Context().Value(types.ContextKeyConfig).(*types.Config)
 	ip := r.Context().Value(types.ContextKeyIp).(string)
 	userAgent := r.Header.Get("User-Agent")
 	referer := r.Header.Get("Referer")
@@ -23,7 +23,7 @@ var Blackhole = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	if isSeBot {
 		return
 	}
-	err = api.BadbotRegister(hostName, ip, userAgent, referer)
+	err = api.BadbotRegister(config, ip, userAgent, referer)
 	if err != nil {
 		log.Println(err)
 	}

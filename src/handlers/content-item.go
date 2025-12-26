@@ -92,7 +92,7 @@ var ContentItem = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 		w.Header().Set("Pragma", "no-cache")
 		w.Header().Set("Expires", "0")
-		toReturn := handleRotation(rotationParams, useTrade, config, r, w)
+		toReturn := handleRotation(rotationParams, useTrade, config, r, w, langId)
 		if toReturn {
 			return
 		}
@@ -205,7 +205,7 @@ var ContentItem = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 			var err error
 			var response json.RawMessage
 			response, err = db.GetCachedTimeout(cacheKey+":data", time.Duration(cacheTtl), time.Duration(cacheTtl), func() ([]byte, error) {
-				return api.ContentItemRaw(hostName, langId, slug, id, orfl, int64(relatedAmount), groupId, relatedParams)
+				return api.ContentItemRaw(config, langId, slug, id, orfl, int64(relatedAmount), groupId, relatedParams)
 			}, nocache)
 			if err != nil {
 				if strings.Contains(err.Error(), "not found") {
@@ -284,7 +284,7 @@ var ContentItem = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 	render.HTML(w, r, string(parsed))
 })
 
-func getContentItemFunc(hostName string, config *types.Config, langId string, groupId int64, nocache bool) func(args ...any) *types.ContentItemResult {
+func getContentItemFunc(config *types.Config, langId string, groupId int64, nocache bool) func(args ...any) *types.ContentItemResult {
 	relatedTitleTranslated := config.Related.TitleTranslated
 	if relatedTitleTranslated == nil {
 		relatedTitleTranslated = internal.Config.Related.TitleTranslated
@@ -393,23 +393,23 @@ func getContentItemFunc(hostName string, config *types.Config, langId string, gr
 			}
 		}
 		if id == 0 && slug == "" {
-			log.Println("can't get content item: no id or slug", hostName)
+			log.Println("can't get content item: no id or slug", config.Hostname)
 			return nil
 		}
 		cacheKey := "content-item:" + helpers.Md5Hash(
-			fmt.Sprintf("%s:%s:%d:%s:%v:%d:%d:%d", hostName, langId, id, slug, orfl, relatedAmount, groupId, relatedRandomizeLast),
+			fmt.Sprintf("%s:%s:%d:%s:%v:%d:%d:%d", config.Hostname, langId, id, slug, orfl, relatedAmount, groupId, relatedRandomizeLast),
 		)
 		results, err := db.GetCachedTimeout(cacheKey+":data", time.Duration(cacheTime), time.Duration(cacheTime), func() ([]byte, error) {
-			return api.ContentItemRaw(hostName, langId, slug, id, orfl, relatedAmount, groupId, relatedParams)
+			return api.ContentItemRaw(config, langId, slug, id, orfl, relatedAmount, groupId, relatedParams)
 		}, nocache)
 		if err != nil {
-			log.Println("can't get content item:", err, hostName)
+			log.Println("can't get content item:", err, config.Hostname)
 			return nil
 		}
 		var result = new(types.ContentItemResult)
 		err = json.Unmarshal(results, result)
 		if err != nil {
-			log.Println("can't get content item:", err, hostName)
+			log.Println("can't get content item:", err, config.Hostname)
 			return nil
 		}
 		return result

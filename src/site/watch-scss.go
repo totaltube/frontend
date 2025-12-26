@@ -2,6 +2,7 @@ package site
 
 import (
 	"log"
+	"os"
 	"runtime"
 	"sync"
 	"time"
@@ -21,6 +22,11 @@ func WatchScss(path string, configPath string) {
 		mu := sync.Mutex{}
 		lastChange := time.Now()
 		for {
+			// Check if path still exists before watching
+			if _, err := os.Stat(path); os.IsNotExist(err) {
+				log.Printf("scss directory %s no longer exists, stopping watch", path)
+				break
+			}
 			func() {
 				defer func() {
 					if r := recover(); r != nil {
@@ -29,11 +35,21 @@ func WatchScss(path string, configPath string) {
 				}()
 				c := make(chan notify.EventInfo, 1)
 				if err := notify.Watch(path+"/...", c, notify.All); err != nil {
+					// Check if directory was deleted
+					if _, statErr := os.Stat(path); os.IsNotExist(statErr) {
+						log.Printf("scss directory %s was deleted, stopping watch", path)
+						return
+					}
 					log.Panicln(err)
 				}
 				defer notify.Stop(c)
 				// waiting the signal after changing scss files
 				ei := <-c
+				// Check if directory was deleted
+				if _, err := os.Stat(path); os.IsNotExist(err) {
+					log.Printf("scss directory %s was deleted, stopping watch", path)
+					return
+				}
 				mu.Lock()
 				lastChange = time.Now()
 				mu.Unlock()

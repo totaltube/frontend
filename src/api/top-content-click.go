@@ -2,7 +2,7 @@ package api
 
 import "sersh.com/totaltube/frontend/types"
 
-func TopContentClick(siteDomain string, params types.CountClickParams) (err error) {
-	_, err = Request(siteDomain, methodPost, uriTopContentClick, params)
+func TopContentClick(siteConfig *types.Config, params types.CountClickParams) (err error) {
+	_, err = Request(siteConfig, methodPost, uriTopContentClick, params)
 	return
 }

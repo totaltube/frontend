@@ -84,7 +84,7 @@ var FakePlayer = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var err error
 			var response json.RawMessage
 			response, err = db.GetCachedTimeout(cacheKey+":data", time.Duration(cacheTtl), time.Duration(cacheTtl), func() ([]byte, error) {
-				return api.ContentItemRaw(hostName, langId, slug, id, orfl, int64(relatedAmount), groupId, relatedParams)
+				return api.ContentItemRaw(config, langId, slug, id, orfl, int64(relatedAmount), groupId, relatedParams)
 			}, nocache)
 			if err != nil {
 				if strings.Contains(err.Error(), "not found") {

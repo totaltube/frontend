@@ -9,7 +9,7 @@ import (
 	"sersh.com/totaltube/frontend/types"
 )
 
-func getCategoriesListFunc(hostName string, langId string, defaultAmount int64, groupId int64) func(args ...any) *types.CategoryResults {
+func getCategoriesListFunc(config *types.Config, langId string, defaultAmount int64, groupId int64) func(args ...any) *types.CategoryResults {
 	return func(args ...any) *types.CategoryResults {
 		parsingName := true
 		var amount = defaultAmount
@@ -35,7 +35,7 @@ func getCategoriesListFunc(hostName string, langId string, defaultAmount int64, 
 				amount, _ = strconv.ParseInt(val, 10, 64)
 			}
 		}
-		results, _, err := api.CategoriesList(hostName, langId, page, sortBy, amount, groupId)
+		results, _, err := api.CategoriesList(config, langId, page, sortBy, amount, groupId)
 		if err != nil {
 			log.Println("can't get categories list:", err)
 			return nil

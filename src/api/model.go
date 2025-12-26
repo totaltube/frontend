@@ -9,9 +9,9 @@ import (
 )
 
 func ModelInfo(
-	siteDomain, lang string, id int64, slug string, groupId int64,
+	siteConfig *types.Config, lang string, id int64, slug string, groupId int64,
 ) (results *types.ModelResult, rawResponse json.RawMessage, err error) {
-	rawResponse, err = Request(siteDomain, methodGet, uriModel, url.Values{
+	rawResponse, err = Request(siteConfig, methodGet, uriModel, url.Values{
 		"lang": []string{lang},
 		"slug": []string{slug},
 		"id":   []string{strconv.FormatInt(id, 10)},

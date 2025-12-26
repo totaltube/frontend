@@ -43,7 +43,7 @@ var RedirectToContentItem = http.HandlerFunc(func(w http.ResponseWriter, r *http
 		TagsBoost:                    config.Related.TagsBoost,
 		RandomizeLast:                relatedRandomizeLast,
 	}
-	results, err := api.ContentItem(hostName, langId, slug, id, true, 0, 0, relatedParams)
+	results, err := api.ContentItem(config, langId, slug, id, true, 0, 0, relatedParams)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "no rows") {
 			Output404(w, r, "content item not found")

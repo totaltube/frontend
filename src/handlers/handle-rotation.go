@@ -17,7 +17,7 @@ import (
 	"sersh.com/totaltube/frontend/types"
 )
 
-func handleRotation(rotationParams rotationParams, useTrade bool, config *types.Config, r *http.Request, w http.ResponseWriter) (toReturn bool) {
+func handleRotation(rotationParams rotationParams, useTrade bool, config *types.Config, r *http.Request, w http.ResponseWriter, langId string) (toReturn bool) {
 	var wg sync.WaitGroup
 	hostName := r.Context().Value(types.ContextKeyHostName).(string)
 	if rotationParams.Type != types.CountTypeNone {
@@ -104,6 +104,7 @@ func handleRotation(rotationParams rotationParams, useTrade bool, config *types.
 			tradeUrl = strings.ReplaceAll(tradeUrl, "{{encoded_url}}", url.QueryEscape(r.URL.Path))
 			tradeUrl = strings.ReplaceAll(tradeUrl, "{{url}}", r.URL.Path)
 			tradeUrl = strings.ReplaceAll(tradeUrl, "{{skim}}", rotationParams.Skim)
+			tradeUrl = strings.ReplaceAll(tradeUrl, "{{lang}}", langId)
 			parsedTradeUrl, err := url.Parse(tradeUrl)
 			if err != nil {
 				log.Println(err)

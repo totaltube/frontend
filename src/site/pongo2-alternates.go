@@ -6,6 +6,7 @@ import (
 
 	"github.com/flosch/pongo2/v6"
 
+	"sersh.com/totaltube/frontend/internal"
 	"sersh.com/totaltube/frontend/types"
 )
 
@@ -20,10 +21,11 @@ func (node *tagAlternatesNode) Execute(ctx *pongo2.ExecutionContext, writer pong
 		return nil
 	}
 	canonicalUrl := strings.TrimSuffix(config.General.CanonicalUrl, "/")
+	defaultDomain, hasDefaultDomain := internal.GetDefaultLanguageDomainValue(config)
 	if canonicalUrl == "" {
 		canonicalUrl = "https://" + hostName
-		if d, ok := config.LanguageDomains["default"]; ok && d != "" {
-			canonicalUrl = "https://" + d
+		if hasDefaultDomain {
+			canonicalUrl = "https://" + defaultDomain
 		}
 	}
 	//langId := context.Public["lang"].(*types.Language).Id

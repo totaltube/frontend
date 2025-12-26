@@ -81,7 +81,7 @@ var Long = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var err error
 			var response json.RawMessage
 			response, err = db.GetCachedTimeout(cacheKey+":data", time.Duration(cacheTtl), time.Duration(cacheTtl), func() ([]byte, error) {
-				return api.ContentRaw(hostName, api.ContentParams{
+				return api.ContentRaw(config, api.ContentParams{
 					Ip:           net.ParseIP(ip),
 					Lang:         langId,
 					Page:         page,

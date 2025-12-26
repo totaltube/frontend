@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"log"
 	"net/url"
-	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -13,6 +12,7 @@ import (
 
 	"sersh.com/totaltube/frontend/helpers"
 	"sersh.com/totaltube/frontend/internal"
+	"sersh.com/totaltube/frontend/types"
 )
 
 type Data map[string]interface{}
@@ -78,7 +78,7 @@ const (
 var ErrApiWriteTrouble = errors.New("api not available for write operations now. Try later")
 var ErrApiTrouble = errors.New("api not available now. Try later")
 
-func Request(siteDomain string, method Method, uri ApiUri, data interface{}) (response json.RawMessage, err error) {
+func Request(siteConfig *types.Config, method Method, uri ApiUri, data interface{}) (response json.RawMessage, err error) {
 	//nolint
 	if ApiHasTrouble.Load() {
 		//return nil, ErrApiTrouble
@@ -87,11 +87,10 @@ func Request(siteDomain string, method Method, uri ApiUri, data interface{}) (re
 	if method != methodGet && ApiWriteHasTrouble.Load() {
 		//return nil, ErrApiWriteTrouble
 	}
-	if siteDomain == "" {
-		siteDomain = internal.Config.Frontend.DefaultSite
+	siteName := internal.Config.General.ApiUrl
+	if siteConfig != nil {
+		siteName = siteConfig.Hostname
 	}
-	siteConfigPath := filepath.Join(internal.Config.Frontend.SitesPath, siteDomain, "config.toml")
-	siteConfig := internal.GetConfig(siteConfigPath, UpdateConfigRetry)
 	f := helpers.SiteFetch(siteConfig)(string(uri))
 	f.WithMethod(string(method))
 	if method == "GET" && data != nil {
@@ -146,7 +145,7 @@ func Request(siteDomain string, method Method, uri ApiUri, data interface{}) (re
 	var r apiResponse
 	err = json.Unmarshal(resp, &r)
 	if err != nil {
-		log.Println(err, siteDomain, method, uri, string(resp))
+		log.Println(err, siteName, method, uri, string(resp))
 		return
 	}
 	if !r.Success {
@@ -154,7 +153,7 @@ func Request(siteDomain string, method Method, uri ApiUri, data interface{}) (re
 		_ = json.Unmarshal(r.Value, &errorString)
 		err = errors.New("error from api: " + errorString + ", " + string(method) + ", " + string(uri))
 		if !strings.Contains(errorString, "favicon.ico") && !strings.Contains(errorString, "not found") {
-			log.Printf("error from api: %s, %s, %s, %s", errorString, siteDomain, method, uri)
+			log.Printf("error from api: %s, %s, %s, %s", errorString, siteName, method, uri)
 		}
 		return
 	}
@@ -170,13 +169,13 @@ func periodicCheckApi() {
 	}()
 	for {
 		if ApiHasTrouble.Load() {
-			if _, err := Request("", methodGet, uriHealth, nil); err == nil {
+			if _, err := Request(nil, methodGet, uriHealth, nil); err == nil {
 				ApiHasTrouble.Store(false)
 				apiReadErrCount.Store(0)
 				apiWriteErrCount.Store(0)
 			}
 		} else if ApiWriteHasTrouble.Load() {
-			if _, err := Request("", methodPost, uriHealth, nil); err == nil {
+			if _, err := Request(nil, methodPost, uriHealth, nil); err == nil {
 				ApiWriteHasTrouble.Store(false)
 				apiWriteErrCount.Store(0)
 			}
